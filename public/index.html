@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Cards — nostr-vcard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <header class="top-bar">
+      <span class="logo">🔐 nostr-vcard</span>
+      <div class="top-bar-actions">
+        <button id="btn-back-cards"  class="btn btn-success btn-sm hidden">← My Cards</button>
+        <button id="cv-btn-back"     class="btn btn-success btn-sm hidden">← My Cards</button>
+        <button id="btn-delete-card" class="btn btn-danger  btn-sm hidden" title="Delete this card permanently">Delete card</button>
+      </div>
+    </header>
+
+    <!-- ── Setup screen (first visit, no card yet) ─────────────────────── -->
+    <section id="screen-setup" class="screen">
+      <div class="card-panel">
+        <h2>Create your encrypted contact card</h2>
+        <p class="muted">Your contact details are encrypted in the browser before being published to Nostr relays.
+          No server can ever read the content — only people you share the link with.</p>
+        <button id="btn-create-card" class="btn btn-primary btn-lg">Create my card</button>
+
+        <div class="setup-divider"><span>or</span></div>
+
+        <p class="muted">Already have a backup from another device?</p>
+        <label class="btn btn-ghost btn-lg" style="cursor:pointer" title="Restore a backup file">
+          Restore backup
+          <input id="restore-file-input" type="file" accept=".json,application/json" style="display:none" />
+        </label>
+        <button id="btn-paste-restore-setup" class="btn btn-ghost btn-lg">Paste backup</button>
+      </div>
+    </section>
+
+    <!-- ── Cards list screen ─────────────────────────────────────────────── -->
+    <section id="screen-cards" class="screen hidden">
+      <div class="cards-screen-header">
+        <h2>My Cards</h2>
+        <div class="cards-screen-actions">
+          <button id="btn-backup"      class="btn btn-ghost" title="Export a backup of all your cards and saved links">Backup</button>
+          <label  class="btn btn-ghost" style="cursor:pointer" title="Restore from a backup file">
+            Restore
+            <input id="restore-file-input-cards" type="file" accept=".json,application/json" style="display:none" />
+          </label>
+          <button id="btn-paste-restore-cards" class="btn btn-ghost" title="Paste backup JSON">Paste restore</button>
+          <button id="btn-new-card"    class="btn btn-primary">+ New Card</button>
+          <button id="btn-go-saved"    class="btn btn-teal">🔖 Saved Cards</button>
+          <button id="btn-clear-all"   class="btn btn-danger btn-sm" title="Remove all local keys and credentials">Log out</button>
+        </div>
+      </div>
+      <div id="cards-list" class="cards-list"></div>
+    </section>
+
+    <!-- ── Saved Cards screen ──────────────────────────────────────────────── -->
+    <section id="screen-saved" class="screen hidden">
+      <div class="cards-screen-header">
+        <h2>Saved Cards</h2>
+        <div class="cards-screen-actions">
+          <button id="btn-back-to-cards" class="btn btn-success">← My Cards</button>
+        </div>
+      </div>
+      <div id="saved-links-list" class="cards-list"></div>
+    </section>
+
+    <!-- ── Editor screen ───────────────────────────────────────────────── -->
+    <section id="screen-editor" class="screen hidden">
+      <div class="two-col">
+
+        <!-- Left: vCard editor -->
+        <div class="panel" id="editor-panel">
+          <h2>My contact details</h2>
+
+          <div class="field-group">
+            <label>Full name <span class="req">*</span></label>
+            <input id="fn" type="text" placeholder="Alice Smith" autocomplete="name" />
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label>First name</label>
+              <input id="firstName" type="text" placeholder="Alice" />
+            </div>
+            <div class="field-group">
+              <label>Last name</label>
+              <input id="lastName" type="text" placeholder="Smith" />
+            </div>
+          </div>
+
+          <div class="field-section">
+            <div id="tel-list" class="dynamic-list"><label>Phone numbers</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-tel">+ Add phone</button>
+          </div>
+
+          <div class="field-section">
+            <div id="email-list" class="dynamic-list"><label>Email addresses</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-email">+ Add email</button>
+          </div>
+
+          <div class="field-section">
+            <div id="org-list" class="dynamic-list"><label>Organisation</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-org">+ Add organisation</button>
+          </div>
+
+          <div class="field-section">
+            <div id="title-list" class="dynamic-list"><label>Job title</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-title">+ Add title</button>
+          </div>
+
+          <div class="field-section">
+            <div id="url-list" class="dynamic-list"><label>Website</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-url">+ Add website</button>
+          </div>
+
+          <div class="field-section">
+            <div id="adr-list" class="dynamic-list"><label>Address</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-adr">+ Add address</button>
+          </div>
+
+          <div class="field-section">
+            <div id="note-list" class="dynamic-list"><label>Note</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-note">+ Add note</button>
+          </div>
+
+          <div class="editor-actions">
+            <button id="btn-save" class="btn btn-primary">Save &amp; publish</button>
+            <span id="save-status" class="status-msg"></span>
+          </div>
+
+          <!-- Relay manager (collapsible) -->
+          <div class="relay-manager" id="relay-manager">
+            <div class="relay-manager-header" id="relay-manager-toggle">
+              <h3>Relays</h3>
+              <span class="relay-manager-toggle" id="relay-toggle-icon">▼</span>
+            </div>
+            <div class="relay-manager-body hidden" id="relay-manager-body">
+              <div id="relay-list" class="relay-list"></div>
+              <div class="relay-add-row">
+                <input id="relay-input" type="url" placeholder="wss://your-relay.example.com" />
+                <button id="btn-add-relay" class="btn btn-ghost btn-sm">Add relay</button>
+              </div>
+              <p id="relay-error" class="relay-error hidden"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Share panel -->
+        <div class="panel" id="share-panel">
+          <h2>Share</h2>
+          <p class="muted" style="margin-bottom:16px">
+            Share the link below with anyone who should see this card.
+            The decryption key is in the <code>#fragment</code> — it never reaches any server.
+          </p>
+          <button id="btn-open-share" class="btn btn-success btn-lg" style="width:100%">Share this card</button>
+
+          <div style="margin-top:24px">
+            <button id="btn-view-card" class="btn btn-ghost btn-lg" style="width:100%">Preview card</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Restore backup modal ────────────────────────────────────────── -->
+    <div id="modal-restore" class="modal-overlay hidden">
+      <div class="modal">
+        <h3>Restore backup</h3>
+        <p class="muted">Paste the contents of a backup JSON file. Both v2 (nostr-vcard) and v1 (legacy) formats are accepted.</p>
+        <textarea id="restore-paste-input" rows="8" placeholder='{"version":2,"cards":[...]}'></textarea>
+        <div class="modal-actions">
+          <button id="btn-restore-paste-confirm" class="btn btn-primary">Restore</button>
+          <button id="btn-restore-paste-cancel"  class="btn btn-ghost">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Share modal ─────────────────────────────────────────────────── -->
+    <div id="modal-share" class="modal-overlay hidden">
+      <div class="modal">
+        <h3>Share — <strong id="share-label"></strong></h3>
+        <p class="muted">Send this URL via any channel. The decryption key is in the <code>#fragment</code> — it never reaches the relay.</p>
+
+        <div class="share-url-box">
+          <input id="share-url" type="text" readonly />
+          <button id="btn-copy-url" class="btn btn-ghost btn-sm">Copy</button>
+        </div>
+
+        <div id="qr-container" class="qr-container"></div>
+
+        <div class="modal-actions">
+          <button id="btn-save-qr"     class="btn btn-ghost btn-sm">Save QR as PNG</button>
+          <button id="btn-modal-close" class="btn btn-ghost">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Inline card viewer (owner preview / saved links) ────────────── -->
+    <section id="screen-card-view" class="screen hidden">
+
+      <div id="cv-screen-loading" class="card-panel centered">
+        <div class="spinner"></div>
+        <p>Decrypting contact…</p>
+      </div>
+
+      <div id="cv-screen-trust" class="card-panel centered trust-gate hidden">
+        <div class="trust-icon">🔐</div>
+        <h2>Before we show this contact…</h2>
+        <p class="muted">Your answer helps protect the contact's details.</p>
+        <div class="trust-choices">
+          <button id="cv-btn-trusted" class="btn btn-trust-yes">
+            <span class="trust-choice-icon">✅</span>
+            <span class="trust-choice-label">My personal device</span>
+            <span class="trust-choice-hint">Bookmark for easy access</span>
+          </button>
+          <button id="cv-btn-public" class="btn btn-trust-no">
+            <span class="trust-choice-icon">🏛️</span>
+            <span class="trust-choice-label">Shared or public computer</span>
+            <span class="trust-choice-hint">Session auto-clears when you leave</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="cv-screen-error" class="card-panel centered hidden">
+        <div class="error-icon">⛔</div>
+        <h2 id="cv-error-title">Cannot load card</h2>
+        <p id="cv-error-detail" class="muted"></p>
+        <button id="cv-btn-back-error" class="btn btn-ghost" style="margin-top:1.5rem">← Back</button>
+      </div>
+
+      <div id="cv-screen-card" class="card-panel contact-card hidden">
+
+        <div class="contact-header">
+          <div class="contact-avatar" id="cv-contact-avatar"></div>
+          <div>
+            <h1 id="cv-contact-fn"></h1>
+            <p id="cv-contact-title-org" class="contact-subtitle muted"></p>
+          </div>
+        </div>
+
+        <div id="cv-contact-fields" class="contact-fields"></div>
+
+        <div id="cv-public-mode-banner" class="public-mode-banner hidden">
+          🏛️ <strong>Public device mode</strong> — session auto-clears when you leave or after 5 minutes.
+        </div>
+
+        <div class="card-actions cv-card-actions">
+          <button id="cv-btn-download"  class="btn btn-primary btn-lg">Save contact to device</button>
+          <button id="cv-btn-save-link" class="btn btn-ghost   btn-lg hidden">💾 Save link</button>
+          <button id="cv-btn-done"      class="btn btn-secondary btn-lg hidden">🔒 Done — clear from browser</button>
+        </div>
+
+        <div class="vcard-qr-section">
+          <p class="vcard-qr-label muted">Scan to save contact</p>
+          <div id="cv-vcard-qr-container" class="qr-container"></div>
+        </div>
+
+        <div class="update-hint cv-update-hint">
+          <p class="update-hint-title">📌 Bookmark this card — only on trusted devices!</p>
+          <p class="update-hint-body muted">
+            This link always shows the latest details — bookmark it to stay up to date.
+            Press <kbd>Ctrl+D</kbd> <span class="hint-mac">(or <kbd>⌘D</kbd> on Mac)</span>
+            and save to a folder called <strong>Contacts</strong>.
+          </p>
+          <p class="update-hint-body muted" style="margin-top:0.4rem">
+            ⚠️ <strong>Do not bookmark on shared or public computers.</strong>
+          </p>
+        </div>
+
+      </div>
+
+    </section>
+
+  </div><!-- /.app-shell -->
+
+  <script src="qrcode.js"></script>
+  <script type="module" src="app.js"></script>
+  <script>
+    // Surface module-load failures in the page rather than leaving it blank
+    window.addEventListener('error', e => {
+      if (e.filename && e.filename.includes('esm.sh')) {
+        document.body.innerHTML = `
+          <div style="font-family:sans-serif;padding:40px;max-width:520px;margin:auto">
+            <h2>⚠️ Could not load Nostr library</h2>
+            <p>Failed to fetch <code>${e.filename}</code> from the CDN.</p>
+            <p style="margin-top:12px">Check your internet connection and reload the page.</p>
+            <p style="margin-top:8px;font-size:13px;color:#666">Error: ${e.message}</p>
+            <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;cursor:pointer">Reload</button>
+          </div>`;
+      }
+    });
+  </script>
+</body>
+</html>

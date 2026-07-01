@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact Card</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <header class="top-bar">
+      <span class="logo">🔐 Encrypted Contact Card</span>
+      <div class="top-bar-actions">
+        <a id="btn-back-account" class="btn btn-success btn-sm" href="index.html">← My Cards</a>
+      </div>
+    </header>
+
+    <!-- Loading -->
+    <section id="screen-loading" class="screen">
+      <div class="card-panel centered">
+        <div class="spinner"></div>
+        <p>Decrypting contact…</p>
+      </div>
+    </section>
+
+    <!-- Trust gate -->
+    <section id="screen-trust" class="screen hidden">
+      <div class="card-panel centered trust-gate">
+        <div class="trust-icon">🔐</div>
+        <h2>Before we show this contact…</h2>
+        <p class="muted">Your answer helps protect the contact's details.</p>
+        <div class="trust-choices">
+          <button id="btn-trusted" class="btn btn-trust-yes">
+            <span class="trust-choice-icon">✅</span>
+            <span class="trust-choice-label">My personal device</span>
+            <span class="trust-choice-hint">Bookmark for easy access</span>
+          </button>
+          <button id="btn-public" class="btn btn-trust-no">
+            <span class="trust-choice-icon">🏛️</span>
+            <span class="trust-choice-label">Shared or public computer</span>
+            <span class="trust-choice-hint">Session auto-clears when you leave</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Error states -->
+    <section id="screen-error" class="screen hidden">
+      <div class="card-panel centered">
+        <div class="error-icon">⛔</div>
+        <h2 id="error-title">Cannot load card</h2>
+        <p id="error-detail" class="muted"></p>
+      </div>
+    </section>
+
+    <!-- Contact card -->
+    <section id="screen-card" class="screen hidden">
+      <div class="card-panel contact-card">
+
+        <div class="contact-header">
+          <div class="contact-avatar" id="contact-avatar"></div>
+          <div>
+            <h1 id="contact-fn"></h1>
+            <p id="contact-title-org" class="contact-subtitle muted"></p>
+          </div>
+        </div>
+
+        <div id="contact-fields" class="contact-fields"></div>
+
+        <div id="public-mode-banner" class="public-mode-banner hidden">
+          🏛️ <strong>Public device mode</strong> — session auto-clears when you leave or after 5 minutes.
+        </div>
+
+        <div class="card-actions">
+          <button id="btn-download" class="btn btn-primary btn-lg">Save contact to device</button>
+          <button id="btn-save-link" class="btn btn-ghost btn-lg hidden">💾 Save link</button>
+          <button id="btn-done" class="btn btn-secondary btn-lg hidden">🔒 Done — clear from browser</button>
+        </div>
+
+        <div class="vcard-qr-section">
+          <p class="vcard-qr-label muted">Scan to save contact</p>
+          <div id="vcard-qr-container" class="qr-container"></div>
+        </div>
+
+        <div class="update-hint">
+          <p class="update-hint-title">📌 Bookmark this card — only on trusted devices!</p>
+          <p class="update-hint-body muted">
+            This link always shows the latest details — bookmark it to stay up to date.
+            Press <kbd>Ctrl+D</kbd> <span class="hint-mac">(or <kbd>⌘D</kbd> on Mac)</span>
+            and save to a folder called <strong>Contacts</strong>.
+          </p>
+          <p class="update-hint-body muted" style="margin-top:0.4rem">
+            ⚠️ <strong>Do not bookmark on shared or public computers.</strong>
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+  </div><!-- /.app-shell -->
+
+  <script src="qrcode.js"></script>
+  <script type="module" src="card.js"></script>
+</body>
+</html>

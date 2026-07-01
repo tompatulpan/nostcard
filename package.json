@@ -1,0 +1,19 @@
+{
+  "name": "nostr-vcard",
+  "version": "1.0.0",
+  "description": "Zero-knowledge, client-side encrypted vCard sharing via Nostr relays",
+  "private": true,
+  "dependencies": {
+    "@nostr/tools": "^2.0.0"
+  },
+  "scripts": {
+    "dev": "npx serve public"
+  },
+  "license": "MIT",
+  "notes": [
+    "Runtime imports use CDN (https://esm.sh/@nostr/tools@^2/) — no build step required.",
+    "Add a bundler and switch imports to bare specifiers if a build step is desired later.",
+    "qrcode.js is MIT-licensed (Copyright (c) 2009 Kazuhiko Arase).",
+    "crypto.js and vcard.js are ported from the companion e2e-vcard-sharing project."
+  ]
+}
