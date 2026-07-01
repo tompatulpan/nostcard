@@ -83,22 +83,10 @@ async function init() {
   // ?dl=1 — auto-download mode: skip trust gate, immediately trigger .vcf download
   if (params.get('dl') === '1') {
     downloadVcf(vcardText, fields.fn);
-
-    // Save the clean URL (without ?dl=1) to saved links so the card is accessible later
-    try {
-      const cleanParams = new URLSearchParams(location.search);
-      cleanParams.delete('dl');
-      const cleanUrl = `${location.origin}${location.pathname}?${cleanParams}${location.hash}`;
-      const SAVED_KEY = 'e2e:saved-links';
-      let links = [];
-      try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
-      if (!links.some(l => l.url === cleanUrl)) {
-        links.push({ url: cleanUrl, label: fields.fn || 'Contact', savedAt: new Date().toISOString() });
-        localStorage.setItem(SAVED_KEY, JSON.stringify(links));
-      }
-    } catch { /* storage blocked — non-fatal */ }
-
-    showDownloadConfirmation(fields.fn);
+    const cleanParams = new URLSearchParams(location.search);
+    cleanParams.delete('dl');
+    const cleanUrl = `${location.origin}${location.pathname}?${cleanParams}${location.hash}`;
+    showDownloadConfirmation(fields.fn, cardId, cleanUrl);
     return;
   }
 
@@ -370,7 +358,7 @@ function fieldRow(icon, type, text, href) {
 // Auto-download confirmation screen (?dl=1 mode)
 // ---------------------------------------------------------------------------
 
-function showDownloadConfirmation(fn) {
+function showDownloadConfirmation(fn, cardId, cleanUrl) {
   document.getElementById('screen-loading').classList.add('hidden');
 
   const panel = document.createElement('div');
@@ -390,6 +378,76 @@ function showDownloadConfirmation(fn) {
   panel.appendChild(icon);
   panel.appendChild(heading);
   panel.appendChild(p);
+
+  // Trust / save prompt — only when device is not yet trusted for this card
+  if (!getTrust(cardId)) {
+    const trustHeading = document.createElement('p');
+    trustHeading.style.cssText = 'margin-top:1.5rem;font-weight:600';
+    trustHeading.textContent = 'Save this card for quick access later?';
+
+    const choices = document.createElement('div');
+    choices.className = 'trust-choices';
+    choices.style.marginTop = '0.75rem';
+
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'btn btn-trust-yes';
+    yesBtn.innerHTML = '<span class="trust-choice-icon">✅</span><span class="trust-choice-label">My personal device</span><span class="trust-choice-hint">Save link for easy access</span>';
+
+    const noBtn = document.createElement('button');
+    noBtn.className = 'btn btn-trust-no';
+    noBtn.innerHTML = '<span class="trust-choice-icon">🏛️</span><span class="trust-choice-label">Public or shared device</span><span class="trust-choice-hint">Don\'t save anything</span>';
+
+    const saveLink = (label) => {
+      try {
+        const SAVED_KEY = 'e2e:saved-links';
+        let links = [];
+        try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
+        if (!links.some(l => l.url === cleanUrl)) {
+          links.push({ url: cleanUrl, label: label || 'Contact', savedAt: new Date().toISOString() });
+          localStorage.setItem(SAVED_KEY, JSON.stringify(links));
+        }
+      } catch { /* storage blocked — non-fatal */ }
+    };
+
+    const replaceChoices = (msg) => {
+      choices.innerHTML = '';
+      const conf = document.createElement('p');
+      conf.className = 'muted';
+      conf.textContent = msg;
+      choices.appendChild(conf);
+    };
+
+    yesBtn.addEventListener('click', () => {
+      setTrust(cardId);
+      saveLink(fn);
+      replaceChoices('✓ Link saved to your Saved Cards.');
+    });
+
+    noBtn.addEventListener('click', () => {
+      replaceChoices('No data saved on this device.');
+    });
+
+    choices.appendChild(yesBtn);
+    choices.appendChild(noBtn);
+    panel.appendChild(trustHeading);
+    panel.appendChild(choices);
+  } else {
+    // Already trusted — save silently and confirm
+    try {
+      const SAVED_KEY = 'e2e:saved-links';
+      let links = [];
+      try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
+      if (!links.some(l => l.url === cleanUrl)) {
+        links.push({ url: cleanUrl, label: fn || 'Contact', savedAt: new Date().toISOString() });
+        localStorage.setItem(SAVED_KEY, JSON.stringify(links));
+      }
+    } catch { /* storage blocked — non-fatal */ }
+    const saved = document.createElement('p');
+    saved.className = 'muted';
+    saved.style.marginTop = '1rem';
+    saved.textContent = '✓ Link saved to your Saved Cards.';
+    panel.appendChild(saved);
+  }
 
   const section = document.getElementById('screen-card');
   section.innerHTML = '';
