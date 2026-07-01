@@ -6,8 +6,12 @@
   "dependencies": {
     "nostr-tools": "^2.0.0"
   },
+  "devDependencies": {
+    "wrangler": "^4.85.0"
+  },
   "scripts": {
-    "dev": "npx serve public"
+    "dev": "npx --yes serve public -l 8788 --no-clipboard",
+    "deploy": "wrangler pages deploy public --project-name nostr-vcard"
   },
   "license": "MIT",
   "notes": [
