@@ -15,11 +15,11 @@
  */
 
 import { generateSecretKey, getPublicKey, finalizeEvent }
-  from 'https://esm.sh/nostr-tools@2/pure';
+  from 'https://esm.sh/nostr-tools@2.23.9/pure';
 import { SimplePool }
-  from 'https://esm.sh/nostr-tools@2/pool';
+  from 'https://esm.sh/nostr-tools@2.23.9/pool';
 import * as nip19
-  from 'https://esm.sh/nostr-tools@2/nip19';
+  from 'https://esm.sh/nostr-tools@2.23.9/nip19';
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -1272,6 +1272,8 @@ async function importBackup(json) {
   let linksAdded = 0;
   for (const item of linkPayloads) {
     if (!item?.url?.trim() || existingUrls.has(item.url)) continue;
+    // Only accept https:// URLs to prevent arbitrary-scheme injection
+    if (!item.url.startsWith('https://')) continue;
     existingLinks.push({ url: item.url, label: item.label || 'Contact', savedAt: item.savedAt || new Date().toISOString() });
     existingUrls.add(item.url);
     linksAdded++;
@@ -1371,7 +1373,8 @@ function htmlEscape(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 function makeInitials(name) {

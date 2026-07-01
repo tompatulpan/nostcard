@@ -80,13 +80,9 @@ async function init() {
 
   const fields = parseVCard(vcardText);
 
-  // Determine mode from URL param (owner-preview skips trust gate + auto-clear)
-  const mode = params.get('mode');
-  if (mode === 'owner-preview') {
-    renderCard(fields, vcardText, true, /* ownerPreview */ true);
-  } else {
-    showTrustGate(cardId, fields, vcardText);
-  }
+  // Always show the trust gate — owner preview is handled by the inline viewer
+  // in app.js and never navigates to card.html, so no mode param is honoured here.
+  showTrustGate(cardId, fields, vcardText);
 }
 
 // ---------------------------------------------------------------------------

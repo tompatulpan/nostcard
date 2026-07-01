@@ -1,0 +1,5 @@
+/*
+  Content-Security-Policy: default-src 'self'; connect-src 'self' wss:; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
