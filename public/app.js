@@ -1337,13 +1337,13 @@ function renderQR(container, text) {
 /** Build the full share URL (includes #AES-key fragment) */
 function buildShareUrl(card) {
   const naddr = naddrEncode(card.npub, card.id, card.relays);
-  return `${location.origin}/card.html?naddr=${naddr}#${card.key}`;
+  return `${location.origin}/card?naddr=${naddr}#${card.key}`;
 }
 
 /** Canonical URL for vCard SOURCE field (no fragment, no key) */
 function canonicalUrl(cardId, npub, relays) {
   const naddr = naddrEncode(npub, cardId, relays);
-  return `${location.origin}/card.html?naddr=${naddr}`;
+  return `${location.origin}/card?naddr=${naddr}`;
 }
 
 /** Import the card's AES key from its stored base64url fragment string */
