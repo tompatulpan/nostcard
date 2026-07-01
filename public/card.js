@@ -157,10 +157,9 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
   const firstOrg   = Array.isArray(fields.org)   ? fields.org[0]   : fields.org;
   const subtitle   = [firstTitle, firstOrg].filter(Boolean).join(' · ');
   const subtitleEl = document.getElementById('contact-title-org');
-  if (subtitle) {
-    subtitleEl.textContent = subtitle;
-  } else {
-    subtitleEl.remove();
+  if (subtitleEl) {
+    subtitleEl.textContent   = subtitle;
+    subtitleEl.style.display = subtitle ? '' : 'none';
   }
 
   // Fields

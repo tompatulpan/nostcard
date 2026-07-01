@@ -685,6 +685,12 @@ async function showCardViewScreen(url, mode) {
   document.getElementById('cv-screen-error').classList.add('hidden');
   document.getElementById('cv-screen-card').classList.add('hidden');
   document.getElementById('cv-contact-fields').innerHTML = '';
+  document.getElementById('cv-contact-avatar').textContent = '';
+  document.getElementById('cv-contact-fn').textContent     = '';
+  document.getElementById('cv-public-mode-banner').classList.add('hidden');
+  document.getElementById('cv-btn-done').classList.add('hidden');
+  document.getElementById('cv-btn-save-link').classList.add('hidden');
+  document.getElementById('cv-btn-download').style.display = '';
 
   // Parse url
   const urlObj  = new URL(url);
@@ -802,7 +808,10 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
   const firstOrg   = Array.isArray(fields.org)   ? fields.org[0]   : fields.org;
   const subtitle   = [firstTitle, firstOrg].filter(Boolean).join(' · ');
   const subtitleEl = document.getElementById('cv-contact-title-org');
-  if (subtitle) { subtitleEl.textContent = subtitle; } else { subtitleEl.remove(); }
+  if (subtitleEl) {
+    subtitleEl.textContent    = subtitle;
+    subtitleEl.style.display  = subtitle ? '' : 'none';
+  }
 
   const container = document.getElementById('cv-contact-fields');
   const nameParts = [fields.firstName, fields.lastName].filter(Boolean).join(' ');
