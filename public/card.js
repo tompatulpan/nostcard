@@ -83,6 +83,21 @@ async function init() {
   // ?dl=1 — auto-download mode: skip trust gate, immediately trigger .vcf download
   if (params.get('dl') === '1') {
     downloadVcf(vcardText, fields.fn);
+
+    // Save the clean URL (without ?dl=1) to saved links so the card is accessible later
+    try {
+      const cleanParams = new URLSearchParams(location.search);
+      cleanParams.delete('dl');
+      const cleanUrl = `${location.origin}${location.pathname}?${cleanParams}${location.hash}`;
+      const SAVED_KEY = 'e2e:saved-links';
+      let links = [];
+      try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
+      if (!links.some(l => l.url === cleanUrl)) {
+        links.push({ url: cleanUrl, label: fields.fn || 'Contact', savedAt: new Date().toISOString() });
+        localStorage.setItem(SAVED_KEY, JSON.stringify(links));
+      }
+    } catch { /* storage blocked — non-fatal */ }
+
     showDownloadConfirmation(fields.fn);
     return;
   }
