@@ -1269,10 +1269,12 @@ async function importBackup(json) {
   // Merge saved links
   const existingLinks = getSavedLinks();
   const existingUrls  = new Set(existingLinks.map(l => l.url));
+  let linksAdded = 0;
   for (const item of linkPayloads) {
     if (!item?.url?.trim() || existingUrls.has(item.url)) continue;
     existingLinks.push({ url: item.url, label: item.label || 'Contact', savedAt: item.savedAt || new Date().toISOString() });
     existingUrls.add(item.url);
+    linksAdded++;
   }
   saveSavedLinks(existingLinks);
 
@@ -1283,7 +1285,8 @@ async function importBackup(json) {
     }
   }
 
-  alert(`Restore complete: ${added} added, ${skipped} skipped (already present), ${failed} failed.`);
+  const linksPart = linksAdded > 0 ? `, ${linksAdded} saved link${linksAdded !== 1 ? 's' : ''} imported` : '';
+  alert(`Restore complete: ${added} card${added !== 1 ? 's' : ''} added, ${skipped} skipped (already present), ${failed} failed${linksPart}.`);
 
   const cards = getCards();
   if (cards.length > 0) { showCardList(); } else { showSetup(); }
