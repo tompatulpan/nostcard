@@ -80,6 +80,13 @@ async function init() {
 
   const fields = parseVCard(vcardText);
 
+  // ?dl=1 — auto-download mode: skip trust gate, immediately trigger .vcf download
+  if (params.get('dl') === '1') {
+    downloadVcf(vcardText, fields.fn);
+    showDownloadConfirmation(fields.fn);
+    return;
+  }
+
   // Always show the trust gate — owner preview is handled by the inline viewer
   // in app.js and never navigates to card.html, so no mode param is honoured here.
   showTrustGate(cardId, fields, vcardText);
@@ -342,6 +349,37 @@ function fieldRow(icon, type, text, href) {
   row.appendChild(labelEl);
   row.appendChild(valueEl);
   return row;
+}
+
+// ---------------------------------------------------------------------------
+// Auto-download confirmation screen (?dl=1 mode)
+// ---------------------------------------------------------------------------
+
+function showDownloadConfirmation(fn) {
+  document.getElementById('screen-loading').classList.add('hidden');
+
+  const panel = document.createElement('div');
+  panel.className = 'card-panel centered';
+
+  const icon = document.createElement('div');
+  icon.style.fontSize = '3rem';
+  icon.textContent = '📱';
+
+  const heading = document.createElement('h2');
+  heading.textContent = 'Contact download started';
+
+  const p = document.createElement('p');
+  p.className = 'muted';
+  p.textContent = `Open the downloaded .vcf file to add ${fn || 'the contact'} to your contacts app.`;
+
+  panel.appendChild(icon);
+  panel.appendChild(heading);
+  panel.appendChild(p);
+
+  const section = document.getElementById('screen-card');
+  section.innerHTML = '';
+  section.appendChild(panel);
+  section.classList.remove('hidden');
 }
 
 // ---------------------------------------------------------------------------

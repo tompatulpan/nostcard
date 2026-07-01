@@ -622,9 +622,11 @@ function openShareModalForCard(card) {
 
 function openShareModal(card) {
   const shareUrl = buildShareUrl(card);
+  const dlUrl    = buildDownloadUrl(card);
 
   document.getElementById('share-label').textContent = card.label;
   document.getElementById('share-url').value         = shareUrl;
+  document.getElementById('dl-url').value            = dlUrl;
   document.getElementById('modal-share').classList.remove('hidden');
 
   const qrContainer = document.getElementById('qr-container');
@@ -636,6 +638,14 @@ document.getElementById('btn-copy-url').addEventListener('click', async () => {
   const url = document.getElementById('share-url').value;
   try { await navigator.clipboard.writeText(url); } catch { /* fallback: select */ }
   const btn = document.getElementById('btn-copy-url');
+  btn.textContent = 'Copied!';
+  setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+});
+
+document.getElementById('btn-copy-dl-url').addEventListener('click', async () => {
+  const url = document.getElementById('dl-url').value;
+  try { await navigator.clipboard.writeText(url); } catch { /* fallback: select */ }
+  const btn = document.getElementById('btn-copy-dl-url');
   btn.textContent = 'Copied!';
   setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
 });
@@ -1352,6 +1362,12 @@ function renderQR(container, text) {
 function buildShareUrl(card) {
   const naddr = naddrEncode(card.npub, card.id, card.relays);
   return `${location.origin}/card?naddr=${naddr}#${card.key}`;
+}
+
+/** Build the auto-download URL (?dl=1) — triggers .vcf download on open */
+function buildDownloadUrl(card) {
+  const naddr = naddrEncode(card.npub, card.id, card.relays);
+  return `${location.origin}/card?naddr=${naddr}&dl=1#${card.key}`;
 }
 
 /** Canonical URL for vCard SOURCE field (no fragment, no key) */
