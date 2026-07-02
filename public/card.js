@@ -379,6 +379,18 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
   panel.appendChild(heading);
   panel.appendChild(p);
 
+  const saveLink = (label) => {
+    try {
+      const SAVED_KEY = 'e2e:saved-links';
+      let links = [];
+      try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
+      if (!links.some(l => l.url === cleanUrl)) {
+        links.push({ url: cleanUrl, label: label || 'Contact', savedAt: new Date().toISOString() });
+        localStorage.setItem(SAVED_KEY, JSON.stringify(links));
+      }
+    } catch { /* storage blocked — non-fatal */ }
+  };
+
   // Trust / save prompt — only when device is not yet trusted for this card
   if (!getTrust(cardId)) {
     const trustHeading = document.createElement('p');
@@ -396,18 +408,6 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
     const noBtn = document.createElement('button');
     noBtn.className = 'btn btn-trust-no';
     noBtn.innerHTML = '<span class="trust-choice-icon">🏛️</span><span class="trust-choice-label">Public or shared device</span><span class="trust-choice-hint">Don\'t save anything</span>';
-
-    const saveLink = (label) => {
-      try {
-        const SAVED_KEY = 'e2e:saved-links';
-        let links = [];
-        try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
-        if (!links.some(l => l.url === cleanUrl)) {
-          links.push({ url: cleanUrl, label: label || 'Contact', savedAt: new Date().toISOString() });
-          localStorage.setItem(SAVED_KEY, JSON.stringify(links));
-        }
-      } catch { /* storage blocked — non-fatal */ }
-    };
 
     const replaceChoices = (msg) => {
       choices.innerHTML = '';
@@ -433,15 +433,7 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
     panel.appendChild(choices);
   } else {
     // Already trusted — save silently and confirm
-    try {
-      const SAVED_KEY = 'e2e:saved-links';
-      let links = [];
-      try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
-      if (!links.some(l => l.url === cleanUrl)) {
-        links.push({ url: cleanUrl, label: fn || 'Contact', savedAt: new Date().toISOString() });
-        localStorage.setItem(SAVED_KEY, JSON.stringify(links));
-      }
-    } catch { /* storage blocked — non-fatal */ }
+    saveLink(fn);
     const saved = document.createElement('p');
     saved.className = 'muted';
     saved.style.marginTop = '1rem';
