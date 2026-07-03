@@ -202,6 +202,13 @@ async function openEditor(id) {
   // Show cached fields immediately
   restoreFields(id);
 
+  // Populate card name field
+  const cardForName = getCard(id);
+  if (cardForName) {
+    const nameInput = document.getElementById('card-name');
+    if (nameInput) nameInput.value = cardForName.label || '';
+  }
+
   // Fetch latest from relay in background and update if newer
   const card = getCard(id);
   if (card) {
@@ -540,6 +547,9 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     return;
   }
 
+  // Read updated card name
+  const newCardName = (document.getElementById('card-name')?.value || '').trim() || card.label;
+
   btn.disabled       = true;
   status.textContent = 'Publishing…';
   status.className   = 'status-msg';
@@ -547,6 +557,13 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   try {
     const aesKey    = await importCardKey(card.key);
     const nsecBytes = hexToBytes(card.nsec);
+
+    // Persist updated card name if changed
+    if (newCardName !== card.label) {
+      const cards = getCards();
+      const idx   = cards.findIndex(c => c.id === activeCardId);
+      if (idx >= 0) { cards[idx].label = newCardName; saveCards(cards); card.label = newCardName; }
+    }
 
     fields.sourceUrl  = canonicalUrl(activeCardId, card.npub, card.relays);
     const vcardText   = buildVCard(fields);

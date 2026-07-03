@@ -75,6 +75,12 @@
         <div class="panel" id="editor-panel">
           <h2>My contact details</h2>
 
+          <div class="field-group" style="margin-bottom:1.25rem">
+            <label>Card name <span class="req">*</span></label>
+            <input id="card-name" type="text" placeholder="Work, Personal, Minimal…" />
+            <p class="muted" style="font-size:0.8rem;margin-top:0.25rem">Shown on your My Cards list. Published as plaintext on relays — visible to relay operators.</p>
+          </div>
+
           <div class="field-group">
             <label>Full name <span class="req">*</span></label>
             <input id="fn" type="text" placeholder="Alice Smith" autocomplete="name" />
@@ -169,7 +175,7 @@
           </div>
 
           <p class="muted" style="margin-top:1.5rem;font-size:0.8rem">
-            ⚠️ The card <strong>label</strong> and update timestamps are visible to relay operators in plaintext. Avoid using full personal names as labels.
+            ⚠️ The card <strong>name</strong> and update timestamps are visible to relay operators in plaintext. Avoid using full personal names as the card name.
           </p>
         </div>
 
@@ -194,7 +200,7 @@
       <div class="modal">
         <h3>Share — <strong id="share-label"></strong></h3>
         <p class="muted">⚠️ Treat this link like a password — anyone who has it can read the card. The decryption key is in the <code>#fragment</code>, which browsers never send to any server.</p>
-        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem">The card label and update timestamps are visible to relay operators in plaintext.</p>
+        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem">The card name and update timestamps are visible to relay operators in plaintext.</p>
 
         <div class="share-url-box">
           <input id="share-url" type="text" readonly />
