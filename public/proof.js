@@ -87,15 +87,37 @@ async function runStep1(relays, pubkey, cardId) {
   const truncated = htmlEscape(event.content.slice(0, limit));
   const clipped   = event.content.length > limit;
 
+  // Extract plaintext metadata tags the relay can read
+  const titleTag  = (event.tags || []).find(t => t[0] === 'title');
+  const dTag      = (event.tags || []).find(t => t[0] === 'd');
+  const cardName  = titleTag ? titleTag[1] : null;
+  const tagCardId = dTag     ? dTag[1]     : null;
+
+  const metaRows = [
+    cardName ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
+      <span class="proof-field-icon">🏷️</span>
+      <span><strong>Card name:</strong> ${htmlEscape(cardName)} <em style="font-size:11px;color:#92400e">(plaintext — visible to relay)</em></span>
+    </div>` : '',
+    tagCardId ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
+      <span class="proof-field-icon">🔑</span>
+      <span><strong>Card ID:</strong> <code>${htmlEscape(tagCardId)}</code> <em style="font-size:11px;color:#92400e">(plaintext — visible to relay)</em></span>
+    </div>` : '',
+    `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
+      <span class="proof-field-icon">🕐</span>
+      <span><strong>Last updated:</strong> ${htmlEscape(date)} <em style="font-size:11px;color:#92400e">(plaintext — visible to relay)</em></span>
+    </div>`,
+  ].join('');
+
   relayResult.innerHTML = `
-    <div class="proof-relay-meta">Published: ${htmlEscape(date)}</div>
-    <div class="proof-blob-label">Raw content stored on relay:</div>
+    <div class="proof-blob-label" style="margin-bottom:8px">Plaintext metadata the relay can read:</div>
+    <div class="proof-fields" style="margin-bottom:16px">${metaRows}</div>
+    <div class="proof-blob-label">Encrypted contact data (the blob):</div>
     <div class="proof-blob-box">
       <code>${truncated}${clipped ? '<span class="proof-ellipsis"> … (truncated)</span>' : ''}</code>
     </div>
     <p class="proof-caption">
-      This is <em>all</em> the relay ever stores.
-      It cannot read your contact information — it only sees this unreadable blob.
+      The relay sees the metadata above in plaintext, but the contact details are locked
+      inside the encrypted blob — unreadable without the <code>#key</code> in your link.
     </p>`;
 
   return event;

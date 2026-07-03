@@ -126,7 +126,7 @@ export async function fetchCard(relays, npub, cardId) {
     ]);
 
     if (!event) return null;
-    return { content: event.content, created_at: event.created_at };
+    return { content: event.content, created_at: event.created_at, tags: event.tags || [] };
   } finally {
     pool.close(relays);
   }
