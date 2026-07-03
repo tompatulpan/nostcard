@@ -163,6 +163,14 @@
           <div style="margin-top:12px">
             <a id="btn-verify-privacy" href="proof.html" class="btn btn-ghost btn-lg" style="width:100%;text-decoration:none">🔍 Verify privacy</a>
           </div>
+
+          <div style="margin-top:12px">
+            <button id="btn-rotate-key" class="btn btn-ghost btn-lg" style="width:100%" title="Generate a new encryption key — all previous share links will stop working">🔄 Rotate key</button>
+          </div>
+
+          <p class="muted" style="margin-top:1.5rem;font-size:0.8rem">
+            ⚠️ The card <strong>label</strong> and update timestamps are visible to relay operators in plaintext. Avoid using full personal names as labels.
+          </p>
         </div>
 
       </div>
@@ -185,7 +193,8 @@
     <div id="modal-share" class="modal-overlay hidden">
       <div class="modal">
         <h3>Share — <strong id="share-label"></strong></h3>
-        <p class="muted">Send this URL via any channel. The decryption key is in the <code>#fragment</code> — it never reaches the relay.</p>
+        <p class="muted">⚠️ Treat this link like a password — anyone who has it can read the card. The decryption key is in the <code>#fragment</code>, which browsers never send to any server.</p>
+        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem">The card label and update timestamps are visible to relay operators in plaintext.</p>
 
         <div class="share-url-box">
           <input id="share-url" type="text" readonly />

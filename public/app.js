@@ -607,6 +607,77 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
 });
 
 // ---------------------------------------------------------------------------
+// Key rotation
+// ---------------------------------------------------------------------------
+
+document.getElementById('btn-rotate-key').addEventListener('click', async () => {
+  if (!activeCardId) return;
+  const card = getCard(activeCardId);
+  if (!card) return;
+
+  if (!confirm(
+    `Rotate the encryption key for "${card.label}"?\n\n` +
+    `This generates a new key, re-encrypts the card, and re-publishes it to all relays.\n\n` +
+    `All previous share links will stop working immediately. You will need to share the new link.`
+  )) return;
+
+  const btn    = document.getElementById('btn-rotate-key');
+  const status = document.getElementById('save-status');
+  btn.disabled       = true;
+  status.textContent = 'Rotating key…';
+  status.className   = 'status-msg';
+
+  try {
+    // Generate a fresh AES key
+    const newAesKey  = await generateKey();
+    const newKeyFrag = await keyToFragment(newAesKey);
+
+    // Re-encrypt the current cached fields with the new key
+    const nsecBytes  = hexToBytes(card.nsec);
+    const fields     = (() => {
+      try { return JSON.parse(localStorage.getItem(`e2e:fields:${activeCardId}`) || 'null'); } catch { return null; }
+    })();
+
+    if (!fields) {
+      status.textContent = 'No cached fields — save the card first before rotating the key.';
+      status.className   = 'status-msg error';
+      return;
+    }
+
+    fields.sourceUrl = canonicalUrl(activeCardId, card.npub, card.relays);
+    const vcardText  = buildVCard(fields);
+    const blob       = await encryptVCard(vcardText, newAesKey);
+
+    // Re-publish with the same d-tag (NIP-33 replaces the old event on relays)
+    const results = await publishCard(card.relays, nsecBytes, activeCardId, blob, card.label);
+    localStorage.setItem(`e2e:relay-status:${activeCardId}`, JSON.stringify(results));
+
+    // Persist the new key; invalidate any stored recipient trust (stale sessions)
+    const cards = getCards();
+    const idx   = cards.findIndex(c => c.id === activeCardId);
+    if (idx >= 0) { cards[idx].key = newKeyFrag; saveCards(cards); }
+    localStorage.removeItem(`e2e:trusted:${activeCardId}`);
+
+    const allOk   = results.every(r => r.ok);
+    const okCount = results.filter(r => r.ok).length;
+    status.textContent = allOk
+      ? `Key rotated ✓ (${okCount}/${results.length} relays) — old links are now invalid`
+      : `Key rotated on ${okCount}/${results.length} relays — old links are now invalid`;
+    status.className = allOk ? 'status-msg success' : 'status-msg';
+
+    // Open share modal so the owner can immediately copy the new link
+    openShareModal({ ...card, key: newKeyFrag });
+
+    setTimeout(() => { status.textContent = ''; }, 6000);
+  } catch (err) {
+    status.textContent = 'Key rotation failed: ' + err.message;
+    status.className   = 'status-msg error';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Share modal
 // ---------------------------------------------------------------------------
 
