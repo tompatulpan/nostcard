@@ -678,6 +678,14 @@ document.getElementById('btn-view-card').addEventListener('click', () => {
   if (card) showCardViewScreen(buildShareUrl(card), 'owner-preview');
 });
 
+document.getElementById('btn-verify-privacy').addEventListener('click', (e) => {
+  if (!activeCardId) return;
+  const card = getCard(activeCardId);
+  if (!card) return;
+  const proofUrl = `proof.html?url=${encodeURIComponent(buildShareUrl(card))}`;
+  e.currentTarget.href = proofUrl;
+});
+
 document.getElementById('cv-btn-back').addEventListener('click', () => {
   if (activeCardId) { showEditor(); } else { showCardList(); }
 });
