@@ -198,6 +198,11 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
       downloadVcf(vcardText, fields.fn);
       if (!ownerPreview) setTimeout(() => triggerKill('download'), 3000);
     });
+    const downloadHint = document.createElement('p');
+    downloadHint.className = 'muted';
+    downloadHint.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
+    downloadHint.textContent = 'Downloads a snapshot of today\'s details. Use the saved link to always get the latest.';
+    downloadBtn.insertAdjacentElement('afterend', downloadHint);
   } else {
     downloadBtn.style.display = 'none';
   }
@@ -226,6 +231,11 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
     }
     saveLinkBtn.textContent = '✓ Link saved';
     saveLinkBtn.disabled    = true;
+    const saveLinkHint = document.createElement('p');
+    saveLinkHint.className = 'muted';
+    saveLinkHint.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
+    saveLinkHint.textContent = 'Reopen from Saved Cards anytime to always see the latest details.';
+    saveLinkBtn.insertAdjacentElement('afterend', saveLinkHint);
   }
 
   // Public mode: banner + hide bookmark hint
@@ -409,18 +419,25 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
     noBtn.className = 'btn btn-trust-no';
     noBtn.innerHTML = '<span class="trust-choice-icon">🏛️</span><span class="trust-choice-label">Public or shared device</span><span class="trust-choice-hint">Don\'t save anything</span>';
 
-    const replaceChoices = (msg) => {
+    const replaceChoices = (msg, hint) => {
       choices.innerHTML = '';
       const conf = document.createElement('p');
       conf.className = 'muted';
       conf.textContent = msg;
       choices.appendChild(conf);
+      if (hint) {
+        const hintEl = document.createElement('p');
+        hintEl.className = 'muted';
+        hintEl.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
+        hintEl.textContent = hint;
+        choices.appendChild(hintEl);
+      }
     };
 
     yesBtn.addEventListener('click', () => {
       setTrust(cardId);
       saveLink(fn);
-      replaceChoices('✓ Link saved to your Saved Cards.');
+      replaceChoices('✓ Saved to your Saved Cards.', 'Reopen from Saved Cards anytime to always see the latest details.');
     });
 
     noBtn.addEventListener('click', () => {
@@ -437,8 +454,13 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
     const saved = document.createElement('p');
     saved.className = 'muted';
     saved.style.marginTop = '1rem';
-    saved.textContent = '✓ Link saved to your Saved Cards.';
+    saved.textContent = '✓ Saved to your Saved Cards.';
     panel.appendChild(saved);
+    const savedHint = document.createElement('p');
+    savedHint.className = 'muted';
+    savedHint.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
+    savedHint.textContent = 'Reopen from Saved Cards anytime to always see the latest details.';
+    panel.appendChild(savedHint);
   }
 
   const section = document.getElementById('screen-card');
@@ -453,7 +475,10 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
 
 function downloadVcf(vcardText, fn) {
   const filename = (fn || 'contact').replace(/[^a-zA-Z0-9_-]/g, '_') + '.vcf';
-  const blob = new Blob([vcardText], { type: 'text/vcard;charset=utf-8' });
+  // Strip the SOURCE line — the canonical URL lacks the #key fragment and
+  // cannot be opened by a contacts app without it. Keeping it only confuses.
+  const stripped = vcardText.replace(/^SOURCE:[^\r\n]*\r?\n?/m, '');
+  const blob = new Blob([stripped], { type: 'text/vcard;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
