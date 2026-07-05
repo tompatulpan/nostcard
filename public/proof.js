@@ -15,6 +15,26 @@
 import { naddrDecode, fetchCard } from './nostr.js';
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard } from './vcard.js';
+import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
+
+// ---------------------------------------------------------------------------
+// Bootstrap
+// ---------------------------------------------------------------------------
+
+async function boot() {
+  await initI18n();
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('lang-btn--active', btn.dataset.lang === getCurrentLang());
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
+  window.addEventListener('i18n:changed', () => {
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('lang-btn--active', b.dataset.lang === getCurrentLang());
+    });
+  });
+}
+
+boot();
 
 // ---------------------------------------------------------------------------
 // DOM refs
@@ -75,8 +95,8 @@ async function runStep1(relays, pubkey, cardId) {
       <div class="proof-status-box proof-status-warn">
         <span class="proof-status-icon">⚠️</span>
         <div>
-          <strong>Card not found on relay.</strong>
-          <p>It may have already been deleted, or the relays are unreachable right now.</p>
+          <strong>${t('proof.step1.notFound.title')}</strong>
+          <p>${t('proof.step1.notFound.detail')}</p>
         </div>
       </div>`;
     return null;
@@ -96,29 +116,26 @@ async function runStep1(relays, pubkey, cardId) {
   const metaRows = [
     cardName ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
       <span class="proof-field-icon">🏷️</span>
-      <span><strong>Card name:</strong> ${htmlEscape(cardName)} <em style="font-size:11px;color:#92400e">(plaintext — visible to relay)</em></span>
+      <span><strong>${t('proof.step1.meta.name')}</strong> ${htmlEscape(cardName)} <em style="font-size:11px;color:#92400e">${t('proof.step1.meta.plaintext')}</em></span>
     </div>` : '',
     tagCardId ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
       <span class="proof-field-icon">🔑</span>
-      <span><strong>Card ID:</strong> <code>${htmlEscape(tagCardId)}</code> <em style="font-size:11px;color:#92400e">(plaintext — visible to relay)</em></span>
+      <span><strong>${t('proof.step1.meta.id')}</strong> <code>${htmlEscape(tagCardId)}</code> <em style="font-size:11px;color:#92400e">${t('proof.step1.meta.plaintext')}</em></span>
     </div>` : '',
     `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
       <span class="proof-field-icon">🕐</span>
-      <span><strong>Last updated:</strong> ${htmlEscape(date)} <em style="font-size:11px;color:#92400e">(plaintext — visible to relay)</em></span>
+      <span><strong>${t('proof.step1.meta.updated')}</strong> ${htmlEscape(date)} <em style="font-size:11px;color:#92400e">${t('proof.step1.meta.plaintext')}</em></span>
     </div>`,
   ].join('');
 
   relayResult.innerHTML = `
-    <div class="proof-blob-label" style="margin-bottom:8px">Plaintext metadata the relay can read:</div>
+    <div class="proof-blob-label" style="margin-bottom:8px">${t('proof.step1.label.plaintext')}</div>
     <div class="proof-fields" style="margin-bottom:16px">${metaRows}</div>
-    <div class="proof-blob-label">Encrypted contact data (the blob):</div>
+    <div class="proof-blob-label">${t('proof.step1.label.blob')}</div>
     <div class="proof-blob-box">
       <code>${truncated}${clipped ? '<span class="proof-ellipsis"> … (truncated)</span>' : ''}</code>
     </div>
-    <p class="proof-caption">
-      The relay sees the metadata above in plaintext, but the contact details are locked
-      inside the encrypted blob — unreadable without the <code>#key</code> in your link.
-    </p>`;
+    <p class="proof-caption">${t('proof.step1.caption')}</p>`;
 
   return event;
 }
@@ -138,9 +155,8 @@ async function runStep2(event, key) {
       <div class="proof-status-box proof-status-error">
         <span class="proof-status-icon">❌</span>
         <div>
-          <strong>Decryption failed.</strong>
-          <p>The key in the URL does not match this card.
-             Without the correct key the data is completely unreadable.</p>
+          <strong>${t('proof.step2.decrypt.failed.title')}</strong>
+          <p>${t('proof.step2.decrypt.failed.detail')}</p>
         </div>
       </div>`;
     return;
@@ -160,15 +176,12 @@ async function runStep2(event, key) {
   for (const n of (fields.note  || [])) { rows += fieldRow('📝', n); }
 
   if (!rows) {
-    rows = '<p class="proof-caption">Card has no fields yet — save some contact details first.</p>';
+    rows = `<p class="proof-caption">${t('proof.step2.no.fields')}</p>`;
   }
 
   decryptResult.innerHTML = `
     <div class="proof-fields">${rows}</div>
-    <p class="proof-caption">
-      Only someone with the complete share link (including the part after <code>#</code>)
-      can see this.
-    </p>`;
+    <p class="proof-caption">${t('proof.step2.caption')}</p>`;
 }
 
 function fieldRow(icon, text) {
@@ -189,13 +202,13 @@ async function runStep3() {
   const event = await fetchCard(parsedRelays, parsedPubkey, parsedCardId);
 
   if (event) {
+    const myCardsLink = `<a href="index.html">${htmlEscape(t('proof.step3.still.link'))}</a>`;
     deletionResult.innerHTML = `
       <div class="proof-status-box proof-status-warn">
         <span class="proof-status-icon">📡</span>
         <div>
-          <strong>Card still found on relay.</strong>
-          <p>Delete the card from <a href="index.html">My Cards</a>,
-             then click "Check relay now" again.</p>
+          <strong>${t('proof.step3.still.title')}</strong>
+          <p>${t('proof.step3.still.detail', { link: myCardsLink })}</p>
         </div>
       </div>`;
   } else {
@@ -203,9 +216,8 @@ async function runStep3() {
       <div class="proof-status-box proof-status-ok">
         <span class="proof-status-icon">✅</span>
         <div>
-          <strong>Card removed from the network.</strong>
-          <p>The relay returned nothing. Your contact data is no longer
-             accessible via this link.</p>
+          <strong>${t('proof.step3.removed.title')}</strong>
+          <p>${t('proof.step3.removed.detail')}</p>
         </div>
       </div>`;
   }
@@ -226,7 +238,7 @@ btnRun.addEventListener('click', async () => {
   const rawUrl = urlInput.value.trim();
 
   if (!rawUrl) {
-    setError('Please paste a share URL first.');
+    setError(t('proof.error.empty'));
     return;
   }
 
@@ -234,13 +246,13 @@ btnRun.addEventListener('click', async () => {
   try {
     shareUrl = new URL(rawUrl);
   } catch {
-    setError('Invalid URL. Please paste the full share link (starting with https://).');
+    setError(t('proof.error.invalidUrl'));
     return;
   }
 
   // Validate scheme to prevent javascript: or data: URLs
   if (shareUrl.protocol !== 'https:' && shareUrl.protocol !== 'http:') {
-    setError('Only https:// and http:// URLs are accepted.');
+    setError(t('proof.error.schemeOnly'));
     return;
   }
 
@@ -248,15 +260,12 @@ btnRun.addEventListener('click', async () => {
   const fragment = shareUrl.hash.slice(1); // strip leading '#'
 
   if (!naddr) {
-    setError('URL is missing the naddr= parameter. Make sure you copied the complete share link.');
+    setError(t('proof.error.missingNaddr'));
     return;
   }
 
   if (!fragment) {
-    setError(
-      'URL is missing the encryption key (the part after #). ' +
-      'Copy the full share link — including everything after the # symbol.'
-    );
+    setError(t('proof.error.missingKey'));
     return;
   }
 
@@ -264,7 +273,7 @@ btnRun.addEventListener('click', async () => {
   try {
     decoded = naddrDecode(naddr);
   } catch {
-    setError('Could not decode the card address (naddr). The share link may be corrupted.');
+    setError(t('proof.error.badNaddr'));
     return;
   }
 
@@ -272,7 +281,7 @@ btnRun.addEventListener('click', async () => {
   try {
     key = await fragmentToKey(fragment);
   } catch {
-    setError('Could not decode the encryption key. The part after # may be corrupted.');
+    setError(t('proof.error.badKey'));
     return;
   }
 

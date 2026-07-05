@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,47 +10,51 @@
   <div class="app-shell">
 
     <header class="top-bar">
-      <span class="logo">🔐 nostr-vcard</span>
+      <span class="logo" data-i18n="header.logo.index">🔐 nostr-vcard</span>
       <div class="top-bar-actions">
-        <button id="btn-back-cards"  class="btn btn-success btn-sm hidden">← My Cards</button>
-        <button id="cv-btn-back"     class="btn btn-success btn-sm hidden">← My Cards</button>
-        <button id="btn-delete-card" class="btn btn-danger  btn-sm hidden" title="Delete this card permanently">Delete card</button>
+        <button id="btn-back-cards"  class="btn btn-success btn-sm hidden" data-i18n="btn.back.cards">← My Cards</button>
+        <button id="cv-btn-back"     class="btn btn-success btn-sm hidden" data-i18n="btn.back.cards">← My Cards</button>
+        <button id="btn-delete-card" class="btn btn-danger  btn-sm hidden" data-i18n="editor.btn.delete" data-i18n-title="editor.btn.delete.title" title="Delete this card permanently">Delete card</button>
+        <div class="lang-switcher" id="lang-switcher">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="sv">SV</button>
+        </div>
       </div>
     </header>
 
     <!-- ── Setup screen (first visit, no card yet) ─────────────────────── -->
     <section id="screen-setup" class="screen">
       <div class="card-panel">
-        <h2>Create your encrypted contact card</h2>
-        <p class="muted">Your contact details are encrypted in the browser before being published to Nostr relays.
+        <h2 data-i18n="setup.heading">Create your encrypted contact card</h2>
+        <p class="muted" data-i18n="setup.body">Your contact details are encrypted in the browser before being published to Nostr relays.
           No server can ever read the content — only people you share the link with.</p>
-        <button id="btn-create-card" class="btn btn-primary btn-lg">Create my card</button>
+        <button id="btn-create-card" class="btn btn-primary btn-lg" data-i18n="setup.btn.create">Create my card</button>
 
-        <div class="setup-divider"><span>or</span></div>
+        <div class="setup-divider"><span data-i18n="setup.divider">or</span></div>
 
-        <p class="muted">Already have a backup from another device?</p>
+        <p class="muted" data-i18n="setup.restore.prompt">Already have a backup from another device?</p>
         <label class="btn btn-ghost btn-lg" style="cursor:pointer" title="Restore a backup file">
-          Restore backup
+          <span data-i18n="setup.btn.restore">Restore backup</span>
           <input id="restore-file-input" type="file" accept=".json,application/json" style="display:none" />
         </label>
-        <button id="btn-paste-restore-setup" class="btn btn-ghost btn-lg">Paste backup</button>
+        <button id="btn-paste-restore-setup" class="btn btn-ghost btn-lg" data-i18n="setup.btn.paste">Paste backup</button>
       </div>
     </section>
 
     <!-- ── Cards list screen ─────────────────────────────────────────────── -->
     <section id="screen-cards" class="screen hidden">
       <div class="cards-screen-header">
-        <h2>My Cards</h2>
+        <h2 data-i18n="cards.heading">My Cards</h2>
         <div class="cards-screen-actions">
-          <button id="btn-backup"      class="btn btn-ghost" title="Export a backup of all your cards and saved links">Backup</button>
-          <label  class="btn btn-ghost" style="cursor:pointer" title="Restore from a backup file">
-            Restore
+          <button id="btn-backup"      class="btn btn-ghost" data-i18n="cards.btn.backup" data-i18n-title="cards.btn.backup.title" title="Export a backup of all your cards and saved links">Backup</button>
+          <label  class="btn btn-ghost" style="cursor:pointer" data-i18n-title="cards.btn.restore.title" title="Restore from a backup file">
+            <span data-i18n="cards.btn.restore">Restore</span>
             <input id="restore-file-input-cards" type="file" accept=".json,application/json" style="display:none" />
           </label>
-          <button id="btn-paste-restore-cards" class="btn btn-ghost" title="Paste backup JSON">Paste restore</button>
-          <button id="btn-new-card"    class="btn btn-primary">+ New Card</button>
-          <button id="btn-go-saved"    class="btn btn-teal">🔖 Saved Cards</button>
-          <button id="btn-clear-all"   class="btn btn-danger btn-sm" title="Remove all local keys and credentials">Log out</button>
+          <button id="btn-paste-restore-cards" class="btn btn-ghost" data-i18n="cards.btn.paste" data-i18n-title="cards.btn.paste.title" title="Paste backup JSON">Paste restore</button>
+          <button id="btn-new-card"    class="btn btn-primary" data-i18n="cards.btn.new">+ New Card</button>
+          <button id="btn-go-saved"    class="btn btn-teal" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
+          <button id="btn-clear-all"   class="btn btn-danger btn-sm" data-i18n="cards.btn.logout" data-i18n-title="cards.btn.logout.title" title="Remove all local keys and credentials">Log out</button>
         </div>
       </div>
       <div id="cards-list" class="cards-list"></div>
@@ -59,9 +63,9 @@
     <!-- ── Saved Cards screen ──────────────────────────────────────────────── -->
     <section id="screen-saved" class="screen hidden">
       <div class="cards-screen-header">
-        <h2>Saved Cards</h2>
+        <h2 data-i18n="saved.heading">Saved Cards</h2>
         <div class="cards-screen-actions">
-          <button id="btn-back-to-cards" class="btn btn-success">← My Cards</button>
+          <button id="btn-back-to-cards" class="btn btn-success" data-i18n="saved.btn.back">← My Cards</button>
         </div>
       </div>
       <div id="saved-links-list" class="cards-list"></div>
@@ -73,80 +77,80 @@
 
         <!-- Left: vCard editor -->
         <div class="panel" id="editor-panel">
-          <h2>My contact details</h2>
+          <h2 data-i18n="editor.heading">My contact details</h2>
 
           <div class="field-group" style="margin-bottom:1.25rem">
-            <label>Card name <span class="req">*</span></label>
-            <input id="card-name" type="text" placeholder="Work, Personal, Minimal…" />
-            <p class="muted" style="font-size:0.8rem;margin-top:0.25rem">Shown on your My Cards list. Published as plaintext on relays — visible to relay operators.</p>
+            <label><span data-i18n="editor.cardname.label">Card name</span> <span class="req">*</span></label>
+            <input id="card-name" type="text" placeholder="Work, Personal, Minimal…" data-i18n-placeholder="editor.cardname.placeholder" />
+            <p class="muted" style="font-size:0.8rem;margin-top:0.25rem" data-i18n="editor.cardname.hint">Shown on your My Cards list. Published as plaintext on relays — visible to relay operators.</p>
           </div>
 
           <div class="field-group">
-            <label>Full name <span class="req">*</span></label>
-            <input id="fn" type="text" placeholder="Alice Smith" autocomplete="name" />
+            <label><span data-i18n="editor.fn.label">Full name</span> <span class="req">*</span></label>
+            <input id="fn" type="text" placeholder="Alice Smith" autocomplete="name" data-i18n-placeholder="editor.fn.placeholder" />
           </div>
           <div class="field-row">
             <div class="field-group">
-              <label>First name</label>
-              <input id="firstName" type="text" placeholder="Alice" />
+              <label data-i18n="editor.firstname.label">First name</label>
+              <input id="firstName" type="text" placeholder="Alice" data-i18n-placeholder="editor.firstname.placeholder" />
             </div>
             <div class="field-group">
-              <label>Last name</label>
-              <input id="lastName" type="text" placeholder="Smith" />
+              <label data-i18n="editor.lastname.label">Last name</label>
+              <input id="lastName" type="text" placeholder="Smith" data-i18n-placeholder="editor.lastname.placeholder" />
             </div>
           </div>
 
           <div class="field-section">
-            <div id="tel-list" class="dynamic-list"><label>Phone numbers</label></div>
-            <button class="btn btn-ghost btn-sm" id="btn-add-tel">+ Add phone</button>
+            <div id="tel-list" class="dynamic-list"><label data-i18n="editor.tel.label">Phone numbers</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-tel" data-i18n="editor.tel.btn">+ Add phone</button>
           </div>
 
           <div class="field-section">
-            <div id="email-list" class="dynamic-list"><label>Email addresses</label></div>
-            <button class="btn btn-ghost btn-sm" id="btn-add-email">+ Add email</button>
+            <div id="email-list" class="dynamic-list"><label data-i18n="editor.email.label">Email addresses</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-email" data-i18n="editor.email.btn">+ Add email</button>
           </div>
 
           <div class="field-section">
-            <div id="org-list" class="dynamic-list"><label>Organisation</label></div>
-            <button class="btn btn-ghost btn-sm" id="btn-add-org">+ Add organisation</button>
+            <div id="org-list" class="dynamic-list"><label data-i18n="editor.org.label">Organisation</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-org" data-i18n="editor.org.btn">+ Add organisation</button>
           </div>
 
           <div class="field-section">
-            <div id="title-list" class="dynamic-list"><label>Job title</label></div>
-            <button class="btn btn-ghost btn-sm" id="btn-add-title">+ Add title</button>
+            <div id="title-list" class="dynamic-list"><label data-i18n="editor.jobtitle.label">Job title</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-title" data-i18n="editor.jobtitle.btn">+ Add title</button>
           </div>
 
           <div class="field-section">
-            <div id="url-list" class="dynamic-list"><label>Website</label></div>
-            <button class="btn btn-ghost btn-sm" id="btn-add-url">+ Add website</button>
+            <div id="url-list" class="dynamic-list"><label data-i18n="editor.url.label">Website</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-url" data-i18n="editor.url.btn">+ Add website</button>
           </div>
 
           <div class="field-section">
-            <div id="adr-list" class="dynamic-list"><label>Address</label></div>
-            <button class="btn btn-ghost btn-sm" id="btn-add-adr">+ Add address</button>
+            <div id="adr-list" class="dynamic-list"><label data-i18n="editor.adr.label">Address</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-adr" data-i18n="editor.adr.btn">+ Add address</button>
           </div>
 
           <div class="field-section">
-            <div id="note-list" class="dynamic-list"><label>Note</label></div>
-            <button class="btn btn-ghost btn-sm" id="btn-add-note">+ Add note</button>
+            <div id="note-list" class="dynamic-list"><label data-i18n="editor.note.label">Note</label></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-note" data-i18n="editor.note.btn">+ Add note</button>
           </div>
 
           <div class="editor-actions">
-            <button id="btn-save" class="btn btn-primary">Save &amp; publish</button>
+            <button id="btn-save" class="btn btn-primary" data-i18n="editor.btn.save">Save &amp; publish</button>
             <span id="save-status" class="status-msg"></span>
           </div>
 
           <!-- Relay manager (collapsible) -->
           <div class="relay-manager" id="relay-manager">
             <div class="relay-manager-header" id="relay-manager-toggle">
-              <h3>Relays</h3>
+              <h3 data-i18n="relay.heading">Relays</h3>
               <span class="relay-manager-toggle" id="relay-toggle-icon">▼</span>
             </div>
             <div class="relay-manager-body hidden" id="relay-manager-body">
               <div id="relay-list" class="relay-list"></div>
               <div class="relay-add-row">
-                <input id="relay-input" type="url" placeholder="wss://your-relay.example.com" />
-                <button id="btn-add-relay" class="btn btn-ghost btn-sm">Add relay</button>
+                <input id="relay-input" type="url" placeholder="wss://your-relay.example.com" data-i18n-placeholder="relay.input.placeholder" />
+                <button id="btn-add-relay" class="btn btn-ghost btn-sm" data-i18n="relay.btn.add">Add relay</button>
               </div>
               <p id="relay-error" class="relay-error hidden"></p>
             </div>
@@ -155,26 +159,26 @@
 
         <!-- Right: Share panel -->
         <div class="panel" id="share-panel">
-          <h2>Share</h2>
-          <p class="muted" style="margin-bottom:16px">
+          <h2 data-i18n="share.heading">Share</h2>
+          <p class="muted" style="margin-bottom:16px" data-i18n-html="share.body">
             Share the link below with anyone who should see this card.
             The decryption key is in the <code>#fragment</code> — it never reaches any server.
           </p>
-          <button id="btn-open-share" class="btn btn-success btn-lg" style="width:100%">Share this card</button>
+          <button id="btn-open-share" class="btn btn-success btn-lg" style="width:100%" data-i18n="share.btn.open">Share this card</button>
 
           <div style="margin-top:24px">
-            <button id="btn-view-card" class="btn btn-ghost btn-lg" style="width:100%">Preview card</button>
+            <button id="btn-view-card" class="btn btn-ghost btn-lg" style="width:100%" data-i18n="share.btn.preview">Preview card</button>
           </div>
 
           <div style="margin-top:12px">
-            <a id="btn-verify-privacy" href="proof.html" class="btn btn-ghost btn-lg" style="width:100%;text-decoration:none">🔍 Verify privacy</a>
+            <a id="btn-verify-privacy" href="proof.html" class="btn btn-ghost btn-lg" style="width:100%;text-decoration:none" data-i18n="share.btn.verify">🔍 Verify privacy</a>
           </div>
 
           <div style="margin-top:12px">
-            <button id="btn-rotate-key" class="btn btn-ghost btn-lg" style="width:100%" title="Generate a new encryption key — all previous share links will stop working">🔄 Rotate key</button>
+            <button id="btn-rotate-key" class="btn btn-ghost btn-lg" style="width:100%" data-i18n="share.btn.rotate" data-i18n-title="share.btn.rotate.title" title="Generate a new encryption key — all previous share links will stop working">🔄 Rotate key</button>
           </div>
 
-          <p class="muted" style="margin-top:1.5rem;font-size:0.8rem">
+          <p class="muted" style="margin-top:1.5rem;font-size:0.8rem" data-i18n-html="share.warning">
             ⚠️ The card <strong>name</strong> and update timestamps are visible to relay operators in plaintext. Avoid using full personal names as the card name.
           </p>
         </div>
@@ -185,12 +189,12 @@
     <!-- ── Restore backup modal ────────────────────────────────────────── -->
     <div id="modal-restore" class="modal-overlay hidden">
       <div class="modal">
-        <h3>Restore backup</h3>
-        <p class="muted">Paste the contents of a backup JSON file. Both v2 (nostr-vcard) and v1 (legacy) formats are accepted.</p>
-        <textarea id="restore-paste-input" rows="8" placeholder='{"version":2,"cards":[...]}'></textarea>
+        <h3 data-i18n="restore.modal.heading">Restore backup</h3>
+        <p class="muted" data-i18n="restore.modal.body">Paste the contents of a backup JSON file. Both v2 (nostr-vcard) and v1 (legacy) formats are accepted.</p>
+        <textarea id="restore-paste-input" rows="8" placeholder='{"version":2,"cards":[...]}' data-i18n-placeholder="restore.modal.placeholder"></textarea>
         <div class="modal-actions">
-          <button id="btn-restore-paste-confirm" class="btn btn-primary">Restore</button>
-          <button id="btn-restore-paste-cancel"  class="btn btn-ghost">Cancel</button>
+          <button id="btn-restore-paste-confirm" class="btn btn-primary" data-i18n="restore.modal.btn.confirm">Restore</button>
+          <button id="btn-restore-paste-cancel"  class="btn btn-ghost" data-i18n="btn.cancel">Cancel</button>
         </div>
       </div>
     </div>
@@ -198,26 +202,26 @@
     <!-- ── Share modal ─────────────────────────────────────────────────── -->
     <div id="modal-share" class="modal-overlay hidden">
       <div class="modal">
-        <h3>Share — <strong id="share-label"></strong></h3>
-        <p class="muted">⚠️ Treat this link like a password — anyone who has it can read the card. The decryption key is in the <code>#fragment</code>, which browsers never send to any server.</p>
-        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem">The card name and update timestamps are visible to relay operators in plaintext.</p>
+        <h3><span data-i18n="share.modal.prefix">Share — </span><strong id="share-label"></strong></h3>
+        <p class="muted" data-i18n-html="share.modal.warning">⚠️ Treat this link like a password — anyone who has it can read the card. The decryption key is in the <code>#fragment</code>, which browsers never send to any server.</p>
+        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem" data-i18n="share.modal.relay.note">The card name and update timestamps are visible to relay operators in plaintext.</p>
 
         <div class="share-url-box">
           <input id="share-url" type="text" readonly />
-          <button id="btn-copy-url" class="btn btn-ghost btn-sm">Copy</button>
+          <button id="btn-copy-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
         </div>
 
-        <p class="muted" style="margin-top:1rem;margin-bottom:0.25rem;font-size:0.85rem">📱 Add-to-contacts link (auto-downloads .vcf on open):</p>
+        <p class="muted" style="margin-top:1rem;margin-bottom:0.25rem;font-size:0.85rem" data-i18n="share.modal.dl.label">📱 Add-to-contacts link (auto-downloads .vcf on open):</p>
         <div class="share-url-box">
           <input id="dl-url" type="text" readonly />
-          <button id="btn-copy-dl-url" class="btn btn-ghost btn-sm">Copy</button>
+          <button id="btn-copy-dl-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
         </div>
 
         <div id="qr-container" class="qr-container"></div>
 
         <div class="modal-actions">
-          <button id="btn-save-qr"     class="btn btn-ghost btn-sm">Save QR as PNG</button>
-          <button id="btn-modal-close" class="btn btn-ghost">Close</button>
+          <button id="btn-save-qr"     class="btn btn-ghost btn-sm" data-i18n="btn.save.qr">Save QR as PNG</button>
+          <button id="btn-modal-close" class="btn btn-ghost" data-i18n="btn.close">Close</button>
         </div>
       </div>
     </div>
@@ -227,32 +231,32 @@
 
       <div id="cv-screen-loading" class="card-panel centered">
         <div class="spinner"></div>
-        <p>Decrypting contact…</p>
+        <p data-i18n="cv.loading">Decrypting contact…</p>
       </div>
 
       <div id="cv-screen-trust" class="card-panel centered trust-gate hidden">
         <div class="trust-icon">🔐</div>
-        <h2>Before we show this contact…</h2>
-        <p class="muted">Your answer helps protect the contact's details.</p>
+        <h2 data-i18n="cv.trust.heading.inline">Before we show this contact…</h2>
+        <p class="muted" data-i18n="cv.trust.body.inline">Your answer helps protect the contact's details.</p>
         <div class="trust-choices">
           <button id="cv-btn-trusted" class="btn btn-trust-yes">
             <span class="trust-choice-icon">✅</span>
-            <span class="trust-choice-label">My personal device</span>
-            <span class="trust-choice-hint">Bookmark for easy access</span>
+            <span class="trust-choice-label" data-i18n="cv.trust.yes.label">My personal device</span>
+            <span class="trust-choice-hint" data-i18n="cv.trust.yes.hint">Bookmark for easy access</span>
           </button>
           <button id="cv-btn-public" class="btn btn-trust-no">
             <span class="trust-choice-icon">🏛️</span>
-            <span class="trust-choice-label">Shared or public computer</span>
-            <span class="trust-choice-hint">Session auto-clears when you leave</span>
+            <span class="trust-choice-label" data-i18n="cv.trust.no.label">Shared or public computer</span>
+            <span class="trust-choice-hint" data-i18n="cv.trust.no.hint">Session auto-clears when you leave</span>
           </button>
         </div>
       </div>
 
       <div id="cv-screen-error" class="card-panel centered hidden">
         <div class="error-icon">⛔</div>
-        <h2 id="cv-error-title">Cannot load card</h2>
+        <h2 id="cv-error-title" data-i18n="cv.error.default.title">Cannot load card</h2>
         <p id="cv-error-detail" class="muted"></p>
-        <button id="cv-btn-back-error" class="btn btn-ghost" style="margin-top:1.5rem">← Back</button>
+        <button id="cv-btn-back-error" class="btn btn-ghost" style="margin-top:1.5rem" data-i18n="cv.btn.back">← Back</button>
       </div>
 
       <div id="cv-screen-card" class="card-panel contact-card hidden">
@@ -267,29 +271,29 @@
 
         <div id="cv-contact-fields" class="contact-fields"></div>
 
-        <div id="cv-public-mode-banner" class="public-mode-banner hidden">
+        <div id="cv-public-mode-banner" class="public-mode-banner hidden" data-i18n-html="cv.public.banner">
           🏛️ <strong>Public device mode</strong> — session auto-clears when you leave or after 5 minutes.
         </div>
 
         <div class="card-actions cv-card-actions">
-          <button id="cv-btn-download"  class="btn btn-primary btn-lg">Save contact to device</button>
-          <button id="cv-btn-save-link" class="btn btn-ghost   btn-lg hidden">💾 Save link</button>
-          <button id="cv-btn-done"      class="btn btn-secondary btn-lg hidden">🔒 Done — clear from browser</button>
+          <button id="cv-btn-download"  class="btn btn-primary btn-lg" data-i18n="cv.btn.download">Save contact to device</button>
+          <button id="cv-btn-save-link" class="btn btn-ghost   btn-lg hidden" data-i18n="cv.btn.save.link">💾 Save link</button>
+          <button id="cv-btn-done"      class="btn btn-secondary btn-lg hidden" data-i18n="cv.btn.done">🔒 Done — clear from browser</button>
         </div>
 
         <div class="vcard-qr-section">
-          <p class="vcard-qr-label muted">Scan to save contact</p>
+          <p class="vcard-qr-label muted" data-i18n="cv.qr.label">Scan to save contact</p>
           <div id="cv-vcard-qr-container" class="qr-container"></div>
         </div>
 
         <div class="update-hint cv-update-hint">
-          <p class="update-hint-title">📌 Bookmark this card — only on trusted devices!</p>
-          <p class="update-hint-body muted">
+          <p class="update-hint-title" data-i18n="cv.bookmark.title">📌 Bookmark this card — only on trusted devices!</p>
+          <p class="update-hint-body muted" data-i18n-html="cv.bookmark.body">
             This link always shows the latest details — bookmark it to stay up to date.
             Press <kbd>Ctrl+D</kbd> <span class="hint-mac">(or <kbd>⌘D</kbd> on Mac)</span>
             and save to a folder called <strong>Contacts</strong>.
           </p>
-          <p class="update-hint-body muted" style="margin-top:0.4rem">
+          <p class="update-hint-body muted" style="margin-top:0.4rem" data-i18n-html="cv.bookmark.warning">
             ⚠️ <strong>Do not bookmark on shared or public computers.</strong>
           </p>
         </div>

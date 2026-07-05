@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -268,9 +268,13 @@
   <div class="app-shell">
 
     <header class="top-bar">
-      <span class="logo">🔍 Privacy Proof</span>
+      <span class="logo" data-i18n="header.logo.proof">🔍 Privacy Proof</span>
       <div class="top-bar-actions">
-        <a class="btn btn-ghost btn-sm" href="index.html">← My Cards</a>
+        <a class="btn btn-ghost btn-sm" href="index.html" data-i18n="btn.back.cards">← My Cards</a>
+        <div class="lang-switcher" id="lang-switcher">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="sv">SV</button>
+        </div>
       </div>
     </header>
 
@@ -278,8 +282,8 @@
 
       <!-- ── Intro ──────────────────────────────────────────────────────── -->
       <div class="panel" style="margin-bottom:20px">
-        <h2 style="margin-bottom:10px">What does the relay actually store?</h2>
-        <p class="muted">
+        <h2 style="margin-bottom:10px" data-i18n="proof.intro.heading">What does the relay actually store?</h2>
+        <p class="muted" data-i18n="proof.intro.body">
           Paste a share link below and this tool will show you, step by step,
           exactly what is visible on the public Nostr relay vs. what only the
           link holder can read.
@@ -288,18 +292,18 @@
         <div class="proof-intro-steps">
           <div class="proof-intro-step">
             <div class="proof-intro-step-icon">📡</div>
-            <div class="proof-intro-step-title">Step 1 — Relay</div>
-            <div class="proof-intro-step-desc">Fetch the raw data stored on the relay — see what metadata is plaintext vs. what is encrypted</div>
+            <div class="proof-intro-step-title" data-i18n="proof.intro.step1.title">Step 1 — Relay</div>
+            <div class="proof-intro-step-desc" data-i18n="proof.intro.step1.desc">Fetch the raw data stored on the relay — see what metadata is plaintext vs. what is encrypted</div>
           </div>
           <div class="proof-intro-step">
             <div class="proof-intro-step-icon">🔑</div>
-            <div class="proof-intro-step-title">Step 2 — Key</div>
-            <div class="proof-intro-step-desc">Decrypt in the browser using the <code>#key</code> from your link</div>
+            <div class="proof-intro-step-title" data-i18n="proof.intro.step2.title">Step 2 — Key</div>
+            <div class="proof-intro-step-desc" data-i18n-html="proof.intro.step2.desc">Decrypt in the browser using the <code>#key</code> from your link</div>
           </div>
           <div class="proof-intro-step">
             <div class="proof-intro-step-icon">🗑️</div>
-            <div class="proof-intro-step-title">Step 3 — Gone?</div>
-            <div class="proof-intro-step-desc">After deleting, confirm the relay no longer returns any data</div>
+            <div class="proof-intro-step-title" data-i18n="proof.intro.step3.title">Step 3 — Gone?</div>
+            <div class="proof-intro-step-desc" data-i18n="proof.intro.step3.desc">After deleting, confirm the relay no longer returns any data</div>
           </div>
         </div>
       </div>
@@ -307,7 +311,7 @@
       <!-- ── URL Input ──────────────────────────────────────────────────── -->
       <div class="panel" style="margin-bottom:20px">
         <label class="field-group" style="margin-bottom:0">
-          <span style="display:block;font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
+          <span style="display:block;font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px" data-i18n="proof.url.label">
             Share URL
           </span>
           <div class="proof-url-row">
@@ -318,7 +322,7 @@
               autocomplete="off"
               spellcheck="false"
             />
-            <button id="btn-run-proof" class="btn btn-primary">Run Demo</button>
+            <button id="btn-run-proof" class="btn btn-primary" data-i18n="proof.btn.run">Run Demo</button>
           </div>
         </label>
       </div>
@@ -333,9 +337,9 @@
         <div class="proof-step">
           <div class="proof-step-header">
             <div class="proof-step-num">1</div>
-            <h3>What the relay sees</h3>
+            <h3 data-i18n="proof.step1.heading">What the relay sees</h3>
           </div>
-          <p class="muted">Fetched directly from the Nostr relay. Shows what metadata is in plaintext and what is locked in the encrypted blob.</p>
+          <p class="muted" data-i18n="proof.step1.desc">Fetched directly from the Nostr relay. Shows what metadata is in plaintext and what is locked in the encrypted blob.</p>
           <div id="relay-result"></div>
         </div>
 
@@ -343,9 +347,9 @@
         <div class="proof-step">
           <div class="proof-step-header">
             <div class="proof-step-num">2</div>
-            <h3>What the key unlocks</h3>
+            <h3 data-i18n="proof.step2.heading">What the key unlocks</h3>
           </div>
-          <p class="muted">Decrypted in the browser using the <code>#key</code> fragment in your link.</p>
+          <p class="muted" data-i18n-html="proof.step2.desc">Decrypted in the browser using the <code>#key</code> fragment in your link.</p>
           <div id="decrypt-result"></div>
         </div>
 
@@ -356,22 +360,23 @@
         <div class="proof-step">
           <div class="proof-step-header">
             <div class="proof-step-num">3</div>
-            <h3>Deletion check</h3>
+            <h3 data-i18n="proof.step3.heading">Deletion check</h3>
           </div>
           <p class="muted">
-            Delete the card from <a href="index.html">My Cards</a>, then click the button below
-            to confirm the relay no longer holds any data for this card.
+            <span data-i18n="proof.step3.intro1">Delete the card from</span>
+            <a href="index.html" data-i18n="proof.step3.intro.link">My Cards</a><span data-i18n="proof.step3.intro2">, then click the button below
+            to confirm the relay no longer holds any data for this card.</span>
           </p>
           <div class="proof-check-row">
-            <button id="btn-check-deleted" class="btn btn-ghost">Check relay now</button>
+            <button id="btn-check-deleted" class="btn btn-ghost" data-i18n="proof.step3.btn.check">Check relay now</button>
           </div>
           <div id="deletion-result"></div>
           <div class="proof-caveat">
-            <strong>Honest caveat about deletion</strong>
-            Deletion on Nostr is best-effort. A NIP-09 deletion event is sent
+            <strong data-i18n="proof.caveat.heading">Honest caveat about deletion</strong>
+            <span data-i18n="proof.caveat.body">Deletion on Nostr is best-effort. A NIP-09 deletion event is sent
             and most well-behaved relays will comply. However, an archived or
             non-compliant relay may still hold a copy. This is a property of
-            all public Nostr relays, not specific to this app.
+            all public Nostr relays, not specific to this app.</span>
           </div>
         </div>
       </div>

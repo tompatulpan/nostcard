@@ -752,3 +752,43 @@ kbd {
   .hint-mac { display: none; }
   .btn-sm { min-height: 36px; padding: 6px 14px; }
 }
+
+/* ── Language switcher ───────────────────────────────────────────────────── */
+
+.lang-switcher {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.lang-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  padding: 2px 7px;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.lang-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.lang-btn.lang-btn--active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  .lang-switcher { margin-left: 4px; }
+  .lang-btn { font-size: 10px; padding: 2px 5px; }
+}

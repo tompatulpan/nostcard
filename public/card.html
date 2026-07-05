@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,9 +10,13 @@
   <div class="app-shell">
 
     <header class="top-bar">
-      <span class="logo">🔐 Encrypted Contact Card</span>
+      <span class="logo" data-i18n="header.logo.card">🔐 Encrypted Contact Card</span>
       <div class="top-bar-actions">
-        <a id="btn-back-account" class="btn btn-success btn-sm" href="index.html">← My Cards</a>
+        <a id="btn-back-account" class="btn btn-success btn-sm" href="index.html" data-i18n="btn.back.cards">← My Cards</a>
+        <div class="lang-switcher" id="lang-switcher">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="sv">SV</button>
+        </div>
       </div>
     </header>
 
@@ -20,8 +24,8 @@
     <section id="screen-loading" class="screen">
       <div class="card-panel centered">
         <div class="spinner"></div>
-        <p>Decrypting contact…</p>
-        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem">✨ This is a live card — always shows the owner's latest details.</p>
+        <p data-i18n="cv.loading">Decrypting contact…</p>
+        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem" data-i18n="cv.live.hint">✨ This is a live card — always shows the owner's latest details.</p>
       </div>
     </section>
 
@@ -29,18 +33,18 @@
     <section id="screen-trust" class="screen hidden">
       <div class="card-panel centered trust-gate">
         <div class="trust-icon">�</div>
-        <h2>A live contact card</h2>
-        <p class="muted">This card always shows the owner's latest info — name, phone, email, and more. Where are you opening it?</p>
+        <h2 data-i18n="cv.trust.heading.card">A live contact card</h2>
+        <p class="muted" data-i18n="cv.trust.body.card">This card always shows the owner's latest info — name, phone, email, and more. Where are you opening it?</p>
         <div class="trust-choices">
           <button id="btn-trusted" class="btn btn-trust-yes">
             <span class="trust-choice-icon">✅</span>
-            <span class="trust-choice-label">My personal device</span>
-            <span class="trust-choice-hint">Bookmark for easy access</span>
+            <span class="trust-choice-label" data-i18n="cv.trust.yes.label">My personal device</span>
+            <span class="trust-choice-hint" data-i18n="cv.trust.yes.hint">Bookmark for easy access</span>
           </button>
           <button id="btn-public" class="btn btn-trust-no">
             <span class="trust-choice-icon">🏛️</span>
-            <span class="trust-choice-label">Shared or public computer</span>
-            <span class="trust-choice-hint">Session auto-clears when you leave</span>
+            <span class="trust-choice-label" data-i18n="cv.trust.no.label">Shared or public computer</span>
+            <span class="trust-choice-hint" data-i18n="cv.trust.no.hint">Session auto-clears when you leave</span>
           </button>
         </div>
       </div>
@@ -50,7 +54,7 @@
     <section id="screen-error" class="screen hidden">
       <div class="card-panel centered">
         <div class="error-icon">⛔</div>
-        <h2 id="error-title">Cannot load card</h2>
+        <h2 id="error-title" data-i18n="cv.error.default.title">Cannot load card</h2>
         <p id="error-detail" class="muted"></p>
       </div>
     </section>
@@ -69,29 +73,29 @@
 
         <div id="contact-fields" class="contact-fields"></div>
 
-        <div id="public-mode-banner" class="public-mode-banner hidden">
+        <div id="public-mode-banner" class="public-mode-banner hidden" data-i18n-html="cv.public.banner">
           🏛️ <strong>Public device mode</strong> — session auto-clears when you leave or after 5 minutes.
         </div>
 
         <div class="card-actions">
-          <button id="btn-download" class="btn btn-primary btn-lg">Save contact to device</button>
-          <button id="btn-save-link" class="btn btn-ghost btn-lg hidden">💾 Save link</button>
-          <button id="btn-done" class="btn btn-secondary btn-lg hidden">🔒 Done — clear from browser</button>
+          <button id="btn-download" class="btn btn-primary btn-lg" data-i18n="cv.btn.download">Save contact to device</button>
+          <button id="btn-save-link" class="btn btn-ghost btn-lg hidden" data-i18n="cv.btn.save.link">💾 Save link</button>
+          <button id="btn-done" class="btn btn-secondary btn-lg hidden" data-i18n="cv.btn.done">🔒 Done — clear from browser</button>
         </div>
 
         <div class="vcard-qr-section">
-          <p class="vcard-qr-label muted">Scan to save contact</p>
+          <p class="vcard-qr-label muted" data-i18n="cv.qr.label">Scan to save contact</p>
           <div id="vcard-qr-container" class="qr-container"></div>
         </div>
 
         <div class="update-hint">
-          <p class="update-hint-title">📌 Bookmark this card — only on trusted devices!</p>
-          <p class="update-hint-body muted">
+          <p class="update-hint-title" data-i18n="cv.bookmark.title">📌 Bookmark this card — only on trusted devices!</p>
+          <p class="update-hint-body muted" data-i18n-html="cv.bookmark.body">
             This link always shows the latest details — bookmark it to stay up to date.
             Press <kbd>Ctrl+D</kbd> <span class="hint-mac">(or <kbd>⌘D</kbd> on Mac)</span>
             and save to a folder called <strong>Contacts</strong>.
           </p>
-          <p class="update-hint-body muted" style="margin-top:0.4rem">
+          <p class="update-hint-body muted" style="margin-top:0.4rem" data-i18n-html="cv.bookmark.warning">
             ⚠️ <strong>Do not bookmark on shared or public computers.</strong>
           </p>
         </div>

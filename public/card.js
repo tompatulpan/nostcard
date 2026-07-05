@@ -19,20 +19,34 @@
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard, buildVCard } from './vcard.js';
 import { naddrDecode, fetchCard } from './nostr.js';
+import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
 
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
 
 async function init() {
+  await initI18n();
+
+  // Wire up language switcher
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('lang-btn--active', btn.dataset.lang === getCurrentLang());
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
+  window.addEventListener('i18n:changed', () => {
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('lang-btn--active', b.dataset.lang === getCurrentLang());
+    });
+  });
+
   const params   = new URLSearchParams(location.search);
   const naddr    = params.get('naddr');
   const fragment = location.hash.slice(1); // strip leading '#'
 
   if (!naddr || !fragment) {
     return showError(
-      'Invalid link',
-      'This link is missing required parameters. Make sure you copied the full URL including the #fragment.'
+      t('error.invalidLink.title'),
+      t('error.invalidLink.missingParams')
     );
   }
 
@@ -41,13 +55,13 @@ async function init() {
   try {
     decoded = naddrDecode(naddr);
   } catch (err) {
-    return showError('Invalid link', 'This link contains a malformed card address. It may have been truncated.');
+    return showError(t('error.invalidLink.title'), t('error.invalidLink.malformedNaddr'));
   }
 
   const { pubkey, identifier: cardId, relays } = decoded;
 
   if (!relays || relays.length === 0) {
-    return showError('Invalid link', 'The card address contains no relay information. Cannot fetch the card.');
+    return showError(t('error.invalidLink.title'), t('error.invalidLink.noRelays'));
   }
 
   // Import AES key from fragment
@@ -55,7 +69,7 @@ async function init() {
   try {
     key = await fragmentToKey(fragment);
   } catch {
-    return showError('Invalid key', 'The decryption key in this link is not valid.');
+    return showError(t('error.invalidKey.title'), t('error.invalidKey.detail'));
   }
 
   // Fetch encrypted blob from Nostr relays
@@ -63,11 +77,11 @@ async function init() {
   try {
     event = await fetchCard(relays, pubkey, cardId);
   } catch (err) {
-    return showError('Network error', 'Could not connect to the Nostr relays. Check your connection and try again.');
+    return showError(t('error.network.title'), t('error.network.detail'));
   }
 
   if (!event) {
-    return showError('Card not found', 'This card could not be found on any of the listed relays. It may have been deleted or not yet published.');
+    return showError(t('error.notFound.title'), t('error.notFound.detail'));
   }
 
   // Decrypt
@@ -75,7 +89,7 @@ async function init() {
   try {
     vcardText = await decryptVCard(event.content, key);
   } catch {
-    return showError('Decryption failed', 'Could not decrypt this card. The link may be corrupted.');
+    return showError(t('error.decrypt.title'), t('error.decrypt.detail'));
   }
 
   const fields = parseVCard(vcardText);
@@ -152,7 +166,7 @@ function showTrustGate(cardId, fields, vcardText) {
 // ---------------------------------------------------------------------------
 
 function renderCard(fields, vcardText, trusted, ownerPreview) {
-  document.title = (fields.fn || 'Contact') + ' — Encrypted Card';
+  document.title = t('page.title.card.loaded', { fn: fields.fn || t('cv.contact.fallback') });
 
   // Avatar initials
   document.getElementById('contact-avatar').textContent = makeInitials(fields.fn || '');
@@ -201,7 +215,7 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
     const downloadHint = document.createElement('p');
     downloadHint.className = 'muted';
     downloadHint.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
-    downloadHint.textContent = 'Downloads a snapshot of today\'s details. Use the saved link to always get the latest.';
+    downloadHint.textContent = t('cv.download.hint');
     downloadBtn.insertAdjacentElement('afterend', downloadHint);
   } else {
     downloadBtn.style.display = 'none';
@@ -229,12 +243,12 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
       links.push({ url: currentUrl, label: fields.fn || 'Contact', savedAt: new Date().toISOString() });
       try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
     }
-    saveLinkBtn.textContent = '✓ Link saved';
+    saveLinkBtn.textContent = t('cv.btn.save.link.done');
     saveLinkBtn.disabled    = true;
     const saveLinkHint = document.createElement('p');
     saveLinkHint.className = 'muted';
     saveLinkHint.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
-    saveLinkHint.textContent = 'Reopen from Saved Cards anytime to always see the latest details.';
+    saveLinkHint.textContent = t('cv.saved.hint');
     saveLinkBtn.insertAdjacentElement('afterend', saveLinkHint);
   }
 
@@ -268,7 +282,7 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
       const remaining = Math.max(0, killAt - Date.now());
       const m = Math.floor(remaining / 60000);
       const s = Math.floor((remaining % 60000) / 1000);
-      countdownEl.textContent = `⏱ Auto-clears in ${m}:${String(s).padStart(2, '0')}`;
+      countdownEl.textContent = t('cv.countdown', { m, ss: String(s).padStart(2, '0') });
     }, 1000);
 
     autoKillTimer = setTimeout(() => triggerKill('timeout'), AUTO_KILL_MS);
@@ -287,18 +301,18 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
     const section = document.getElementById('screen-card');
     if (!section) return;
     const messages = {
-      manual:       'Session cleared.',
-      download:     'Contact saved — session cleared.',
-      'tab-hidden': 'Session auto-cleared when you switched away.',
-      timeout:      'Session timed out and was auto-cleared.',
+      manual:       t('cv.kill.manual'),
+      download:     t('cv.kill.download'),
+      'tab-hidden': t('cv.kill.tab'),
+      timeout:      t('cv.kill.timeout'),
     };
     // Use textContent-safe construction — no user data in these messages
     section.innerHTML = `
       <div class="card-panel centered">
         <div style="font-size:3rem">🔒</div>
-        <h2>${messages[reason] || 'Session cleared.'}</h2>
+        <h2>${messages[reason] || t('cv.kill.manual')}</h2>
         <p class="muted">
-          The contact details and decryption key have been removed from this browser session.<br>
+          ${t('cv.kill.detail')}<br>
           Safe to close this tab.
         </p>
       </div>
@@ -379,11 +393,11 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
   icon.textContent = '📱';
 
   const heading = document.createElement('h2');
-  heading.textContent = 'Contact download started';
+  heading.textContent = t('dl.heading');
 
   const p = document.createElement('p');
   p.className = 'muted';
-  p.textContent = `Open the downloaded .vcf file to add ${fn || 'the contact'} to your contacts app.`;
+  p.textContent = t('dl.body', { fn: fn || t('cv.contact.fallback') });
 
   panel.appendChild(icon);
   panel.appendChild(heading);
@@ -405,7 +419,7 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
   if (!getTrust(cardId)) {
     const trustHeading = document.createElement('p');
     trustHeading.style.cssText = 'margin-top:1.5rem;font-weight:600';
-    trustHeading.textContent = 'Save this card for quick access later?';
+    trustHeading.textContent = t('dl.save.prompt');
 
     const choices = document.createElement('div');
     choices.className = 'trust-choices';
@@ -413,11 +427,11 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
 
     const yesBtn = document.createElement('button');
     yesBtn.className = 'btn btn-trust-yes';
-    yesBtn.innerHTML = '<span class="trust-choice-icon">✅</span><span class="trust-choice-label">My personal device</span><span class="trust-choice-hint">Save link for easy access</span>';
+    yesBtn.innerHTML = `<span class="trust-choice-icon">✅</span><span class="trust-choice-label">${t('dl.yes.label')}</span><span class="trust-choice-hint">${t('dl.yes.hint')}</span>`;
 
     const noBtn = document.createElement('button');
     noBtn.className = 'btn btn-trust-no';
-    noBtn.innerHTML = '<span class="trust-choice-icon">🏛️</span><span class="trust-choice-label">Public or shared device</span><span class="trust-choice-hint">Don\'t save anything</span>';
+    noBtn.innerHTML = `<span class="trust-choice-icon">🏛️</span><span class="trust-choice-label">${t('dl.no.label')}</span><span class="trust-choice-hint">${t('dl.no.hint')}</span>`;
 
     const replaceChoices = (msg, hint) => {
       choices.innerHTML = '';
@@ -437,11 +451,11 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
     yesBtn.addEventListener('click', () => {
       setTrust(cardId);
       saveLink(fn);
-      replaceChoices('✓ Saved to your Saved Cards.', 'Reopen from Saved Cards anytime to always see the latest details.');
+      replaceChoices(t('dl.saved'), t('dl.saved.hint'));
     });
 
     noBtn.addEventListener('click', () => {
-      replaceChoices('No data saved on this device.');
+      replaceChoices(t('dl.no.saved'));
     });
 
     choices.appendChild(yesBtn);
@@ -454,12 +468,12 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
     const saved = document.createElement('p');
     saved.className = 'muted';
     saved.style.marginTop = '1rem';
-    saved.textContent = '✓ Saved to your Saved Cards.';
+    saved.textContent = t('dl.saved');
     panel.appendChild(saved);
     const savedHint = document.createElement('p');
     savedHint.className = 'muted';
     savedHint.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
-    savedHint.textContent = 'Reopen from Saved Cards anytime to always see the latest details.';
+    savedHint.textContent = t('dl.saved.hint');
     panel.appendChild(savedHint);
   }
 

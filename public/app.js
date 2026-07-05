@@ -23,6 +23,7 @@
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
 import { generateKeypair, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, isValidRelayUrl, DEFAULT_RELAYS } from './nostr.js';
+import { initI18n, t, setLang, getCurrentLang, applyTranslations } from './i18n.js';
 
 // ---------------------------------------------------------------------------
 // State
@@ -59,6 +60,41 @@ function saveSavedLinks(links) {
 // ---------------------------------------------------------------------------
 
 async function init() {
+  await initI18n();
+
+  // Wire up language switcher
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('lang-btn--active', btn.dataset.lang === getCurrentLang());
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
+
+  // Re-render dynamic content when language changes
+  window.addEventListener('i18n:changed', () => {
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('lang-btn--active', b.dataset.lang === getCurrentLang());
+    });
+    const screenCards = document.getElementById('screen-cards');
+    const screenSaved = document.getElementById('screen-saved');
+    if (screenCards && !screenCards.classList.contains('hidden')) renderCardList();
+    if (screenSaved && !screenSaved.classList.contains('hidden')) renderSavedLinks();
+    if (activeCardId) renderRelayManager();
+    // Update type-select option labels and address subfield placeholders without losing user input
+    document.querySelectorAll('.dynamic-type-select option').forEach(opt => {
+      opt.textContent = t('field.type.' + opt.value);
+    });
+    document.querySelectorAll('.adr-row .muted').forEach(el => {
+      el.textContent = t('field.adr.type.label');
+    });
+    const adrMap = {
+      'adr-street': 'field.adr.street', 'adr-city': 'field.adr.city',
+      'adr-region': 'field.adr.region', 'adr-postcode': 'field.adr.postcode',
+      'adr-country': 'field.adr.country',
+    };
+    for (const [cls, key] of Object.entries(adrMap)) {
+      document.querySelectorAll(`.${cls}`).forEach(el => { el.placeholder = t(key); });
+    }
+  });
+
   const cards = getCards();
   if (cards.length === 0) {
     if (getSavedLinks().length > 0) {
@@ -101,7 +137,7 @@ function renderCardList() {
   container.innerHTML = '';
 
   if (cards.length === 0) {
-    container.innerHTML = '<p class="muted">No cards yet. Create your first one above.</p>';
+    container.innerHTML = `<p class="muted">${htmlEscape(t('cards.empty'))}</p>`;
     return;
   }
 
@@ -131,14 +167,14 @@ function renderCardList() {
     row.innerHTML = `
       <div class="card-list-info">
         <span class="card-list-name">${htmlEscape(card.label)}</span>
-        <button class="btn btn-ghost btn-sm btn-card-rename" title="Rename">✎</button>
-        <span class="card-list-meta">${subtitle ? htmlEscape(subtitle) + ' · ' : ''}${(card.relays || []).length} relays</span>
+        <button class="btn btn-ghost btn-sm btn-card-rename" title="${htmlEscape(t('cards.row.btn.rename.title'))}">✎</button>
+        <span class="card-list-meta">${subtitle ? htmlEscape(subtitle) + ' · ' : ''}${htmlEscape(t('cards.relays.count', { n: (card.relays || []).length }))}</span>
         ${badgesHtml ? `<div class="relay-badges">${badgesHtml}</div>` : ''}
       </div>
       <div class="card-list-actions">
-        <button class="btn btn-ghost    btn-sm btn-card-view">View</button>
-        <button class="btn btn-primary  btn-sm btn-card-edit">Edit</button>
-        <button class="btn btn-success  btn-sm btn-card-share">Share</button>
+        <button class="btn btn-ghost    btn-sm btn-card-view">${htmlEscape(t('cards.row.btn.view'))}</button>
+        <button class="btn btn-primary  btn-sm btn-card-edit">${htmlEscape(t('cards.row.btn.edit'))}</button>
+        <button class="btn btn-success  btn-sm btn-card-share">${htmlEscape(t('cards.row.btn.share'))}</button>
       </div>
     `;
 
@@ -247,24 +283,24 @@ function restoreFields(id) {
   for (const item of (fields.tel || [])) {
     const val  = typeof item === 'string' ? item : item.value;
     const type = typeof item === 'string' ? 'cell' : (item.type || 'cell');
-    if (val) addDynamicField('tel-list', 'tel', '+46 70 000 00 00', val, type);
+    if (val) addDynamicField('tel-list', 'tel', t('editor.tel.placeholder'), val, type);
   }
 
   clearList('email-list');
   for (const item of (fields.email || [])) {
     const val  = typeof item === 'string' ? item : item.value;
     const type = typeof item === 'string' ? 'work' : (item.type || 'work');
-    if (val) addDynamicField('email-list', 'email', 'alice@example.com', val, type);
+    if (val) addDynamicField('email-list', 'email', t('editor.email.placeholder'), val, type);
   }
 
   clearList('org-list');
   for (const val of (Array.isArray(fields.org) ? fields.org : (fields.org ? [fields.org] : []))) {
-    if (val) addDynamicField('org-list', 'org', 'Acme Corp', val);
+    if (val) addDynamicField('org-list', 'org', t('editor.org.placeholder'), val);
   }
 
   clearList('title-list');
   for (const val of (Array.isArray(fields.title) ? fields.title : (fields.title ? [fields.title] : []))) {
-    if (val) addDynamicField('title-list', 'title', 'Engineer', val);
+    if (val) addDynamicField('title-list', 'title', t('editor.jobtitle.placeholder'), val);
   }
 
   clearList('url-list');
@@ -272,7 +308,7 @@ function restoreFields(id) {
   for (const item of urls) {
     const val  = typeof item === 'string' ? item : item.value;
     const type = typeof item === 'string' ? 'work' : (item.type || 'work');
-    if (val) addDynamicField('url-list', 'url', 'https://example.com', val, type);
+    if (val) addDynamicField('url-list', 'url', t('editor.url.placeholder'), val, type);
   }
 
   clearList('adr-list');
@@ -282,7 +318,7 @@ function restoreFields(id) {
 
   clearList('note-list');
   for (const val of (Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []))) {
-    if (val) addDynamicField('note-list', 'note', 'Optional note visible to recipients', val);
+    if (val) addDynamicField('note-list', 'note', t('editor.note.placeholder'), val);
   }
 }
 
@@ -397,7 +433,7 @@ function addDynamicField(listId, type, placeholder, value = '', selectedType = '
     select.className = 'dynamic-type-select';
     for (const [val, label] of TYPE_OPTIONS[type]) {
       const opt = document.createElement('option');
-      opt.value = val; opt.textContent = label;
+      opt.value = val; opt.textContent = t('field.type.' + val);
       if (val === (selectedType || TYPE_OPTIONS[type][0][0])) opt.selected = true;
       select.appendChild(opt);
     }
@@ -424,14 +460,14 @@ function addAdrField(prefill = {}) {
 
   const typeLabel = document.createElement('span');
   typeLabel.className   = 'muted';
-  typeLabel.textContent = 'Address';
+  typeLabel.textContent = t('field.adr.type.label');
   typeLabel.style.fontSize = '13px';
 
   const select = document.createElement('select');
   select.className = 'dynamic-type-select';
-  for (const [val, label] of [['home','Home'],['work','Work'],['other','Other']]) {
+  for (const [val] of [['home'],['work'],['other']]) {
     const opt = document.createElement('option');
-    opt.value = val; opt.textContent = label;
+    opt.value = val; opt.textContent = t('field.type.' + val);
     if (val === (prefill.type || 'home')) opt.selected = true;
     select.appendChild(opt);
   }
@@ -447,14 +483,14 @@ function addAdrField(prefill = {}) {
   typeRow.appendChild(removeBtn);
   row.appendChild(typeRow);
 
-  const fields = [
-    ['street',  'Street address'],
-    ['city',    'City'],
-    ['region',  'State / Region'],
-    ['postcode','Postcode'],
-    ['country', 'Country'],
+  const adrSubfields = [
+    ['street',   t('field.adr.street')],
+    ['city',     t('field.adr.city')],
+    ['region',   t('field.adr.region')],
+    ['postcode', t('field.adr.postcode')],
+    ['country',  t('field.adr.country')],
   ];
-  for (const [cls, ph] of fields) {
+  for (const [cls, ph] of adrSubfields) {
     const input = document.createElement('input');
     input.type        = 'text';
     input.className   = `dynamic-input adr-${cls}`;
@@ -480,17 +516,17 @@ document.getElementById('btn-new-card').addEventListener('click', async () => {
 });
 
 async function promptCreateCard(btn) {
-  const label = prompt('Card name (e.g. Work, Personal, Minimal):', 'My Card');
+  const label = prompt(t('dialog.create.prompt'), t('dialog.create.default'));
   if (label === null) return;
   btn.disabled    = true;
-  btn.textContent = 'Creating…';
+  btn.textContent = t('status.creating');
   try {
-    await createCard(label.trim() || 'My Card');
+    await createCard(label.trim() || t('dialog.create.default'));
   } catch (err) {
-    alert('Failed to create card: ' + err.message);
+    alert(t('alert.create.failed', { error: err.message }));
   } finally {
     btn.disabled    = false;
-    btn.textContent = btn.id === 'btn-new-card' ? '+ New Card' : 'Create my card';
+    btn.textContent = btn.id === 'btn-new-card' ? t('cards.btn.new') : t('setup.btn.create');
   }
 }
 
@@ -542,7 +578,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
 
   const fields = readFields();
   if (!fields.fn.trim()) {
-    status.textContent = 'Full name is required.';
+    status.textContent = t('status.fn.required');
     status.className   = 'status-msg error';
     return;
   }
@@ -551,7 +587,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   const newCardName = (document.getElementById('card-name')?.value || '').trim() || card.label;
 
   btn.disabled       = true;
-  status.textContent = 'Publishing…';
+  status.textContent = t('status.publishing');
   status.className   = 'status-msg';
 
   try {
@@ -577,14 +613,14 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     const allOk = results.every(r => r.ok);
     const okCount = results.filter(r => r.ok).length;
     status.textContent = allOk
-      ? `Published ✓ (${okCount}/${results.length} relays)`
-      : `Published to ${okCount}/${results.length} relays`;
+      ? t('status.published.all',     { ok: okCount, total: results.length })
+      : t('status.published.partial', { ok: okCount, total: results.length });
     status.className = allOk ? 'status-msg success' : 'status-msg';
 
     // Update relay badges in card list (if shown)
     setTimeout(() => { status.textContent = ''; }, 4000);
   } catch (err) {
-    status.textContent = 'Publish failed: ' + err.message;
+    status.textContent = t('status.publish.failed', { error: err.message });
     status.className   = 'status-msg error';
   } finally {
     btn.disabled = false;
@@ -600,7 +636,7 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
   const card = getCard(activeCardId);
   if (!card) return;
 
-  if (!confirm(`Delete "${card.label}"?\n\nThis removes the card from your device and sends a deletion request to all relays. Deletion is best-effort — not all relays guarantee it.\n\nExisting share links will stop working.`)) return;
+  if (!confirm(t('dialog.delete.confirm', { label: card.label }))) return;
 
   const btn = document.getElementById('btn-delete-card');
   btn.disabled = true;
@@ -633,15 +669,13 @@ document.getElementById('btn-rotate-key').addEventListener('click', async () => 
   if (!card) return;
 
   if (!confirm(
-    `Rotate the encryption key for "${card.label}"?\n\n` +
-    `This generates a new key, re-encrypts the card, and re-publishes it to all relays.\n\n` +
-    `All previous share links will stop working immediately. You will need to share the new link.`
+    t('dialog.rotate.confirm', { label: card.label })
   )) return;
 
   const btn    = document.getElementById('btn-rotate-key');
   const status = document.getElementById('save-status');
   btn.disabled       = true;
-  status.textContent = 'Rotating key…';
+  status.textContent = t('status.rotating');
   status.className   = 'status-msg';
 
   try {
@@ -726,16 +760,16 @@ document.getElementById('btn-copy-url').addEventListener('click', async () => {
   const url = document.getElementById('share-url').value;
   try { await navigator.clipboard.writeText(url); } catch { /* fallback: select */ }
   const btn = document.getElementById('btn-copy-url');
-  btn.textContent = 'Copied!';
-  setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
 });
 
 document.getElementById('btn-copy-dl-url').addEventListener('click', async () => {
   const url = document.getElementById('dl-url').value;
   try { await navigator.clipboard.writeText(url); } catch { /* fallback: select */ }
   const btn = document.getElementById('btn-copy-dl-url');
-  btn.textContent = 'Copied!';
-  setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
 });
 
 document.getElementById('btn-modal-close').addEventListener('click', () => {
@@ -804,13 +838,13 @@ async function showCardViewScreen(url, mode) {
   const fragment = urlObj.hash.slice(1);
 
   if (!naddr || !fragment) {
-    showCvError('Invalid link', 'Missing naddr or key fragment.');
+    showCvError(t('error.invalidLink.title'), t('error.invalidLink.missingParams'));
     return;
   }
 
   let decoded;
   try { decoded = naddrDecode(naddr); } catch {
-    showCvError('Invalid link', 'Malformed naddr.');
+    showCvError(t('error.invalidLink.title'), t('error.invalidLink.malformedNaddr'));
     return;
   }
 
@@ -818,23 +852,23 @@ async function showCardViewScreen(url, mode) {
 
   let aesKey;
   try { aesKey = await fragmentToKey(fragment); } catch {
-    showCvError('Invalid key', 'The decryption key in the link is not valid.');
+    showCvError(t('error.invalidKey.title'), t('error.invalidKey.detail'));
     return;
   }
 
   let event;
   try { event = await fetchCard(relays, pubkey, cardId); } catch {
-    showCvError('Network error', 'Could not connect to Nostr relays.');
+    showCvError(t('error.network.title'), t('error.network.detail'));
     return;
   }
   if (!event) {
-    showCvError('Card not found', 'The card was not found on any relay.');
+    showCvError(t('error.notFound.title'), t('error.notFound.detail'));
     return;
   }
 
   let vcardText;
   try { vcardText = await decryptVCard(event.content, aesKey); } catch {
-    showCvError('Decryption failed', 'Could not decrypt this card.');
+    showCvError(t('error.decrypt.title'), t('error.decrypt.detail'));
     return;
   }
 
@@ -959,7 +993,7 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
   const saveLinkBtn = document.getElementById('cv-btn-save-link');
   if (trusted && !ownerPreview) {
     saveLinkBtn.classList.remove('hidden');
-    saveLinkBtn.textContent = '✓ Link saved';
+    saveLinkBtn.textContent = t('cv.btn.save.link.done');
     saveLinkBtn.disabled    = true;
   }
 
@@ -981,7 +1015,7 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
     cvCountdownInterval = setInterval(() => {
       const rem = Math.max(0, killAt - Date.now());
       const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
-      countdownEl.textContent = `⏱ Auto-clears in ${m}:${String(s).padStart(2,'0')}`;
+      countdownEl.textContent = t('cv.countdown', { m, ss: String(s).padStart(2,'0') });
     }, 1000);
     cvKillTimer = setTimeout(() => cvKill('timeout'), AUTO_KILL_MS);
   }
@@ -993,8 +1027,8 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
     vcardText = '';
     const section = document.getElementById('cv-screen-card');
     if (!section) return;
-    const msgs = { manual: 'Session cleared.', download: 'Contact saved — session cleared.', 'tab-hidden': 'Session auto-cleared.', timeout: 'Session timed out.' };
-    section.innerHTML = `<div class="card-panel centered"><div style="font-size:3rem">🔒</div><h2>${msgs[reason] || 'Session cleared.'}</h2><p class="muted">Safe to close this tab.</p></div>`;
+    const msgs = { manual: t('cv.kill.manual'), download: t('cv.kill.download'), 'tab-hidden': t('cv.kill.tab'), timeout: t('cv.kill.timeout') };
+    section.innerHTML = `<div class="card-panel centered"><div style="font-size:3rem">🔒</div><h2>${htmlEscape(msgs[reason] || t('cv.kill.manual'))}</h2><p class="muted">${htmlEscape(t('cv.kill.detail'))}</p></div>`;
   }
 
   if (typeof window.qrcode !== 'undefined') {
@@ -1048,7 +1082,7 @@ document.getElementById('btn-add-relay').addEventListener('click', () => {
   errEl.classList.add('hidden');
 
   if (!isValidRelayUrl(url)) {
-    errEl.textContent = 'Relay URL must start with wss://';
+    errEl.textContent = t('relay.error.invalid');
     errEl.classList.remove('hidden');
     return;
   }
@@ -1059,7 +1093,7 @@ document.getElementById('btn-add-relay').addEventListener('click', () => {
   if (idx < 0) return;
 
   if (cards[idx].relays.includes(url)) {
-    errEl.textContent = 'This relay is already in the list.';
+    errEl.textContent = t('relay.error.duplicate');
     errEl.classList.remove('hidden');
     return;
   }
@@ -1114,7 +1148,7 @@ function renderRelayManager() {
         saveCards(cards);
         renderRelayManager();
       } else {
-        alert('A card must have at least one relay.');
+        alert(t('relay.error.minimum'));
       }
     });
 
@@ -1143,7 +1177,7 @@ document.getElementById('btn-go-saved').addEventListener('click', () => {
 });
 
 document.getElementById('btn-clear-all').addEventListener('click', () => {
-  if (!confirm('This will remove from this device:\n\n• All card credentials (private keys + encryption keys)\n• All cached contact data\n• All saved cards (received links)\n\nYour cards remain on the relays and can be restored from a backup. Continue?')) return;
+  if (!confirm(t('dialog.logout.confirm'))) return;
   const cards = getCards();
   for (const c of cards) {
     localStorage.removeItem(`e2e:fields:${c.id}`);
@@ -1165,7 +1199,7 @@ function renderSavedLinks() {
   container.innerHTML = '';
 
   if (links.length === 0) {
-    container.innerHTML = '<p class="muted">No saved cards yet. Open a card link and choose "My personal device" to save it here.</p>';
+    container.innerHTML = `<p class="muted">${htmlEscape(t('saved.empty'))}</p>`;
     return;
   }
 
@@ -1191,12 +1225,12 @@ function renderSavedLinks() {
 
     const openBtn = document.createElement('button');
     openBtn.className   = 'btn btn-primary btn-sm';
-    openBtn.textContent = 'Open';
+    openBtn.textContent = t('btn.open');
     openBtn.addEventListener('click', () => showCardViewScreen(link.url, 'saved-card'));
 
     const removeBtn = document.createElement('button');
     removeBtn.className   = 'btn btn-danger btn-sm';
-    removeBtn.textContent = 'Remove';
+    removeBtn.textContent = t('btn.remove');
     removeBtn.addEventListener('click', () => {
       const updated = getSavedLinks().filter(l => l.url !== link.url);
       saveSavedLinks(updated);
@@ -1246,7 +1280,7 @@ function exportBackup() {
 document.getElementById('restore-file-input').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
-  try { await importBackup(JSON.parse(await file.text())); } catch { alert('Could not read backup file.'); }
+  try { await importBackup(JSON.parse(await file.text())); } catch { alert(t('alert.backup.error')); }
   e.target.value = '';
 });
 
@@ -1254,7 +1288,7 @@ document.getElementById('restore-file-input').addEventListener('change', async e
 document.getElementById('restore-file-input-cards').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
-  try { await importBackup(JSON.parse(await file.text())); } catch { alert('Could not read backup file.'); }
+  try { await importBackup(JSON.parse(await file.text())); } catch { alert(t('alert.backup.error')); }
   e.target.value = '';
 });
 
@@ -1275,7 +1309,7 @@ document.getElementById('btn-restore-paste-confirm').addEventListener('click', a
     document.getElementById('modal-restore').classList.add('hidden');
     document.getElementById('restore-paste-input').value = '';
   } catch {
-    alert('Invalid JSON — check that you pasted the full backup text.');
+    alert(t('alert.json.error'));
   }
 });
 
@@ -1294,7 +1328,7 @@ async function importBackup(json) {
   } else if (json?.version === 1 && Array.isArray(json.cards)) {
     // v1 — legacy Cloudflare app backup; cards have ownerToken, no nsec/npub
     // We import fields + AES keys and generate fresh Nostr keypairs
-    if (confirm('This is a legacy backup (v1). We will import your contact data and generate new Nostr identities.\n\nNote: old share links (with ?id=...&tok=...) will NOT work with the new app.')) {
+    if (confirm(t('dialog.v1import.confirm'))) {
       fieldsMap    = (json.fields && typeof json.fields === 'object') ? json.fields : {};
       linkPayloads = Array.isArray(json.savedLinks) ? json.savedLinks : [];
       let imported = 0;
@@ -1306,7 +1340,7 @@ async function importBackup(json) {
           imported++;
         } catch {}
       }
-      alert(`Imported ${imported} card${imported !== 1 ? 's' : ''}. Share new links from the editor.`);
+      alert(t('alert.import.v1', { n: imported, s: imported !== 1 ? 's' : '' }));
     }
     linkPayloads = Array.isArray(json.savedLinks) ? json.savedLinks : [];
   } else if (Array.isArray(json)) {
@@ -1314,7 +1348,7 @@ async function importBackup(json) {
   } else if (json?.id && json?.nsec && json?.key) {
     cardPayloads = [json];
   } else {
-    alert('Unrecognised format. Make sure you are pasting a valid nostr-vcard backup.');
+    alert(t('alert.unknown.format'));
     return;
   }
 
@@ -1354,7 +1388,7 @@ async function importBackup(json) {
     if (!found) {
       // Card not on relay — offer re-publish if we have fields
       if (fieldsMap[payload.id]) {
-        const shouldRepublish = confirm(`Card "${payload.label || payload.id}" was not found on the relay. Re-publish it now?`);
+        const shouldRepublish = confirm(t('dialog.republish.confirm', { label: payload.label || payload.id }));
         if (shouldRepublish) {
           try {
             const aesKey    = await importCardKey(payload.key);
@@ -1393,8 +1427,8 @@ async function importBackup(json) {
     }
   }
 
-  const linksPart = linksAdded > 0 ? `, ${linksAdded} saved link${linksAdded !== 1 ? 's' : ''} imported` : '';
-  alert(`Restore complete: ${added} card${added !== 1 ? 's' : ''} added, ${skipped} skipped (already present), ${failed} failed${linksPart}.`);
+  const linksPart = linksAdded > 0 ? t('alert.links.imported', { n: linksAdded, s: linksAdded !== 1 ? 's' : '' }) : '';
+  alert(t('alert.restore.done', { added, s: added !== 1 ? 's' : '', skipped, failed, links: linksPart }));
 
   const cards = getCards();
   if (cards.length > 0) { showCardList(); } else { showSetup(); }
@@ -1404,13 +1438,13 @@ async function importBackup(json) {
 // Dynamic field add buttons
 // ---------------------------------------------------------------------------
 
-document.getElementById('btn-add-tel').addEventListener('click', () => addDynamicField('tel-list', 'tel', '+46 70 000 00 00'));
-document.getElementById('btn-add-email').addEventListener('click', () => addDynamicField('email-list', 'email', 'alice@example.com'));
-document.getElementById('btn-add-org').addEventListener('click', () => addDynamicField('org-list', 'org', 'Acme Corp'));
-document.getElementById('btn-add-title').addEventListener('click', () => addDynamicField('title-list', 'title', 'Engineer'));
-document.getElementById('btn-add-url').addEventListener('click', () => addDynamicField('url-list', 'url', 'https://example.com'));
+document.getElementById('btn-add-tel').addEventListener('click', () => addDynamicField('tel-list', 'tel', t('editor.tel.placeholder')));
+document.getElementById('btn-add-email').addEventListener('click', () => addDynamicField('email-list', 'email', t('editor.email.placeholder')));
+document.getElementById('btn-add-org').addEventListener('click', () => addDynamicField('org-list', 'org', t('editor.org.placeholder')));
+document.getElementById('btn-add-title').addEventListener('click', () => addDynamicField('title-list', 'title', t('editor.jobtitle.placeholder')));
+document.getElementById('btn-add-url').addEventListener('click', () => addDynamicField('url-list', 'url', t('editor.url.placeholder')));
 document.getElementById('btn-add-adr').addEventListener('click', () => addAdrField());
-document.getElementById('btn-add-note').addEventListener('click', () => addDynamicField('note-list', 'note', 'Optional note visible to recipients'));
+document.getElementById('btn-add-note').addEventListener('click', () => addDynamicField('note-list', 'note', t('editor.note.placeholder')));
 
 // ---------------------------------------------------------------------------
 // QR code helper
