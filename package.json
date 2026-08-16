@@ -4,18 +4,20 @@
   "description": "Zero-knowledge, client-side encrypted vCard sharing via Nostr relays",
   "private": true,
   "dependencies": {
-    "nostr-tools": "^2.0.0"
+    "nostr-tools": "2.23.9"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "wrangler": "^4.85.0"
   },
   "scripts": {
     "dev": "npx --yes serve public -l 8788 --no-clipboard",
+    "build:vendor": "esbuild vendor-entry.js --bundle --format=esm --minify --outfile=public/vendor/nostr-tools.js",
     "deploy": "wrangler pages deploy public --project-name nostr-vcard"
   },
   "license": "MIT",
   "notes": [
-    "Runtime imports use CDN (https://esm.sh/@nostr/tools@^2/) — no build step required.",
+    "nostr-tools is self-hosted in public/vendor/nostr-tools.js (pinned, bundled via `npm run build:vendor`) — no CDN at runtime.",
     "Add a bundler and switch imports to bare specifiers if a build step is desired later.",
     "qrcode.js is MIT-licensed (Copyright (c) 2009 Kazuhiko Arase).",
     "crypto.js and vcard.js are ported from the companion e2e-vcard-sharing project."

@@ -306,20 +306,5 @@
 
   <script src="qrcode.js"></script>
   <script type="module" src="app.js"></script>
-  <script>
-    // Surface module-load failures in the page rather than leaving it blank
-    window.addEventListener('error', e => {
-      if (e.filename && e.filename.includes('esm.sh')) {
-        document.body.innerHTML = `
-          <div style="font-family:sans-serif;padding:40px;max-width:520px;margin:auto">
-            <h2>⚠️ Could not load Nostr library</h2>
-            <p>Failed to fetch <code>${e.filename}</code> from the CDN.</p>
-            <p style="margin-top:12px">Check your internet connection and reload the page.</p>
-            <p style="margin-top:8px;font-size:13px;color:#666">Error: ${e.message}</p>
-            <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;cursor:pointer">Reload</button>
-          </div>`;
-      }
-    });
-  </script>
 </body>
 </html>

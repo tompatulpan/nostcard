@@ -187,6 +187,9 @@
   "dl.saved": "✓ Saved to your Saved Cards.",
   "dl.saved.hint": "Reopen from Saved Cards anytime to always see the latest details.",
   "dl.no.saved": "No data saved on this device.",
+  "dl.confirm.heading": "Download contact?",
+  "dl.confirm.body": "This saves {{fn}} as a contact file (.vcf) on this device. Avoid downloading on shared or public computers.",
+  "dl.confirm.btn": "⬇️ Download contact",
 
   "error.invalidLink.title": "Invalid link",
   "error.invalidLink.missingParams": "This link is missing required parameters. Make sure you copied the full URL including the #fragment.",

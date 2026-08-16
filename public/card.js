@@ -13,7 +13,7 @@
  *  - The AES key lives only in location.hash — never sent to any server
  *  - All user data rendered via textContent (never innerHTML with user data)
  *  - Anchor hrefs validated to safe schemes only
- *  - e2e:trusted:<id> TTL: 30 days (stored as { ok: true, expires: <unix ms> })
+ *  - e2e:trusted:<pubkey>:<cardId> TTL: 30 days (stored as { ok: true, expires: <unix ms> })
  */
 
 import { fragmentToKey, decryptVCard } from './crypto.js';
@@ -94,19 +94,27 @@ async function init() {
 
   const fields = parseVCard(vcardText);
 
-  // ?dl=1 — auto-download mode: skip trust gate, immediately trigger .vcf download
+  // Trust is keyed by pubkey:cardId so a different owner reusing a card ID
+  // cannot inherit a previously granted trust flag.
+  const trustId = `${pubkey}:${cardId}`;
+
+  // ?dl=1 — auto-download mode; only downloads without prompt on trusted devices
   if (params.get('dl') === '1') {
-    downloadVcf(vcardText, fields.fn);
     const cleanParams = new URLSearchParams(location.search);
     cleanParams.delete('dl');
     const cleanUrl = `${location.origin}${location.pathname}?${cleanParams}${location.hash}`;
-    showDownloadConfirmation(fields.fn, cardId, cleanUrl);
+    if (getTrust(trustId)) {
+      downloadVcf(vcardText, fields.fn);
+      showDownloadConfirmation(fields.fn, trustId, cleanUrl);
+    } else {
+      showDownloadGate(fields.fn, trustId, cleanUrl, vcardText);
+    }
     return;
   }
 
   // Always show the trust gate — owner preview is handled by the inline viewer
   // in app.js and never navigates to card.html, so no mode param is honoured here.
-  showTrustGate(cardId, fields, vcardText);
+  showTrustGate(trustId, fields, vcardText);
 }
 
 // ---------------------------------------------------------------------------
@@ -115,13 +123,13 @@ async function init() {
 
 const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-function getTrust(cardId) {
+function getTrust(trustId) {
   try {
-    const raw = localStorage.getItem(`e2e:trusted:${cardId}`);
+    const raw = localStorage.getItem(`e2e:trusted:${trustId}`);
     if (!raw) return false;
     const data = JSON.parse(raw);
     if (!data || !data.ok || Date.now() > data.expires) {
-      localStorage.removeItem(`e2e:trusted:${cardId}`);
+      localStorage.removeItem(`e2e:trusted:${trustId}`);
       return false;
     }
     return true;
@@ -130,17 +138,17 @@ function getTrust(cardId) {
   }
 }
 
-function setTrust(cardId) {
+function setTrust(trustId) {
   try {
     localStorage.setItem(
-      `e2e:trusted:${cardId}`,
+      `e2e:trusted:${trustId}`,
       JSON.stringify({ ok: true, expires: Date.now() + TRUST_TTL_MS })
     );
   } catch { /* storage blocked */ }
 }
 
-function showTrustGate(cardId, fields, vcardText) {
-  if (getTrust(cardId)) {
+function showTrustGate(trustId, fields, vcardText) {
+  if (getTrust(trustId)) {
     // Returning trusted visitor — skip the gate
     renderCard(fields, vcardText, true, false);
     return;
@@ -150,7 +158,7 @@ function showTrustGate(cardId, fields, vcardText) {
   document.getElementById('screen-trust').classList.remove('hidden');
 
   document.getElementById('btn-trusted').addEventListener('click', () => {
-    setTrust(cardId);
+    setTrust(trustId);
     document.getElementById('screen-trust').classList.add('hidden');
     renderCard(fields, vcardText, true, false);
   });
@@ -382,7 +390,45 @@ function fieldRow(icon, type, text, href) {
 // Auto-download confirmation screen (?dl=1 mode)
 // ---------------------------------------------------------------------------
 
-function showDownloadConfirmation(fn, cardId, cleanUrl) {
+// Shown when ?dl=1 is opened on a device not yet trusted — requires an
+// explicit click before the .vcf is written to disk.
+function showDownloadGate(fn, trustId, cleanUrl, vcardText) {
+  document.getElementById('screen-loading').classList.add('hidden');
+
+  const panel = document.createElement('div');
+  panel.className = 'card-panel centered';
+
+  const icon = document.createElement('div');
+  icon.style.fontSize = '3rem';
+  icon.textContent = '⬇️';
+
+  const heading = document.createElement('h2');
+  heading.textContent = t('dl.confirm.heading');
+
+  const p = document.createElement('p');
+  p.className = 'muted';
+  p.textContent = t('dl.confirm.body', { fn: fn || t('cv.contact.fallback') });
+
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-primary btn-lg';
+  btn.textContent = t('dl.confirm.btn');
+  btn.addEventListener('click', () => {
+    downloadVcf(vcardText, fn);
+    showDownloadConfirmation(fn, trustId, cleanUrl);
+  });
+
+  panel.appendChild(icon);
+  panel.appendChild(heading);
+  panel.appendChild(p);
+  panel.appendChild(btn);
+
+  const section = document.getElementById('screen-card');
+  section.innerHTML = '';
+  section.appendChild(panel);
+  section.classList.remove('hidden');
+}
+
+function showDownloadConfirmation(fn, trustId, cleanUrl) {
   document.getElementById('screen-loading').classList.add('hidden');
 
   const panel = document.createElement('div');
@@ -416,7 +462,7 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
   };
 
   // Trust / save prompt — only when device is not yet trusted for this card
-  if (!getTrust(cardId)) {
+  if (!getTrust(trustId)) {
     const trustHeading = document.createElement('p');
     trustHeading.style.cssText = 'margin-top:1.5rem;font-weight:600';
     trustHeading.textContent = t('dl.save.prompt');
@@ -449,7 +495,7 @@ function showDownloadConfirmation(fn, cardId, cleanUrl) {
     };
 
     yesBtn.addEventListener('click', () => {
-      setTrust(cardId);
+      setTrust(trustId);
       saveLink(fn);
       replaceChoices(t('dl.saved'), t('dl.saved.hint'));
     });

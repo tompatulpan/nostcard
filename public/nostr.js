@@ -2,7 +2,7 @@
  * nostr.js — Nostr protocol layer for nostr-vcard
  *
  * Handles keypair generation, event publishing, fetching, and naddr encoding.
- * All relay I/O is done via nostr-tools SimplePool (CDN import from esm.sh).
+ * All relay I/O is done via nostr-tools SimplePool (self-hosted bundle in vendor/).
  *
  * Card events use NIP-33 (addressable replaceable events, kind 30402).
  * Deletion uses NIP-09 (kind 5).
@@ -14,12 +14,9 @@
  *   - Relay URLs are validated as wss:// (or ws:// in dev) before use.
  */
 
-import { generateSecretKey, getPublicKey, finalizeEvent }
-  from 'https://esm.sh/nostr-tools@2.23.9/pure';
-import { SimplePool }
-  from 'https://esm.sh/nostr-tools@2.23.9/pool';
-import * as nip19
-  from 'https://esm.sh/nostr-tools@2.23.9/nip19';
+// Self-hosted bundle (nostr-tools 2.23.9) — rebuild with `npm run build:vendor`
+import { generateSecretKey, getPublicKey, finalizeEvent, SimplePool, nip19 }
+  from './vendor/nostr-tools.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -50,6 +47,16 @@ export function generateKeypair() {
   const nsec = generateSecretKey();           // Uint8Array(32)
   const npub = getPublicKey(nsec);            // hex string
   return { nsec, npub };
+}
+
+/**
+ * Derive the hex public key from a raw 32-byte private key.
+ * Used on backup import so the stored npub is never trusted from the file.
+ * @param {Uint8Array} nsec
+ * @returns {string} hex public key
+ */
+export function derivePublicKey(nsec) {
+  return getPublicKey(nsec);
 }
 
 // ---------------------------------------------------------------------------

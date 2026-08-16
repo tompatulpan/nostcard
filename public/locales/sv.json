@@ -187,6 +187,9 @@
   "dl.saved": "✓ Sparad i dina Sparade kort.",
   "dl.saved.hint": "Öppna igen från Sparade kort när som helst för att alltid se de senaste uppgifterna.",
   "dl.no.saved": "Inga data sparade på den här enheten.",
+  "dl.confirm.heading": "Ladda ner kontakt?",
+  "dl.confirm.body": "Detta sparar {{fn}} som en kontaktfil (.vcf) på den här enheten. Undvik att ladda ner på delade eller offentliga datorer.",
+  "dl.confirm.btn": "⬇️ Ladda ner kontakt",
 
   "error.invalidLink.title": "Ogiltig länk",
   "error.invalidLink.missingParams": "Den här länken saknar obligatoriska parametrar. Se till att du kopierade hela URL:en inklusive #fragmentet.",

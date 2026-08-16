@@ -64,7 +64,8 @@ function htmlEscape(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 function spinnerHtml() {
@@ -315,9 +316,10 @@ btnCheckDel.addEventListener('click', runStep3);
 
 (function autofill() {
   try {
+    // searchParams.get() already decodes — a second decode would corrupt '%' sequences
     const param = new URL(location.href).searchParams.get('url');
     if (param) {
-      urlInput.value = decodeURIComponent(param);
+      urlInput.value = param;
       btnRun.click();
     }
   } catch {

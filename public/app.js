@@ -22,7 +22,7 @@
 
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
-import { generateKeypair, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, isValidRelayUrl, DEFAULT_RELAYS } from './nostr.js';
+import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, isValidRelayUrl, DEFAULT_RELAYS } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations } from './i18n.js';
 
 // ---------------------------------------------------------------------------
@@ -707,7 +707,8 @@ document.getElementById('btn-rotate-key').addEventListener('click', async () => 
     const cards = getCards();
     const idx   = cards.findIndex(c => c.id === activeCardId);
     if (idx >= 0) { cards[idx].key = newKeyFrag; saveCards(cards); }
-    localStorage.removeItem(`e2e:trusted:${activeCardId}`);
+    localStorage.removeItem(`e2e:trusted:${activeCardId}`); // legacy key format
+    localStorage.removeItem(`e2e:trusted:${card.npub}:${activeCardId}`);
 
     const allOk   = results.every(r => r.ok);
     const okCount = results.filter(r => r.ok).length;
@@ -877,7 +878,8 @@ async function showCardViewScreen(url, mode) {
   if (mode === 'owner-preview') {
     renderCvCard(fields, vcardText, true, true);
   } else {
-    showCvTrustGate(cardId, fields, vcardText, url);
+    // Trust keyed by pubkey:cardId — see card.js
+    showCvTrustGate(`${pubkey}:${cardId}`, fields, vcardText, url);
   }
 }
 
@@ -890,24 +892,24 @@ function showCvError(title, detail) {
 
 const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-function getCvTrust(cardId) {
+function getCvTrust(trustId) {
   try {
-    const raw = localStorage.getItem(`e2e:trusted:${cardId}`);
+    const raw = localStorage.getItem(`e2e:trusted:${trustId}`);
     if (!raw) return false;
     const data = JSON.parse(raw);
-    if (!data?.ok || Date.now() > data.expires) { localStorage.removeItem(`e2e:trusted:${cardId}`); return false; }
+    if (!data?.ok || Date.now() > data.expires) { localStorage.removeItem(`e2e:trusted:${trustId}`); return false; }
     return true;
   } catch { return false; }
 }
 
-function setCvTrust(cardId) {
+function setCvTrust(trustId) {
   try {
-    localStorage.setItem(`e2e:trusted:${cardId}`, JSON.stringify({ ok: true, expires: Date.now() + TRUST_TTL_MS }));
+    localStorage.setItem(`e2e:trusted:${trustId}`, JSON.stringify({ ok: true, expires: Date.now() + TRUST_TTL_MS }));
   } catch {}
 }
 
-function showCvTrustGate(cardId, fields, vcardText, shareUrl) {
-  if (getCvTrust(cardId)) {
+function showCvTrustGate(trustId, fields, vcardText, shareUrl) {
+  if (getCvTrust(trustId)) {
     autoSaveLink(shareUrl, fields.fn);
     renderCvCard(fields, vcardText, true, false);
     return;
@@ -916,7 +918,7 @@ function showCvTrustGate(cardId, fields, vcardText, shareUrl) {
   document.getElementById('cv-screen-trust').classList.remove('hidden');
 
   document.getElementById('cv-btn-trusted').onclick = () => {
-    setCvTrust(cardId);
+    setCvTrust(trustId);
     autoSaveLink(shareUrl, fields.fn);
     document.getElementById('cv-screen-trust').classList.add('hidden');
     renderCvCard(fields, vcardText, true, false);
@@ -1362,10 +1364,18 @@ async function importBackup(json) {
     // Validate nsec looks like 64-char hex
     if (!/^[0-9a-f]{64}$/i.test(payload.nsec)) { failed++; continue; }
 
+    // Derive npub from nsec — never trust the value stored in the file
+    let npub;
+    try { npub = derivePublicKey(hexToBytes(payload.nsec)); } catch { failed++; continue; }
+
+    // Keep only valid wss:// relay URLs; fall back to defaults
+    const validRelays = Array.isArray(payload.relays) ? payload.relays.filter(isValidRelayUrl) : [];
+    const relayList   = validRelays.length > 0 ? validRelays : [...DEFAULT_RELAYS];
+
     // Verify card exists on relays
     let found = false;
     try {
-      const event = await fetchCard(payload.relays || DEFAULT_RELAYS, payload.npub, payload.id);
+      const event = await fetchCard(relayList, npub, payload.id);
       found = !!event;
     } catch {}
 
@@ -1374,9 +1384,9 @@ async function importBackup(json) {
       id:     payload.id,
       label:  payload.label || 'Restored Card',
       nsec:   payload.nsec,
-      npub:   payload.npub,
+      npub,
       key:    payload.key,
-      relays: payload.relays || DEFAULT_RELAYS,
+      relays: relayList,
     });
     saveCards(cards);
     existingIds.add(payload.id);
@@ -1396,7 +1406,7 @@ async function importBackup(json) {
             const fields    = fieldsMap[payload.id];
             const vcardText = buildVCard(fields);
             const blob      = await encryptVCard(vcardText, aesKey);
-            const results   = await publishCard(payload.relays || DEFAULT_RELAYS, nsecBytes, payload.id, blob, payload.label);
+            const results   = await publishCard(relayList, nsecBytes, payload.id, blob, payload.label);
             localStorage.setItem(`e2e:relay-status:${payload.id}`, JSON.stringify(results));
           } catch {}
         }
