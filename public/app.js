@@ -1252,6 +1252,17 @@ function renderSavedLinks() {
 // ---------------------------------------------------------------------------
 
 document.getElementById('btn-backup').addEventListener('click', exportBackup);
+document.getElementById('btn-transfer-export').addEventListener('click', exportTransfer);
+
+function exportTransfer() {
+  const transfer = {
+    version: 2,
+    mode: 'transfer',
+    exported: new Date().toISOString(),
+    cards: getCards(),
+  };
+  downloadJson(transfer, `nostr-vcard-transfer-${transfer.exported.slice(0, 10)}.json`);
+}
 
 function exportBackup() {
   const cards      = getCards();
@@ -1268,14 +1279,18 @@ function exportBackup() {
     savedLinks,
     fields,
   };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  downloadJson(backup, `nostr-vcard-backup-${backup.exported.slice(0, 10)}.json`);
+  for (const card of cards) localStorage.setItem(`e2e:exported:${card.id}`, '1');
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `nostr-vcard-backup-${backup.exported.slice(0, 10)}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-  for (const card of cards) localStorage.setItem(`e2e:exported:${card.id}`, '1');
 }
 
 // File restore (setup screen)

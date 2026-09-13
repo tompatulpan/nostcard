@@ -97,8 +97,7 @@ function _detectLang() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (SUPPORTED_LANGS.includes(stored)) return stored;
   } catch {}
-  const nav = (navigator.language || '').slice(0, 2).toLowerCase();
-  return SUPPORTED_LANGS.includes(nav) ? nav : 'sv';
+  return 'sv';
 }
 
 async function _loadLocale(lang) {

@@ -26,6 +26,8 @@
   "setup.btn.paste": "Paste backup",
 
   "cards.heading": "My Cards",
+  "cards.btn.transfer": "Transfer",
+  "cards.btn.transfer.title": "Export card credentials only for another browser",
   "cards.btn.backup": "Backup",
   "cards.btn.backup.title": "Export a backup of all your cards and saved links",
   "cards.btn.restore": "Restore",

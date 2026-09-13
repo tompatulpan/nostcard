@@ -26,6 +26,8 @@
   "setup.btn.paste": "Klistra in säkerhetskopia",
 
   "cards.heading": "Mina kort",
+  "cards.btn.transfer": "Flytta",
+  "cards.btn.transfer.title": "Exportera endast kortens inloggningsuppgifter till en annan webbläsare",
   "cards.btn.backup": "Säkerhetskopiera",
   "cards.btn.backup.title": "Exportera en säkerhetskopia av alla dina kort och sparade länkar",
   "cards.btn.restore": "Återställ",
