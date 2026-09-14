@@ -1178,6 +1178,10 @@ document.getElementById('btn-go-saved').addEventListener('click', () => {
   showSavedLinks();
 });
 
+document.getElementById('btn-go-saved-setup').addEventListener('click', () => {
+  showSavedLinks();
+});
+
 document.getElementById('btn-clear-all').addEventListener('click', () => {
   if (!confirm(t('dialog.logout.confirm'))) return;
   const cards = getCards();
