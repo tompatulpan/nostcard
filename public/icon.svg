@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <!-- shackle: white ring (outer circle minus inner circle), lower half hidden by lock body -->
+  <circle cx="256" cy="215" r="85" fill="#ffffff"/>
+  <circle cx="256" cy="215" r="55" fill="#2563eb"/>
+  <!-- lock body -->
+  <rect x="146" y="228" width="220" height="176" rx="28" fill="#ffffff"/>
+  <!-- keyhole -->
+  <circle cx="256" cy="296" r="26" fill="#2563eb"/>
+  <rect x="243" y="308" width="26" height="58" rx="13" fill="#2563eb"/>
+</svg>
+
+
