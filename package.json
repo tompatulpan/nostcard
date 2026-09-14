@@ -21,5 +21,8 @@
     "Add a bundler and switch imports to bare specifiers if a build step is desired later.",
     "qrcode.js is MIT-licensed (Copyright (c) 2009 Kazuhiko Arase).",
     "crypto.js and vcard.js are ported from the companion e2e-vcard-sharing project."
-  ]
+  ],
+  "volta": {
+    "node": "22.23.2"
+  }
 }

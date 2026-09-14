@@ -34,7 +34,7 @@ npx wrangler login
 # Create the Pages project (once)
 npx wrangler pages project create nostr-vcard
 
-# Deploy (every time)
+# Deploy or update (every time)
 npm run deploy
 ```
 
