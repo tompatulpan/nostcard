@@ -1362,7 +1362,7 @@ document.getElementById('btn-restore-paste-cancel').addEventListener('click', ()
   document.getElementById('modal-restore').classList.add('hidden');
 });
 
-async function importBackup(json) {
+async function importBackup(json, { navigate = true } = {}) {
   let cardPayloads = [], linkPayloads = [], fieldsMap = {};
 
   if (json?.version === 2 && Array.isArray(json.cards)) {
@@ -1465,8 +1465,8 @@ async function importBackup(json) {
   let linksAdded = 0;
   for (const item of linkPayloads) {
     if (!item?.url?.trim() || existingUrls.has(item.url)) continue;
-    // Only accept https:// URLs to prevent arbitrary-scheme injection
-    if (!item.url.startsWith('https://')) continue;
+    // Reject arbitrary-scheme injection; http:// only allowed on localhost (dev)
+    if (!isSafeLinkUrl(item.url)) continue;
     existingLinks.push({ url: item.url, label: item.label || 'Contact', savedAt: item.savedAt || new Date().toISOString() });
     existingUrls.add(item.url);
     linksAdded++;
@@ -1482,6 +1482,9 @@ async function importBackup(json) {
 
   const linksPart = linksAdded > 0 ? t('alert.links.imported', { n: linksAdded, s: linksAdded !== 1 ? 's' : '' }) : '';
   alert(t('alert.restore.done', { added, s: added !== 1 ? 's' : '', skipped, failed, links: linksPart }));
+
+  // Sync pulls stay on the current screen (e.g. Saved Cards) instead of jumping to My Cards
+  if (!navigate) return;
 
   const cards = getCards();
   if (cards.length > 0) { showCardList(); } else { showSetup(); }
@@ -1500,6 +1503,14 @@ function buildSyncPayload() {
     if (cached) { try { fields[card.id] = JSON.parse(cached); } catch {} }
   }
   return { version: 2, exported: new Date().toISOString(), cards, savedLinks, fields };
+}
+
+/** Re-render whichever list screen (My Cards / Saved Cards) is currently visible, without navigating */
+function refreshVisibleList() {
+  const screenCards = document.getElementById('screen-cards');
+  const screenSaved = document.getElementById('screen-saved');
+  if (screenCards && !screenCards.classList.contains('hidden')) renderCardList();
+  if (screenSaved && !screenSaved.classList.contains('hidden')) renderSavedLinks();
 }
 
 function setSyncStatus(msg, isError) {
@@ -1525,6 +1536,8 @@ function openSyncModal() {
 }
 
 document.getElementById('btn-open-sync').addEventListener('click', openSyncModal);
+document.getElementById('btn-open-sync-setup').addEventListener('click', openSyncModal);
+document.getElementById('btn-open-sync-saved').addEventListener('click', openSyncModal);
 
 document.getElementById('btn-sync-close').addEventListener('click', () => {
   document.getElementById('modal-sync').classList.add('hidden');
@@ -1586,7 +1599,8 @@ document.getElementById('btn-sync-join').addEventListener('click', async () => {
     if (!pulled) {
       setSyncStatus(t('sync.status.nothingFound'), true);
     } else {
-      await importBackup(pulled.payload);
+      await importBackup(pulled.payload, { navigate: false });
+      refreshVisibleList();
       saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
     }
 
@@ -1638,7 +1652,8 @@ document.getElementById('btn-sync-pull').addEventListener('click', async () => {
     if (!pulled) {
       setSyncStatus(t('sync.status.nothingFound'), true);
     } else {
-      await importBackup(pulled.payload);
+      await importBackup(pulled.payload, { navigate: false });
+      refreshVisibleList();
       saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
       setSyncStatus(t('sync.status.pulled'), false);
     }
@@ -1786,6 +1801,15 @@ function base64urlToBytes(str) {
 
 function bytesToBase64url(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+/** https:// always allowed; http:// only on localhost (dev), to reject arbitrary-scheme injection */
+function isSafeLinkUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:') return true;
+    return u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
+  } catch { return false; }
 }
 
 function downloadVcf(vcardText, fn) {
