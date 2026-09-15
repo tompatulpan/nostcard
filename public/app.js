@@ -6,6 +6,8 @@
  *   e2e:fields:<id>    per-card cached vCard fields
  *   e2e:saved-links    JSON array of { url, label, savedAt }
  *   e2e:exported:<id>  "1" — marks a card as backed up
+ *   e2e:sync-identity  JSON { syncNsecHex, syncNpub, syncKeyRaw (base64url), createdAt } — cached passphrase-derived sync identity
+ *   e2e:sync-meta      JSON { lastPushedAt, lastPulledAt }
  *
  * Each card credential object:
  *   { id, label, nsec, npub, key, relays }
@@ -24,6 +26,7 @@ import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, 
 import { buildVCard, parseVCard } from './vcard.js';
 import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, isValidRelayUrl, DEFAULT_RELAYS } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations } from './i18n.js';
+import { generateSyncPassphrase, deriveSyncIdentity, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 
 // ---------------------------------------------------------------------------
 // State
@@ -53,6 +56,27 @@ function getSavedLinks() {
 
 function saveSavedLinks(links) {
   localStorage.setItem('e2e:saved-links', JSON.stringify(links));
+}
+
+function getSyncIdentity() {
+  try { return JSON.parse(localStorage.getItem('e2e:sync-identity') || 'null'); } catch { return null; }
+}
+
+function saveSyncIdentity(identity) {
+  localStorage.setItem('e2e:sync-identity', JSON.stringify(identity));
+}
+
+function clearSyncIdentity() {
+  localStorage.removeItem('e2e:sync-identity');
+  localStorage.removeItem('e2e:sync-meta');
+}
+
+function getSyncMeta() {
+  try { return JSON.parse(localStorage.getItem('e2e:sync-meta') || '{}'); } catch { return {}; }
+}
+
+function saveSyncMeta(meta) {
+  localStorage.setItem('e2e:sync-meta', JSON.stringify(meta));
 }
 
 // ---------------------------------------------------------------------------
@@ -1464,6 +1488,194 @@ async function importBackup(json) {
 }
 
 // ---------------------------------------------------------------------------
+// Sync (cross-device, via passphrase-derived Nostr identity)
+// ---------------------------------------------------------------------------
+
+function buildSyncPayload() {
+  const cards      = getCards();
+  const savedLinks = getSavedLinks();
+  const fields     = {};
+  for (const card of cards) {
+    const cached = localStorage.getItem(`e2e:fields:${card.id}`);
+    if (cached) { try { fields[card.id] = JSON.parse(cached); } catch {} }
+  }
+  return { version: 2, exported: new Date().toISOString(), cards, savedLinks, fields };
+}
+
+function setSyncStatus(msg, isError) {
+  const el = document.getElementById('sync-status');
+  el.textContent = msg;
+  el.className   = isError ? 'status-msg error' : 'status-msg success';
+}
+
+function openSyncModal() {
+  const identity = getSyncIdentity();
+  document.getElementById('sync-setup-section').classList.toggle('hidden', !!identity);
+  document.getElementById('sync-passphrase-reveal').classList.add('hidden');
+  document.getElementById('sync-manage-section').classList.toggle('hidden', !identity);
+  if (identity) {
+    const meta = getSyncMeta();
+    const parts = [];
+    if (meta.lastPushedAt) parts.push(t('sync.status.lastPushed', { time: new Date(meta.lastPushedAt).toLocaleString() }));
+    if (meta.lastPulledAt) parts.push(t('sync.status.lastPulled', { time: new Date(meta.lastPulledAt).toLocaleString() }));
+    document.getElementById('sync-status').textContent = parts.join(' · ');
+    document.getElementById('sync-status').className   = 'status-msg';
+  }
+  document.getElementById('modal-sync').classList.remove('hidden');
+}
+
+document.getElementById('btn-open-sync').addEventListener('click', openSyncModal);
+
+document.getElementById('btn-sync-close').addEventListener('click', () => {
+  document.getElementById('modal-sync').classList.add('hidden');
+});
+
+document.getElementById('modal-sync').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+});
+
+async function setupSyncIdentity(passphrase) {
+  const { syncNsec, syncNpub, syncKeyRaw } = await deriveSyncIdentity(passphrase);
+  saveSyncIdentity({
+    syncNsecHex: bytesToHex(syncNsec),
+    syncNpub,
+    syncKeyRaw:  bytesToBase64url(syncKeyRaw),
+    createdAt:   new Date().toISOString(),
+  });
+  return { syncNsec, syncNpub, syncKeyRaw };
+}
+
+document.getElementById('btn-sync-generate').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-sync-generate');
+  btn.disabled = true;
+  try {
+    const passphrase = generateSyncPassphrase();
+    const { syncNsec, syncKeyRaw } = await setupSyncIdentity(passphrase);
+
+    document.getElementById('sync-passphrase-value').value = passphrase;
+    document.getElementById('sync-passphrase-reveal').classList.remove('hidden');
+    const qrContainer = document.getElementById('sync-qr-container');
+    qrContainer.innerHTML = '';
+    renderQR(qrContainer, passphrase);
+
+    const results = await pushSyncData(DEFAULT_RELAYS, syncNsec, syncKeyRaw, buildSyncPayload());
+    saveSyncMeta({ ...getSyncMeta(), lastPushedAt: new Date().toISOString() });
+
+    document.getElementById('sync-setup-section').classList.add('hidden');
+    document.getElementById('sync-manage-section').classList.remove('hidden');
+    const allOk = results.every(r => r.ok);
+    setSyncStatus(allOk ? t('sync.status.pushed') : t('sync.status.pushed.partial'), !allOk);
+  } catch (err) {
+    alert(t('alert.sync.error', { error: err.message }));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-sync-join').addEventListener('click', async () => {
+  const input = document.getElementById('sync-join-passphrase-input');
+  const passphrase = input.value.trim();
+  if (!passphrase) return;
+  const btn = document.getElementById('btn-sync-join');
+  btn.disabled = true;
+  try {
+    const { syncNpub, syncKeyRaw } = await setupSyncIdentity(passphrase);
+    input.value = '';
+
+    const pulled = await pullSyncData(DEFAULT_RELAYS, syncNpub, syncKeyRaw);
+    if (!pulled) {
+      setSyncStatus(t('sync.status.nothingFound'), true);
+    } else {
+      await importBackup(pulled.payload);
+      saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
+    }
+
+    document.getElementById('sync-setup-section').classList.add('hidden');
+    document.getElementById('sync-manage-section').classList.remove('hidden');
+    if (pulled) setSyncStatus(t('sync.status.pulled'), false);
+  } catch (err) {
+    alert(t('alert.sync.error', { error: err.message }));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-sync-copy-passphrase').addEventListener('click', async () => {
+  const value = document.getElementById('sync-passphrase-value').value;
+  try { await navigator.clipboard.writeText(value); } catch {}
+  const btn = document.getElementById('btn-sync-copy-passphrase');
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+});
+
+document.getElementById('btn-sync-push').addEventListener('click', async () => {
+  const identity = getSyncIdentity();
+  if (!identity) return;
+  const btn = document.getElementById('btn-sync-push');
+  btn.disabled = true;
+  try {
+    const syncNsec   = hexToBytes(identity.syncNsecHex);
+    const syncKeyRaw = base64urlToBytes(identity.syncKeyRaw);
+    const results    = await pushSyncData(DEFAULT_RELAYS, syncNsec, syncKeyRaw, buildSyncPayload());
+    saveSyncMeta({ ...getSyncMeta(), lastPushedAt: new Date().toISOString() });
+    const allOk = results.every(r => r.ok);
+    setSyncStatus(allOk ? t('sync.status.pushed') : t('sync.status.pushed.partial'), !allOk);
+  } catch (err) {
+    setSyncStatus(t('alert.sync.error', { error: err.message }), true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-sync-pull').addEventListener('click', async () => {
+  const identity = getSyncIdentity();
+  if (!identity) return;
+  const btn = document.getElementById('btn-sync-pull');
+  btn.disabled = true;
+  try {
+    const syncKeyRaw = base64urlToBytes(identity.syncKeyRaw);
+    const pulled = await pullSyncData(DEFAULT_RELAYS, identity.syncNpub, syncKeyRaw);
+    if (!pulled) {
+      setSyncStatus(t('sync.status.nothingFound'), true);
+    } else {
+      await importBackup(pulled.payload);
+      saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
+      setSyncStatus(t('sync.status.pulled'), false);
+    }
+  } catch (err) {
+    setSyncStatus(t('alert.sync.error', { error: err.message }), true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-sync-delete').addEventListener('click', async () => {
+  const identity = getSyncIdentity();
+  if (!identity) return;
+  if (!confirm(t('dialog.sync.delete.confirm'))) return;
+  const btn = document.getElementById('btn-sync-delete');
+  btn.disabled = true;
+  try {
+    await deleteSyncData(DEFAULT_RELAYS, hexToBytes(identity.syncNsecHex));
+    clearSyncIdentity();
+    document.getElementById('modal-sync').classList.add('hidden');
+    alert(t('alert.sync.deleted'));
+  } catch (err) {
+    setSyncStatus(t('alert.sync.error', { error: err.message }), true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-sync-rotate').addEventListener('click', async () => {
+  if (!confirm(t('dialog.sync.rotate.confirm'))) return;
+  clearSyncIdentity();
+  document.getElementById('sync-setup-section').classList.remove('hidden');
+  document.getElementById('sync-manage-section').classList.add('hidden');
+  document.getElementById('sync-passphrase-reveal').classList.add('hidden');
+});
+
+// ---------------------------------------------------------------------------
 // Dynamic field add buttons
 // ---------------------------------------------------------------------------
 
@@ -1570,6 +1782,10 @@ function base64urlToBytes(str) {
   const b64    = str.replace(/-/g, '+').replace(/_/g, '/');
   const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
   return Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+}
+
+function bytesToBase64url(bytes) {
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 function downloadVcf(vcardText, fn) {

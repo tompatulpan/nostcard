@@ -59,6 +59,7 @@
             <input id="restore-file-input-cards" type="file" accept=".json,application/json" style="display:none" />
           </label>
           <button id="btn-paste-restore-cards" class="btn btn-ghost" data-i18n="cards.btn.paste" data-i18n-title="cards.btn.paste.title" title="Paste backup JSON">Paste restore</button>
+          <button id="btn-open-sync" class="btn btn-ghost" data-i18n="sync.btn.open" data-i18n-title="sync.btn.open.title" title="Sync your cards across devices/browsers">Sync</button>
           <button id="btn-new-card"    class="btn btn-primary" data-i18n="cards.btn.new">+ New Card</button>
           <button id="btn-go-saved"    class="btn btn-teal" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
           <button id="btn-clear-all"   class="btn btn-danger btn-sm" data-i18n="cards.btn.logout" data-i18n-title="cards.btn.logout.title" title="Remove all local keys and credentials">Log out</button>
@@ -229,6 +230,52 @@
         <div class="modal-actions">
           <button id="btn-save-qr"     class="btn btn-ghost btn-sm" data-i18n="btn.save.qr">Save QR as PNG</button>
           <button id="btn-modal-close" class="btn btn-ghost" data-i18n="btn.close">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Sync modal ──────────────────────────────────────────────────── -->
+    <div id="modal-sync" class="modal-overlay hidden">
+      <div class="modal">
+        <h3 data-i18n="sync.modal.heading">Sync across devices</h3>
+        <p class="muted" data-i18n="sync.modal.body">A passphrase-derived key is used to publish an encrypted snapshot of your cards to your relays. Enter the same passphrase on another device/browser to pull it in — no account needed.</p>
+
+        <!-- Setup: no sync identity yet -->
+        <div id="sync-setup-section">
+          <div class="field-group">
+            <button id="btn-sync-generate" class="btn btn-primary" data-i18n="sync.btn.generate">Generate new passphrase</button>
+          </div>
+          <div class="setup-divider"><span data-i18n="setup.divider">or</span></div>
+          <div class="field-group">
+            <label data-i18n="sync.join.label">Already have a sync passphrase?</label>
+            <input id="sync-join-passphrase-input" type="text" placeholder="word-word-word-word-word-word" data-i18n-placeholder="sync.join.placeholder" />
+            <button id="btn-sync-join" class="btn btn-ghost" data-i18n="sync.btn.join">Pull with this passphrase</button>
+          </div>
+        </div>
+
+        <!-- Just-generated passphrase reveal (shown once) -->
+        <div id="sync-passphrase-reveal" class="hidden">
+          <p class="muted" data-i18n-html="sync.reveal.warning">⚠️ Save this passphrase now — it's shown only once. Anyone with it can read and overwrite your synced snapshot.</p>
+          <div class="share-url-box">
+            <input id="sync-passphrase-value" type="text" readonly />
+            <button id="btn-sync-copy-passphrase" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+          </div>
+          <div id="sync-qr-container" class="qr-container"></div>
+        </div>
+
+        <!-- Manage: sync identity already set up -->
+        <div id="sync-manage-section" class="hidden">
+          <p id="sync-status" class="status-msg"></p>
+          <div class="modal-actions">
+            <button id="btn-sync-push"   class="btn btn-primary" data-i18n="sync.btn.push">Push</button>
+            <button id="btn-sync-pull"   class="btn btn-ghost"   data-i18n="sync.btn.pull">Pull</button>
+            <button id="btn-sync-rotate" class="btn btn-ghost"   data-i18n="sync.btn.rotate" data-i18n-title="sync.btn.rotate.title" title="Generate a new passphrase; old data becomes unreachable">Rotate passphrase</button>
+            <button id="btn-sync-delete" class="btn btn-danger"  data-i18n="sync.btn.delete" data-i18n-title="sync.btn.delete.title" title="Best-effort delete of the synced snapshot from relays">Delete synced data</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-sync-close" class="btn btn-ghost" data-i18n="btn.close">Close</button>
         </div>
       </div>
     </div>

@@ -116,6 +116,64 @@ export function generateRandom(length) {
 }
 
 // ---------------------------------------------------------------------------
+// Sync identity derivation (passphrase → signing key + encryption key)
+// ---------------------------------------------------------------------------
+
+/** PBKDF2 iterations — high enough to resist offline brute force of the passphrase */
+const SYNC_PBKDF2_ITERATIONS = 210_000;
+
+/** Fixed salt: identity is fully determined by the passphrase, same on every device */
+const SYNC_SALT = 'nostr-vcard-sync-v1';
+
+/**
+ * Derive deterministic sync identity material from a passphrase. The same
+ * passphrase always yields the same bytes, so any device that knows the
+ * passphrase can reconstruct the identity used to locate and decrypt the
+ * same sync snapshot. Returned as raw bytes (not CryptoKey) so callers can
+ * cache them (e.g. in localStorage, alongside existing card credentials).
+ *
+ * @param {string} passphrase
+ * @returns {Promise<{ syncNsec: Uint8Array, syncKeyRaw: Uint8Array }>}
+ *   syncNsec is a raw 32-byte secp256k1 private key (for signing/locating the event);
+ *   syncKeyRaw is a raw 32-byte AES-256-GCM key (for encrypting/decrypting the payload).
+ */
+export async function deriveSyncSecrets(passphrase) {
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(passphrase),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+
+  // Domain-separate the two derived secrets by mixing a distinct label into the salt
+  const [nsecBits, aesBits] = await Promise.all([
+    crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: new TextEncoder().encode(SYNC_SALT + ':nsec'), iterations: SYNC_PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey,
+      256
+    ),
+    crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: new TextEncoder().encode(SYNC_SALT + ':aes'), iterations: SYNC_PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey,
+      256
+    ),
+  ]);
+
+  return { syncNsec: new Uint8Array(nsecBits), syncKeyRaw: new Uint8Array(aesBits) };
+}
+
+/**
+ * Import raw AES key bytes (from deriveSyncSecrets) as a usable CryptoKey.
+ * Extractable, matching how card AES keys are handled elsewhere in this app.
+ * @param {Uint8Array} rawKeyBytes
+ * @returns {Promise<CryptoKey>}
+ */
+export async function importSyncKey(rawKeyBytes) {
+  return crypto.subtle.importKey('raw', rawKeyBytes, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+}
+
+// ---------------------------------------------------------------------------
 // Internal base64 helpers
 // ---------------------------------------------------------------------------
 

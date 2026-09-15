@@ -31,6 +31,12 @@ export const DEFAULT_RELAYS = [
 /** NIP-33 addressable replaceable event kind for vCard blobs */
 const CARD_KIND = 30402;
 
+/** NIP-78 "application-specific data" kind used for the cross-device sync snapshot */
+export const SYNC_KIND = 30078;
+
+/** Fixed d-tag identifying the sync snapshot event (one per sync identity) */
+const SYNC_D_TAG = 'nostr-vcard-sync';
+
 /** Timeout for relay fetch operations (ms) */
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -163,6 +169,105 @@ export async function deleteCard(relays, nsec, cardId) {
   };
 
   const event = finalizeEvent(template, nsec);
+  const pool  = new SimplePool();
+
+  try {
+    await Promise.allSettled(relays.map(relay => pool.publish([relay], event)));
+  } finally {
+    pool.close(relays);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sync snapshot event (NIP-78, kind 30078)
+// ---------------------------------------------------------------------------
+
+/**
+ * Publish (or replace) the encrypted cross-device sync snapshot.
+ * Same replaceable-event semantics as publishCard: relays keep only the
+ * latest event per (pubkey, kind, d-tag), so re-publishing overwrites the old snapshot.
+ *
+ * @param {string[]}   relays         WebSocket relay URLs
+ * @param {Uint8Array} syncNsec       Sync identity's private key (derived from a passphrase)
+ * @param {string}     encryptedBlob  base64(IV[12] + AES-256-GCM ciphertext)
+ * @returns {Promise<Array<{relay: string, ok: boolean}>>}
+ */
+export async function publishSyncEvent(relays, syncNsec, encryptedBlob) {
+  const template = {
+    kind:       SYNC_KIND,
+    created_at: Math.floor(Date.now() / 1000),
+    tags:       [['d', SYNC_D_TAG]],
+    content:    encryptedBlob,
+  };
+
+  const event = finalizeEvent(template, syncNsec);
+  const pool  = new SimplePool();
+
+  try {
+    const publishPromises = relays.map(async relay => {
+      try {
+        await pool.publish([relay], event);
+        return { relay, ok: true };
+      } catch {
+        return { relay, ok: false };
+      }
+    });
+
+    const settled = await Promise.allSettled(publishPromises);
+    return settled.map(r =>
+      r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
+    );
+  } finally {
+    pool.close(relays);
+  }
+}
+
+/**
+ * Fetch the latest sync snapshot event for a given sync identity.
+ *
+ * @param {string[]} relays    WebSocket relay URLs
+ * @param {string}   syncNpub  Sync identity's public key (hex)
+ * @returns {Promise<{content: string, created_at: number}|null>}
+ */
+export async function fetchSyncEvent(relays, syncNpub) {
+  const pool = new SimplePool();
+
+  try {
+    const event = await Promise.race([
+      pool.get(relays, {
+        kinds:   [SYNC_KIND],
+        authors: [syncNpub],
+        '#d':    [SYNC_D_TAG],
+      }),
+      new Promise(resolve => setTimeout(() => resolve(null), FETCH_TIMEOUT_MS)),
+    ]);
+
+    if (!event) return null;
+    return { content: event.content, created_at: event.created_at };
+  } finally {
+    pool.close(relays);
+  }
+}
+
+/**
+ * Publish a NIP-09 deletion event for the sync snapshot.
+ * Deletion is best-effort — well-behaved relays will stop serving the event,
+ * but not all relays honour deletion requests.
+ *
+ * @param {string[]}   relays    WebSocket relay URLs
+ * @param {Uint8Array} syncNsec  Sync identity's private key
+ * @returns {Promise<void>}
+ */
+export async function deleteSyncEvent(relays, syncNsec) {
+  const syncNpub = getPublicKey(syncNsec);
+  const template = {
+    kind:       5,
+    created_at: Math.floor(Date.now() / 1000),
+    tags:       [['a', `${SYNC_KIND}:${syncNpub}:${SYNC_D_TAG}`]],
+    content:    'deleted',
+  };
+
+  const event = finalizeEvent(template, syncNsec);
   const pool  = new SimplePool();
 
   try {
