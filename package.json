@@ -20,7 +20,8 @@
     "nostr-tools is self-hosted in public/vendor/nostr-tools.js (pinned, bundled via `npm run build:vendor`) — no CDN at runtime.",
     "Add a bundler and switch imports to bare specifiers if a build step is desired later.",
     "qrcode.js is MIT-licensed (Copyright (c) 2009 Kazuhiko Arase).",
-    "crypto.js and vcard.js are ported from the companion e2e-vcard-sharing project."
+    "crypto.js and vcard.js are ported from the companion e2e-vcard-sharing project.",
+    "public/vendor/bip39-wordlist.js is the official 2048-word BIP39 English list, vendored from @scure/bip39 (MIT) — used only as a high-entropy word source for sync passphrases, not for BIP39 mnemonics."
   ],
   "volta": {
     "node": "22.23.2"

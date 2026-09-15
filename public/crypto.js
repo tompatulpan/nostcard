@@ -119,8 +119,8 @@ export function generateRandom(length) {
 // Sync identity derivation (passphrase → signing key + encryption key)
 // ---------------------------------------------------------------------------
 
-/** PBKDF2 iterations — high enough to resist offline brute force of the passphrase */
-const SYNC_PBKDF2_ITERATIONS = 210_000;
+/** PBKDF2 iterations — OWASP-recommended minimum for PBKDF2-HMAC-SHA256 (2023 guidance) */
+const SYNC_PBKDF2_ITERATIONS = 600_000;
 
 /** Fixed salt: identity is fully determined by the passphrase, same on every device */
 const SYNC_SALT = 'nostr-vcard-sync-v1';

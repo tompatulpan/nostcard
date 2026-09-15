@@ -1215,6 +1215,7 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
   }
   localStorage.removeItem('e2e:cards');
   localStorage.removeItem('e2e:saved-links');
+  clearSyncIdentity();
   activeCardId = null;
   location.reload();
 });

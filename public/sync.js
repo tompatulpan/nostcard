@@ -14,32 +14,25 @@
 
 import { deriveSyncSecrets, importSyncKey, encryptVCard, decryptVCard } from './crypto.js';
 import { derivePublicKey, publishSyncEvent, fetchSyncEvent, deleteSyncEvent } from './nostr.js';
+import { BIP39_ENGLISH } from './vendor/bip39-wordlist.js';
 
 // ---------------------------------------------------------------------------
 // Passphrase generation
 // ---------------------------------------------------------------------------
 
-// Small, unambiguous wordlist (no lookalike words) for a memorable, high-entropy passphrase.
-const WORDLIST = [
-  'anchor','banjo','canyon','delta','ember','falcon','glacier','harbor','indigo','jungle',
-  'kayak','lantern','meadow','nectar','oasis','pebble','quartz','raven','summit','timber',
-  'umbra','velvet','willow','xenon','yonder','zephyr','amber','birch','cedar','dune',
-  'echo','forest','granite','holly','ivory','jasper','koala','lotus','maple','nimbus',
-  'onyx','prairie','quokka','ridge','sable','tundra','ursa','violet','walnut','yarrow',
-  'zinnia','arbor','basin','clover','drift','fjord','grove','haven','ibis',
-  'juniper','kelp','lagoon','moss','nettle','opal','pine','quill','reef','shale',
-  'thistle','umber','vale','wren','yew','zircon','alder','bramble','cinder','dusk',
-];
+// 8 words from the 2048-word BIP39 English list (~88 bits of entropy) — chosen
+// for a large, standard, audited wordlist rather than a small ad-hoc one.
+const PASSPHRASE_WORD_COUNT = 8;
 
 /**
- * Generate a fresh, memorable sync passphrase (6 random words from a fixed wordlist).
- * @returns {string} e.g. "anchor-jungle-quartz-holly-drift-opal"
+ * Generate a fresh, memorable sync passphrase (8 random BIP39 English words).
+ * @returns {string} e.g. "anchor-jungle-quartz-holly-drift-opal-cedar-forest"
  */
 export function generateSyncPassphrase() {
   const words = [];
-  for (let i = 0; i < 6; i++) {
-    const idx = crypto.getRandomValues(new Uint32Array(1))[0] % WORDLIST.length;
-    words.push(WORDLIST[idx]);
+  for (let i = 0; i < PASSPHRASE_WORD_COUNT; i++) {
+    const idx = crypto.getRandomValues(new Uint32Array(1))[0] % BIP39_ENGLISH.length;
+    words.push(BIP39_ENGLISH[idx]);
   }
   return words.join('-');
 }
