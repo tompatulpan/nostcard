@@ -36,15 +36,9 @@
         <button id="btn-create-card" class="btn btn-primary btn-lg" data-i18n="setup.btn.create">Create my card</button>
         <button id="btn-go-saved-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
 
-        <div class="setup-divider"><span data-i18n="setup.divider">or</span></div>
-
-        <p class="muted" data-i18n="setup.restore.prompt">Already have a backup from another device?</p>
-        <label class="btn btn-ghost btn-lg" style="cursor:pointer" title="Restore a backup file">
-          <span data-i18n="setup.btn.restore">Restore backup</span>
-          <input id="restore-file-input" type="file" accept=".json,application/json" style="display:none" />
-        </label>
-        <button id="btn-paste-restore-setup" class="btn btn-ghost btn-lg" data-i18n="setup.btn.paste">Paste backup</button>
-        <button id="btn-open-sync-setup" class="btn btn-ghost btn-lg" data-i18n="sync.btn.open" data-i18n-title="sync.btn.open.title" title="Sync your cards across devices/browsers">Sync</button>
+        <div class="screen-footer-actions">
+          <button id="btn-advanced-setup" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
+        </div>
       </div>
     </section>
 
@@ -53,20 +47,14 @@
       <div class="cards-screen-header">
         <h2 data-i18n="cards.heading">My Cards</h2>
         <div class="cards-screen-actions">
-          <button id="btn-transfer-export" class="btn btn-ghost" data-i18n="cards.btn.transfer" data-i18n-title="cards.btn.transfer.title" title="Export card credentials only for another browser">Transfer</button>
-          <button id="btn-backup"      class="btn btn-ghost" data-i18n="cards.btn.backup" data-i18n-title="cards.btn.backup.title" title="Export a backup of all your cards and saved links">Backup</button>
-          <label  class="btn btn-ghost" style="cursor:pointer" data-i18n-title="cards.btn.restore.title" title="Restore from a backup file">
-            <span data-i18n="cards.btn.restore">Restore</span>
-            <input id="restore-file-input-cards" type="file" accept=".json,application/json" style="display:none" />
-          </label>
-          <button id="btn-paste-restore-cards" class="btn btn-ghost" data-i18n="cards.btn.paste" data-i18n-title="cards.btn.paste.title" title="Paste backup JSON">Paste restore</button>
-          <button id="btn-open-sync" class="btn btn-ghost" data-i18n="sync.btn.open" data-i18n-title="sync.btn.open.title" title="Sync your cards across devices/browsers">Sync</button>
           <button id="btn-new-card"    class="btn btn-primary" data-i18n="cards.btn.new">+ New Card</button>
           <button id="btn-go-saved"    class="btn btn-teal" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
-          <button id="btn-clear-all"   class="btn btn-danger btn-sm" data-i18n="cards.btn.logout" data-i18n-title="cards.btn.logout.title" title="Remove all local keys and credentials">Log out</button>
         </div>
       </div>
       <div id="cards-list" class="cards-list"></div>
+      <div class="screen-footer-actions">
+        <button id="btn-advanced-cards" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
+      </div>
     </section>
 
     <!-- ── Saved Cards screen ──────────────────────────────────────────────── -->
@@ -74,11 +62,13 @@
       <div class="cards-screen-header">
         <h2 data-i18n="saved.heading">Saved Cards</h2>
         <div class="cards-screen-actions">
-          <button id="btn-open-sync-saved" class="btn btn-ghost" data-i18n="sync.btn.open" data-i18n-title="sync.btn.open.title" title="Sync your cards across devices/browsers">Sync</button>
           <button id="btn-back-to-cards" class="btn btn-success" data-i18n="saved.btn.back">← My Cards</button>
         </div>
       </div>
       <div id="saved-links-list" class="cards-list"></div>
+      <div class="screen-footer-actions">
+        <button id="btn-advanced-saved" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
+      </div>
     </section>
 
     <!-- ── Editor screen ───────────────────────────────────────────────── -->
@@ -195,6 +185,26 @@
 
       </div>
     </section>
+
+    <!-- ── Advanced menu modal ──────────────────────────────────────────── -->
+    <div id="modal-advanced" class="modal-overlay hidden">
+      <div class="modal">
+        <h3 data-i18n="adv.modal.heading">Advanced</h3>
+        <div class="adv-menu">
+          <button id="btn-adv-sync" class="btn btn-ghost adv-menu-item" data-i18n="sync.btn.open" data-i18n-title="sync.btn.open.title" title="Sync your cards across devices/browsers">Sync</button>
+          <button id="btn-backup" class="btn btn-ghost adv-menu-item" data-i18n="cards.btn.backup" data-i18n-title="cards.btn.backup.title" title="Export a backup of all your cards and saved links">Backup</button>
+          <label class="btn btn-ghost adv-menu-item" style="cursor:pointer" data-i18n-title="cards.btn.restore.title" title="Restore from a backup file">
+            <span data-i18n="cards.btn.restore">Restore</span>
+            <input id="restore-file-input" type="file" accept=".json,application/json" style="display:none" />
+          </label>
+          <button id="btn-paste-restore" class="btn btn-ghost adv-menu-item" data-i18n="cards.btn.paste" data-i18n-title="cards.btn.paste.title" title="Paste backup JSON">Paste restore</button>
+          <button id="btn-clear-all" class="btn btn-danger adv-menu-item" data-i18n="cards.btn.logout" data-i18n-title="cards.btn.logout.title" title="Remove all local keys and credentials">Log out</button>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-advanced-close" class="btn btn-ghost" data-i18n="btn.close">Close</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ── Restore backup modal ────────────────────────────────────────── -->
     <div id="modal-restore" class="modal-overlay hidden">

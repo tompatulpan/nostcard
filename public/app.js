@@ -1221,6 +1221,26 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Advanced menu (Sync, Backup, Restore, Log out)
+// ---------------------------------------------------------------------------
+
+function openAdvancedModal() {
+  document.getElementById('modal-advanced').classList.remove('hidden');
+}
+
+document.getElementById('btn-advanced-setup').addEventListener('click', openAdvancedModal);
+document.getElementById('btn-advanced-cards').addEventListener('click', openAdvancedModal);
+document.getElementById('btn-advanced-saved').addEventListener('click', openAdvancedModal);
+
+document.getElementById('btn-advanced-close').addEventListener('click', () => {
+  document.getElementById('modal-advanced').classList.add('hidden');
+});
+
+document.getElementById('modal-advanced').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+});
+
+// ---------------------------------------------------------------------------
 // Saved links screen
 // ---------------------------------------------------------------------------
 
@@ -1281,17 +1301,6 @@ function renderSavedLinks() {
 // ---------------------------------------------------------------------------
 
 document.getElementById('btn-backup').addEventListener('click', exportBackup);
-document.getElementById('btn-transfer-export').addEventListener('click', exportTransfer);
-
-function exportTransfer() {
-  const transfer = {
-    version: 2,
-    mode: 'transfer',
-    exported: new Date().toISOString(),
-    cards: getCards(),
-  };
-  downloadJson(transfer, `nostr-vcard-transfer-${transfer.exported.slice(0, 10)}.json`);
-}
 
 function exportBackup() {
   const cards      = getCards();
@@ -1322,7 +1331,7 @@ function downloadJson(data, filename) {
   URL.revokeObjectURL(url);
 }
 
-// File restore (setup screen)
+// File restore (Advanced menu)
 document.getElementById('restore-file-input').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -1330,21 +1339,9 @@ document.getElementById('restore-file-input').addEventListener('change', async e
   e.target.value = '';
 });
 
-// File restore (cards screen)
-document.getElementById('restore-file-input-cards').addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try { await importBackup(JSON.parse(await file.text())); } catch { alert(t('alert.backup.error')); }
-  e.target.value = '';
-});
-
-// Paste restore — setup
-document.getElementById('btn-paste-restore-setup').addEventListener('click', () => {
-  document.getElementById('modal-restore').classList.remove('hidden');
-});
-
-// Paste restore — cards
-document.getElementById('btn-paste-restore-cards').addEventListener('click', () => {
+// Paste restore (Advanced menu)
+document.getElementById('btn-paste-restore').addEventListener('click', () => {
+  document.getElementById('modal-advanced').classList.add('hidden');
   document.getElementById('modal-restore').classList.remove('hidden');
 });
 
@@ -1536,9 +1533,10 @@ function openSyncModal() {
   document.getElementById('modal-sync').classList.remove('hidden');
 }
 
-document.getElementById('btn-open-sync').addEventListener('click', openSyncModal);
-document.getElementById('btn-open-sync-setup').addEventListener('click', openSyncModal);
-document.getElementById('btn-open-sync-saved').addEventListener('click', openSyncModal);
+document.getElementById('btn-adv-sync').addEventListener('click', () => {
+  document.getElementById('modal-advanced').classList.add('hidden');
+  openSyncModal();
+});
 
 document.getElementById('btn-sync-close').addEventListener('click', () => {
   document.getElementById('modal-sync').classList.add('hidden');

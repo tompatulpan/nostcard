@@ -588,6 +588,25 @@ kbd {
 
 .cards-screen-actions { display: flex; gap: 8px; align-items: center; }
 
+/* ── Screen footer (Advanced menu entry point) ──────────────────────────── */
+
+.screen-footer-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+/* ── Advanced menu modal ─────────────────────────────────────────────────── */
+
+.adv-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.adv-menu-item { width: 100%; justify-content: flex-start; text-align: left; }
+
 .cards-list {
   display: flex;
   flex-direction: column;
