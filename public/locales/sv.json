@@ -283,5 +283,38 @@
   "proof.step3.removed.title": "Kortet har tagits bort från nätverket.",
   "proof.step3.removed.detail": "Reläet returnerade ingenting. Dina kontaktdata är inte längre tillgängliga via den här länken.",
   "proof.caveat.heading": "Ärlig brasklapp om borttagning",
-  "proof.caveat.body": "Borttagning på Nostr är ett bästa-försök. En NIP-09-borttagningshändelse skickas och de flesta välbehöriga reläer följer den. Men ett arkiverat eller icke-kompatibelt relä kan fortfarande ha en kopia. Det här är en egenskap hos alla offentliga Nostr-reläer, inte specifikt för den här appen."
+  "proof.caveat.body": "Borttagning på Nostr är ett bästa-försök. En NIP-09-borttagningshändelse skickas och de flesta välbehöriga reläer följer den. Men ett arkiverat eller icke-kompatibelt relä kan fortfarande ha en kopia. Det här är en egenskap hos alla offentliga Nostr-reläer, inte specifikt för den här appen.",
+
+  "cards.btn.connections": "🤝 Kontakter",
+
+  "connections.heading": "Kontakter",
+  "connections.btn.new": "+ Anslut",
+  "connections.empty": "Inga kontakter ännu. Tryck på \"+ Anslut\" och skanna en QR-kod personligen för att para ihop dig med någon.",
+  "connections.notYetFetched": "Hämtar…",
+
+  "pair.start.heading": "Anslut med någon",
+  "pair.start.pick.body": "Välj vilket kort som ska delas när de skannar denna kod.",
+  "pair.start.active.body": "Be den andra personen skanna denna QR-kod eller öppna länken — på sin egen telefon, personligen.",
+  "pair.start.publish.failed": "Kunde inte publicera parningskoden: {{error}}",
+  "pair.start.checking": "Kontrollerar att ditt kort går att nå…",
+  "pair.card.unpublished": "Detta kort går inte att nå på något relä än. Öppna det under Mina kort och tryck på Spara och publicera, försök sedan ansluta igen.",
+  "pair.btn.useCard": "Använd detta kort",
+  "pair.countdown": "⏱ Koden går ut om {{m}}:{{ss}}",
+  "pair.expired": "Denna kod har gått ut. Skapa en ny.",
+  "pair.btn.regenerate": "Skapa ny kod",
+
+  "pair.join.heading": "Anslut",
+  "pair.join.loading": "Letar efter parningskoden…",
+  "pair.join.found": "Du ansluter med \"{{label}}\".",
+  "pair.join.pick.body": "Välj vilket av dina kort som ska delas tillbaka.",
+  "pair.join.success": "Ansluten med \"{{label}}\"!",
+  "pair.join.btn.done": "Gå till Kontakter",
+  "pair.join.nocards": "Du behöver ett eget kort innan du kan ansluta.",
+  "pair.join.nocards.hint": "Skapa ett från Mina kort och öppna sedan denna länk igen innan den går ut.",
+  "pair.join.error.title": "Ogiltig eller utgången kod",
+  "pair.join.error.detail": "Denna parningskod hittades inte eller har gått ut. Be om en ny QR-kod.",
+  "pair.join.error.badCode": "Denna parningslänk verkar felaktig.",
+
+  "dialog.connection.remove.confirm": "Ta bort denna kontakt?\n\nDetta tar bara bort den från din enhet — det meddelar inte den andra personen.",
+  "alert.connections.imported": ", {{n}} kontakt{{s}} importerad{{s}}"
 }

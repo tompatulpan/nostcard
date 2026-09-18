@@ -38,6 +38,7 @@
           No server can ever read the content — only people you share the link with.</p>
         <button id="btn-create-card" class="btn btn-primary btn-lg" data-i18n="setup.btn.create">Create my card</button>
         <button id="btn-go-saved-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
+        <button id="btn-go-connections-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.connections">🤝 Connections</button>
 
         <div class="screen-footer-actions">
           <button id="btn-advanced-setup" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
@@ -52,6 +53,7 @@
         <div class="cards-screen-actions">
           <button id="btn-new-card"    class="btn btn-primary" data-i18n="cards.btn.new">+ New Card</button>
           <button id="btn-go-saved"    class="btn btn-teal" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
+          <button id="btn-go-connections" class="btn btn-teal" data-i18n="cards.btn.connections">🤝 Connections</button>
         </div>
       </div>
       <div id="cards-list" class="cards-list"></div>
@@ -65,6 +67,7 @@
       <div class="cards-screen-header">
         <h2 data-i18n="saved.heading">Saved Cards</h2>
         <div class="cards-screen-actions">
+          <button id="btn-go-connections-saved" class="btn btn-teal" data-i18n="cards.btn.connections">🤝 Connections</button>
           <button id="btn-back-to-cards" class="btn btn-success" data-i18n="saved.btn.back">← My Cards</button>
         </div>
       </div>
@@ -369,6 +372,86 @@
 
       </div>
 
+    </section>
+
+    <!-- ── Connections screen ───────────────────────────────────────────── -->
+    <section id="screen-connections" class="screen hidden">
+      <div class="cards-screen-header">
+        <h2 data-i18n="connections.heading">Connections</h2>
+        <div class="cards-screen-actions">
+          <button id="btn-connections-new"  class="btn btn-primary" data-i18n="connections.btn.new">+ Connect</button>
+          <button id="btn-connections-back" class="btn btn-success" data-i18n="saved.btn.back">← My Cards</button>
+        </div>
+      </div>
+      <div id="connections-list" class="cards-list"></div>
+      <div class="screen-footer-actions">
+        <button id="btn-advanced-connections" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
+      </div>
+    </section>
+
+    <!-- ── Pair: start (initiator, generates the QR/link) ──────────────── -->
+    <section id="screen-pair-start" class="screen hidden">
+      <div class="card-panel">
+        <h2 data-i18n="pair.start.heading">Connect with someone</h2>
+
+        <div id="pair-start-pick">
+          <p class="muted" data-i18n="pair.start.pick.body">Choose which card to share when they scan this code.</p>
+          <div id="pair-start-card-list" class="cards-list"></div>
+        </div>
+
+        <div id="pair-start-active" class="hidden">
+          <p class="muted" data-i18n="pair.start.active.body">Ask the other person to scan this QR code or open the link — on their own phone, in person.</p>
+          <div id="pair-start-qr" class="qr-container"></div>
+          <div class="share-url-box">
+            <input id="pair-start-link" type="text" readonly />
+            <button id="btn-pair-start-copy" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+          </div>
+          <p id="pair-start-countdown" class="muted auto-clear-countdown"></p>
+          <p id="pair-start-status" class="status-msg"></p>
+          <button id="btn-pair-start-cancel" class="btn btn-ghost" data-i18n="btn.cancel">Cancel</button>
+        </div>
+
+        <div id="pair-start-expired" class="hidden">
+          <p class="muted" data-i18n="pair.expired">This code expired. Generate a new one.</p>
+          <button id="btn-pair-start-regenerate" class="btn btn-primary" data-i18n="pair.btn.regenerate">Generate new code</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Pair: join (responder, scanned the QR/link) ─────────────────── -->
+    <section id="screen-pair-join" class="screen hidden">
+      <div class="card-panel">
+        <h2 data-i18n="pair.join.heading">Connect</h2>
+
+        <div id="pair-join-loading">
+          <div class="spinner"></div>
+          <p data-i18n="pair.join.loading">Looking for the pairing code…</p>
+        </div>
+
+        <div id="pair-join-found" class="hidden">
+          <p class="muted" id="pair-join-found-body"></p>
+          <p class="muted" data-i18n="pair.join.pick.body">Choose which of your cards to share back.</p>
+          <div id="pair-join-card-list" class="cards-list"></div>
+        </div>
+
+        <div id="pair-join-success" class="hidden">
+          <div style="font-size:3rem">🤝</div>
+          <h3 id="pair-join-success-heading"></h3>
+          <button id="btn-pair-join-done" class="btn btn-primary" data-i18n="pair.join.btn.done">Go to Connections</button>
+        </div>
+
+        <div id="pair-join-nocards" class="hidden">
+          <p class="muted" data-i18n="pair.join.nocards">You need a card of your own before connecting.</p>
+          <p class="muted" style="font-size:0.85rem" data-i18n="pair.join.nocards.hint">Create one from My Cards, then reopen this link before it expires.</p>
+          <button id="btn-pair-join-create-card" class="btn btn-primary" data-i18n="setup.btn.create">Create my card</button>
+        </div>
+
+        <div id="pair-join-error" class="hidden">
+          <div class="error-icon">⛔</div>
+          <h3 data-i18n="pair.join.error.title">Invalid or expired code</h3>
+          <p class="muted" id="pair-join-error-detail"></p>
+        </div>
+      </div>
     </section>
 
   </div><!-- /.app-shell -->

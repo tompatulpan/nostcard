@@ -8,9 +8,14 @@
  *   e2e:exported:<id>  "1" — marks a card as backed up
  *   e2e:sync-identity  JSON { syncNsecHex, syncNpub, syncKeyRaw (base64url), createdAt } — cached passphrase-derived sync identity
  *   e2e:sync-meta      JSON { lastPushedAt, lastPulledAt }
+ *   e2e:connections    JSON array of connection objects (see below)
+ *   e2e:connection-fields:<id>  per-connection cached decrypted vCard fields
  *
  * Each card credential object:
  *   { id, label, nsec, npub, key, relays }
+ *
+ * Each connection object (mutual in-person pairing — see pairing.js):
+ *   { id, peerLabel, peerNaddr, peerKey, myCardId, pairedAt }
  *
  * AES key encoded in the URL fragment (#) of every share link —
  * never sent to any relay or server.
@@ -24,15 +29,17 @@
 
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
-import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, isValidRelayUrl, DEFAULT_RELAYS } from './nostr.js';
+import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations } from './i18n.js';
 import { generateSyncPassphrase, deriveSyncIdentity, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
+import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
 let activeCardId = null; // ID of the card open in the editor
+let cvReturnRoute = '/cards'; // where cv-btn-back navigates to after the inline viewer closes
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -79,6 +86,22 @@ function saveSyncMeta(meta) {
   localStorage.setItem('e2e:sync-meta', JSON.stringify(meta));
 }
 
+function getConnections() {
+  try { return JSON.parse(localStorage.getItem('e2e:connections') || '[]'); } catch { return []; }
+}
+
+function saveConnections(connections) {
+  localStorage.setItem('e2e:connections', JSON.stringify(connections));
+}
+
+function getConnectionFields(id) {
+  try { return JSON.parse(localStorage.getItem(`e2e:connection-fields:${id}`) || 'null'); } catch { return null; }
+}
+
+function saveConnectionFields(id, fields) {
+  localStorage.setItem(`e2e:connection-fields:${id}`, JSON.stringify(fields));
+}
+
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
@@ -99,8 +122,10 @@ async function init() {
     });
     const screenCards = document.getElementById('screen-cards');
     const screenSaved = document.getElementById('screen-saved');
+    const screenConnections = document.getElementById('screen-connections');
     if (screenCards && !screenCards.classList.contains('hidden')) renderCardList();
     if (screenSaved && !screenSaved.classList.contains('hidden')) renderSavedLinks();
+    if (screenConnections && !screenConnections.classList.contains('hidden')) renderConnections();
     if (activeCardId) renderRelayManager();
     // Update type-select option labels and address subfield placeholders without losing user input
     document.querySelectorAll('.dynamic-type-select option').forEach(opt => {
@@ -126,7 +151,7 @@ async function init() {
 // Screens
 // ---------------------------------------------------------------------------
 
-const ALL_SCREENS = ['screen-setup', 'screen-cards', 'screen-editor', 'screen-saved', 'screen-card-view'];
+const ALL_SCREENS = ['screen-setup', 'screen-cards', 'screen-editor', 'screen-saved', 'screen-card-view', 'screen-connections', 'screen-pair-start', 'screen-pair-join'];
 
 function showScreen(name) {
   for (const s of ALL_SCREENS) {
@@ -141,6 +166,7 @@ function showSetup()     { activeCardId = null; showScreen('screen-setup');     
 function showCardList()  { activeCardId = null; showScreen('screen-cards');  renderCardList(); }
 function showEditor()    { showScreen('screen-editor'); }
 function showSavedLinks(){ activeCardId = null; showScreen('screen-saved');  renderSavedLinks(); }
+function showConnections(){ activeCardId = null; showScreen('screen-connections'); renderConnections(); }
 
 // ---------------------------------------------------------------------------
 // Router — location.hash is the single source of truth for the current screen
@@ -160,12 +186,16 @@ function route() {
   if (name === 'saved') { showSavedLinks(); return; }
   if (name === 'cards')  { showCardList();  return; }
   if (name === 'setup')  { showSetup();     return; }
+  if (name === 'connections') { showConnections(); return; }
+  if (name === 'pair-join' && param) { showPairJoin(param); return; }
+  if (name === 'pair') { showPairStart(); return; }
 
   // No/invalid hash — pick the sensible default screen and normalize the URL
   const cards = getCards();
-  if (cards.length > 0)                 go('/cards');
-  else if (getSavedLinks().length > 0)  go('/saved');
-  else                                   go('/setup');
+  if (cards.length > 0)                       go('/cards');
+  else if (getSavedLinks().length > 0)        go('/saved');
+  else if (getConnections().length > 0)       go('/connections');
+  else                                          go('/setup');
 }
 
 window.addEventListener('hashchange', route);
@@ -266,6 +296,7 @@ function renameCard(row, card) {
 
 function viewCardFromList(card) {
   const url = buildShareUrl(card);
+  cvReturnRoute = '/cards';
   showCardViewScreen(url, 'owner-preview');
 }
 
@@ -851,11 +882,11 @@ document.getElementById('btn-verify-privacy').addEventListener('click', (e) => {
 });
 
 document.getElementById('cv-btn-back').addEventListener('click', () => {
-  go(activeCardId ? `/editor/${activeCardId}` : '/cards');
+  go(activeCardId ? `/editor/${activeCardId}` : cvReturnRoute);
 });
 
 document.getElementById('cv-btn-back-error').addEventListener('click', () => {
-  go(activeCardId ? `/editor/${activeCardId}` : '/cards');
+  go(activeCardId ? `/editor/${activeCardId}` : cvReturnRoute);
 });
 
 async function showCardViewScreen(url, mode) {
@@ -970,14 +1001,30 @@ function showCvTrustGate(trustId, fields, vcardText, shareUrl) {
   };
 }
 
+/** Extract the naddr= query param from a share URL, or null if missing/malformed */
+function extractNaddrFromUrl(url) {
+  try { return new URL(url).searchParams.get('naddr'); } catch { return null; }
+}
+
+/** Compares two share URLs by card identity (naddr pubkey+d-tag), not exact string */
+function sameSharedCardUrl(urlA, urlB) {
+  const a = extractNaddrFromUrl(urlA), b = extractNaddrFromUrl(urlB);
+  if (!a || !b) return urlA === urlB;
+  return sameCardAddress(a, b);
+}
+
 function autoSaveLink(url, label) {
   const SAVED_KEY = 'e2e:saved-links';
   let links = [];
   try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
-  if (!links.some(l => l.url === url)) {
+  const idx = links.findIndex(l => sameSharedCardUrl(l.url, url));
+  if (idx >= 0) {
+    // Same card, possibly re-shared with a new key/relay — keep the freshest link, don't duplicate
+    links[idx] = { ...links[idx], url, label: label || links[idx].label };
+  } else {
     links.push({ url, label: label || 'Contact', savedAt: new Date().toISOString() });
-    try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
   }
+  try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
 }
 
 function renderCvCard(fields, vcardText, trusted, ownerPreview) {
@@ -1229,8 +1276,12 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
     localStorage.removeItem(`e2e:fields:${c.id}`);
     localStorage.removeItem(`e2e:relay-status:${c.id}`);
   }
+  for (const c of getConnections()) {
+    localStorage.removeItem(`e2e:connection-fields:${c.id}`);
+  }
   localStorage.removeItem('e2e:cards');
   localStorage.removeItem('e2e:saved-links');
+  localStorage.removeItem('e2e:connections');
   clearSyncIdentity();
   activeCardId = null;
   location.reload();
@@ -1293,7 +1344,7 @@ function renderSavedLinks() {
     const openBtn = document.createElement('button');
     openBtn.className   = 'btn btn-primary btn-sm';
     openBtn.textContent = t('btn.open');
-    openBtn.addEventListener('click', () => showCardViewScreen(link.url, 'saved-card'));
+    openBtn.addEventListener('click', () => { cvReturnRoute = '/saved'; showCardViewScreen(link.url, 'saved-card'); });
 
     const removeBtn = document.createElement('button');
     removeBtn.className   = 'btn btn-danger btn-sm';
@@ -1313,24 +1364,392 @@ function renderSavedLinks() {
 }
 
 // ---------------------------------------------------------------------------
+// Connections (mutual in-person pairing)
+// ---------------------------------------------------------------------------
+
+document.getElementById('btn-go-connections').addEventListener('click', () => go('/connections'));
+document.getElementById('btn-go-connections-setup').addEventListener('click', () => go('/connections'));
+document.getElementById('btn-go-connections-saved').addEventListener('click', () => go('/connections'));
+document.getElementById('btn-connections-back').addEventListener('click', () => go('/cards'));
+document.getElementById('btn-connections-new').addEventListener('click', () => go('/pair'));
+document.getElementById('btn-advanced-connections').addEventListener('click', openAdvancedModal);
+
+function renderConnections() {
+  const connections = getConnections();
+  const container   = document.getElementById('connections-list');
+  container.innerHTML = '';
+
+  if (connections.length === 0) {
+    container.innerHTML = `<p class="muted">${htmlEscape(t('connections.empty'))}</p>`;
+    return;
+  }
+
+  for (const conn of connections) renderConnectionRow(container, conn);
+
+  // Re-fetch each peer's card in the background so the list stays current
+  refreshConnections(connections);
+}
+
+function renderConnectionRow(container, conn) {
+  const cached = getConnectionFields(conn.id);
+
+  const row = document.createElement('div');
+  row.className = 'card-list-row';
+  row.dataset.connId = conn.id;
+  row.innerHTML = `
+    <div class="card-list-info">
+      <span class="card-list-name">${htmlEscape(conn.peerLabel || 'Connection')}</span>
+      <span class="card-list-meta conn-meta">${htmlEscape(cached?.fn || t('connections.notYetFetched'))}</span>
+    </div>
+    <div class="card-list-actions">
+      <button class="btn btn-ghost   btn-sm btn-conn-view">${htmlEscape(t('cards.row.btn.view'))}</button>
+      <button class="btn btn-danger  btn-sm btn-conn-remove">${htmlEscape(t('btn.remove'))}</button>
+    </div>
+  `;
+  row.querySelector('.btn-conn-view').addEventListener('click', () => viewConnection(conn));
+  row.querySelector('.btn-conn-remove').addEventListener('click', () => removeConnection(conn.id));
+  container.appendChild(row);
+}
+
+async function refreshConnections(connections) {
+  for (const conn of connections) {
+    try {
+      const decoded   = naddrDecode(conn.peerNaddr);
+      const event     = await fetchCard(decoded.relays, decoded.pubkey, decoded.identifier);
+      if (!event) continue;
+      const aesKey    = await fragmentToKey(conn.peerKey);
+      const vcardText = await decryptVCard(event.content, aesKey);
+      const fields    = parseVCard(vcardText);
+      saveConnectionFields(conn.id, fields);
+
+      const metaEl = document.querySelector(`.card-list-row[data-conn-id="${conn.id}"] .conn-meta`);
+      if (metaEl) metaEl.textContent = fields.fn || '';
+    } catch (err) {
+      console.warn('[app] connection refresh failed (non-fatal):', err.message);
+    }
+  }
+}
+
+function viewConnection(conn) {
+  const url = `${location.origin}/card?naddr=${conn.peerNaddr}#${conn.peerKey}`;
+  cvReturnRoute = '/connections';
+  showCardViewScreen(url, 'owner-preview');
+}
+
+function removeConnection(id) {
+  if (!confirm(t('dialog.connection.remove.confirm'))) return;
+  saveConnections(getConnections().filter(c => c.id !== id));
+  localStorage.removeItem(`e2e:connection-fields:${id}`);
+  renderConnections();
+}
+
+/** Render a compact list of the user's own cards with a "use this card" action */
+function renderCardPicker(container, onPick) {
+  const cards = getCards();
+  container.innerHTML = '';
+  if (cards.length === 0) {
+    container.innerHTML = `<p class="muted">${htmlEscape(t('cards.empty'))}</p>`;
+    return;
+  }
+  for (const card of cards) {
+    const row = document.createElement('div');
+    row.className = 'card-list-row';
+    row.innerHTML = `
+      <div class="card-list-info"><span class="card-list-name">${htmlEscape(card.label)}</span></div>
+      <div class="card-list-actions"><button class="btn btn-primary btn-sm">${htmlEscape(t('pair.btn.useCard'))}</button></div>
+    `;
+    row.querySelector('button').addEventListener('click', () => onPick(card));
+    container.appendChild(row);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pairing — initiate (generate QR/link, poll for the peer's response)
+// ---------------------------------------------------------------------------
+
+/** Add a connection, or update the existing one if this peer card is already paired (dedupes by card identity, not exact naddr string — a relay-list edit or re-pairing shouldn't create a duplicate) */
+function upsertConnection(peerPayload, myCardId) {
+  const connections = getConnections();
+  const idx = connections.findIndex(c => sameCardAddress(c.peerNaddr, peerPayload.naddr));
+  if (idx >= 0) {
+    connections[idx] = {
+      ...connections[idx],
+      peerLabel: peerPayload.label || connections[idx].peerLabel,
+      peerNaddr: peerPayload.naddr,
+      peerKey:   peerPayload.key,
+    };
+    saveConnections(connections);
+    return connections[idx];
+  }
+
+  const conn = {
+    id:        generateRandom(8),
+    peerLabel: peerPayload.label || 'Connection',
+    peerNaddr: peerPayload.naddr,
+    peerKey:   peerPayload.key,
+    myCardId,
+    pairedAt:  new Date().toISOString(),
+  };
+  connections.push(conn);
+  saveConnections(connections);
+  return conn;
+}
+
+/**
+ * Verify a card is actually retrievable from its relays before handing its
+ * address out to a pairing peer — a card that only ever exists locally
+ * (e.g. publish silently failed on every relay at creation time) would
+ * otherwise pair "successfully" but show "Card not found" for the other side.
+ * Attempts one republish from cached fields if the relay fetch comes up empty.
+ * @returns {Promise<boolean>}
+ */
+async function ensureCardPublished(card) {
+  try {
+    const event = await fetchCard(card.relays, card.npub, card.id);
+    if (event) return true;
+  } catch { /* fall through to republish attempt */ }
+
+  const cachedRaw = localStorage.getItem(`e2e:fields:${card.id}`);
+  if (!cachedRaw) return false;
+
+  try {
+    const fields    = JSON.parse(cachedRaw);
+    fields.sourceUrl = canonicalUrl(card.id, card.npub, card.relays);
+    const aesKey    = await importCardKey(card.key);
+    const nsecBytes = hexToBytes(card.nsec);
+    const vcardText = buildVCard(fields);
+    const blob      = await encryptVCard(vcardText, aesKey);
+    const results   = await publishCard(card.relays, nsecBytes, card.id, blob, card.label);
+    localStorage.setItem(`e2e:relay-status:${card.id}`, JSON.stringify(results));
+    return results.some(r => r.ok);
+  } catch {
+    return false;
+  }
+}
+
+let pairStartState = null; // { pairNsec, pollInterval, countdownInterval, fetching, completing }
+
+function showPairStart() {
+  activeCardId = null;
+  showScreen('screen-pair-start');
+  stopPairStartPolling();
+  document.getElementById('pair-start-pick').classList.remove('hidden');
+  document.getElementById('pair-start-active').classList.add('hidden');
+  document.getElementById('pair-start-expired').classList.add('hidden');
+  document.getElementById('pair-start-status').textContent = '';
+  renderCardPicker(document.getElementById('pair-start-card-list'), card => beginPairStart(card));
+}
+
+function stopPairStartPolling() {
+  if (pairStartState) {
+    clearInterval(pairStartState.pollInterval);
+    clearInterval(pairStartState.countdownInterval);
+    pairStartState = null;
+  }
+}
+
+async function beginPairStart(card) {
+  document.getElementById('pair-start-pick').classList.add('hidden');
+  document.getElementById('pair-start-active').classList.remove('hidden');
+  const statusEl = document.getElementById('pair-start-status');
+  statusEl.textContent = t('pair.start.checking');
+  statusEl.className   = 'status-msg';
+
+  const published = await ensureCardPublished(card);
+  if (!published) {
+    statusEl.textContent = t('pair.card.unpublished');
+    statusEl.className   = 'status-msg error';
+    document.getElementById('pair-start-active').classList.add('hidden');
+    document.getElementById('pair-start-pick').classList.remove('hidden');
+    return;
+  }
+  statusEl.textContent = '';
+
+  const code = generatePairingCode();
+  const { pairNsec, pairNpub, pairKeyRaw } = await derivePairingIdentity(code);
+
+  const payload = { naddr: naddrEncode(card.npub, card.id, card.relays), key: card.key, label: card.label };
+  try {
+    await publishPairingPayload(DEFAULT_RELAYS, pairNsec, pairKeyRaw, 'a', payload);
+  } catch (err) {
+    statusEl.textContent = t('pair.start.publish.failed', { error: err.message });
+    statusEl.className   = 'status-msg error';
+    return;
+  }
+
+  const link = `${location.origin}${location.pathname}#/pair-join/${code}`;
+  document.getElementById('pair-start-link').value = link;
+  const qrContainer = document.getElementById('pair-start-qr');
+  qrContainer.innerHTML = '';
+  renderQR(qrContainer, link);
+
+  // Own state object, captured by both intervals below — protects against a
+  // slow in-flight fetch overlapping with the next tick (which would otherwise
+  // create duplicate connections), and against a stale interval from a
+  // previously-regenerated code still resolving after this one replaced it.
+  const myState = { pairNsec, pollInterval: null, countdownInterval: null, fetching: false, completing: false };
+
+  const killAt = Date.now() + PAIR_TTL_MS;
+  const countdownEl = document.getElementById('pair-start-countdown');
+  myState.countdownInterval = setInterval(() => {
+    const remaining = Math.max(0, killAt - Date.now());
+    if (remaining <= 0) { onPairStartExpired(); return; }
+    const m = Math.floor(remaining / 60000), s = Math.floor((remaining % 60000) / 1000);
+    countdownEl.textContent = t('pair.countdown', { m, ss: String(s).padStart(2, '0') });
+  }, 1000);
+
+  myState.pollInterval = setInterval(async () => {
+    if (pairStartState !== myState || myState.fetching || myState.completing) return;
+    myState.fetching = true;
+    try {
+      const found = await fetchPairingPayload(DEFAULT_RELAYS, pairNpub, pairKeyRaw, 'b');
+      if (found && pairStartState === myState && !myState.completing) {
+        myState.completing = true;
+        await completePairStart(pairNsec, found.payload, card.id);
+      }
+    } catch (err) {
+      console.warn('[app] pairing poll error (non-fatal):', err.message);
+    } finally {
+      myState.fetching = false;
+    }
+  }, 3000);
+
+  pairStartState = myState;
+}
+
+function onPairStartExpired() {
+  stopPairStartPolling();
+  document.getElementById('pair-start-active').classList.add('hidden');
+  document.getElementById('pair-start-expired').classList.remove('hidden');
+}
+
+async function completePairStart(pairNsec, peerPayload, myCardId) {
+  stopPairStartPolling();
+
+  upsertConnection(peerPayload, myCardId);
+
+  try { await cleanupPairing(DEFAULT_RELAYS, pairNsec); } catch { /* best-effort */ }
+
+  go('/connections');
+}
+
+document.getElementById('btn-pair-start-cancel').addEventListener('click', async () => {
+  if (pairStartState) {
+    const { pairNsec } = pairStartState;
+    stopPairStartPolling();
+    try { await cleanupPairing(DEFAULT_RELAYS, pairNsec); } catch { /* best-effort */ }
+  }
+  go('/connections');
+});
+
+document.getElementById('btn-pair-start-copy').addEventListener('click', async () => {
+  const value = document.getElementById('pair-start-link').value;
+  try { await navigator.clipboard.writeText(value); } catch { /* fallback: select */ }
+  const btn = document.getElementById('btn-pair-start-copy');
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+});
+
+document.getElementById('btn-pair-start-regenerate').addEventListener('click', () => showPairStart());
+
+// ---------------------------------------------------------------------------
+// Pairing — join (scanned the QR/opened the link)
+// ---------------------------------------------------------------------------
+
+async function showPairJoin(code) {
+  activeCardId = null;
+  showScreen('screen-pair-join');
+  document.getElementById('pair-join-loading').classList.remove('hidden');
+  document.getElementById('pair-join-found').classList.add('hidden');
+  document.getElementById('pair-join-success').classList.add('hidden');
+  document.getElementById('pair-join-nocards').classList.add('hidden');
+  document.getElementById('pair-join-error').classList.add('hidden');
+
+  if (!/^[a-zA-Z0-9]+$/.test(code)) {
+    return showPairJoinError(t('pair.join.error.badCode'));
+  }
+
+  let identity, offer;
+  try {
+    identity = await derivePairingIdentity(code);
+    offer    = await fetchPairingPayload(DEFAULT_RELAYS, identity.pairNpub, identity.pairKeyRaw, 'a');
+  } catch {
+    return showPairJoinError(t('pair.join.error.detail'));
+  }
+  if (!offer) return showPairJoinError(t('pair.join.error.detail'));
+
+  document.getElementById('pair-join-loading').classList.add('hidden');
+
+  if (getCards().length === 0) {
+    document.getElementById('pair-join-nocards').classList.remove('hidden');
+    document.getElementById('btn-pair-join-create-card').onclick = () => go('/cards');
+    return;
+  }
+
+  document.getElementById('pair-join-found').classList.remove('hidden');
+  document.getElementById('pair-join-found-body').textContent = t('pair.join.found', { label: offer.payload.label || 'Connection' });
+  renderCardPicker(document.getElementById('pair-join-card-list'), card => {
+    // Hide immediately so a double-click/tap can't submit two publishes and duplicate the connection
+    document.getElementById('pair-join-found').classList.add('hidden');
+    confirmPairJoin(identity, offer.payload, card);
+  });
+}
+
+function showPairJoinError(detail) {
+  document.getElementById('pair-join-loading').classList.add('hidden');
+  document.getElementById('pair-join-error-detail').textContent = detail;
+  document.getElementById('pair-join-error').classList.remove('hidden');
+}
+
+async function confirmPairJoin(identity, peerPayload, myCard) {
+  document.getElementById('pair-join-loading').classList.remove('hidden');
+
+  const published = await ensureCardPublished(myCard);
+  if (!published) {
+    document.getElementById('pair-join-loading').classList.add('hidden');
+    showPairJoinError(t('pair.card.unpublished'));
+    return;
+  }
+
+  const myPayload = { naddr: naddrEncode(myCard.npub, myCard.id, myCard.relays), key: myCard.key, label: myCard.label };
+  try {
+    await publishPairingPayload(DEFAULT_RELAYS, identity.pairNsec, identity.pairKeyRaw, 'b', myPayload);
+  } catch {
+    document.getElementById('pair-join-loading').classList.add('hidden');
+    showPairJoinError(t('pair.join.error.detail'));
+    return;
+  }
+
+  upsertConnection(peerPayload, myCard.id);
+
+  document.getElementById('pair-join-loading').classList.add('hidden');
+  document.getElementById('pair-join-success-heading').textContent = t('pair.join.success', { label: peerPayload.label || 'Connection' });
+  document.getElementById('pair-join-success').classList.remove('hidden');
+}
+
+document.getElementById('btn-pair-join-done').addEventListener('click', () => go('/connections'));
+
+// ---------------------------------------------------------------------------
 // Backup & Restore
 // ---------------------------------------------------------------------------
 
 document.getElementById('btn-backup').addEventListener('click', exportBackup);
 
 function exportBackup() {
-  const cards      = getCards();
-  const savedLinks = getSavedLinks();
-  const fields     = {};
+  const cards       = getCards();
+  const savedLinks  = getSavedLinks();
+  const connections = getConnections();
+  const fields      = {};
   for (const card of cards) {
     const cached = localStorage.getItem(`e2e:fields:${card.id}`);
     if (cached) { try { fields[card.id] = JSON.parse(cached); } catch {} }
   }
   const backup = {
-    version:  2,
+    version:  3,
     exported: new Date().toISOString(),
     cards,       // includes nsec (raw hex) — keep the file secure
     savedLinks,
+    connections, // includes peerKey (AES key) — keep the file secure
     fields,
   };
   downloadJson(backup, `nostr-vcard-backup-${backup.exported.slice(0, 10)}.json`);
@@ -1377,9 +1796,15 @@ document.getElementById('btn-restore-paste-cancel').addEventListener('click', ()
 });
 
 async function importBackup(json, { navigate = true } = {}) {
-  let cardPayloads = [], linkPayloads = [], fieldsMap = {};
+  let cardPayloads = [], linkPayloads = [], fieldsMap = {}, connectionPayloads = [];
 
-  if (json?.version === 2 && Array.isArray(json.cards)) {
+  if (json?.version === 3 && Array.isArray(json.cards)) {
+    // v3 — nostr-vcard native backup (adds connections)
+    cardPayloads       = json.cards;
+    linkPayloads       = Array.isArray(json.savedLinks) ? json.savedLinks : [];
+    fieldsMap          = (json.fields && typeof json.fields === 'object') ? json.fields : {};
+    connectionPayloads = Array.isArray(json.connections) ? json.connections : [];
+  } else if (json?.version === 2 && Array.isArray(json.cards)) {
     // v2 — nostr-vcard native backup
     cardPayloads = json.cards;
     linkPayloads = Array.isArray(json.savedLinks) ? json.savedLinks : [];
@@ -1473,19 +1898,40 @@ async function importBackup(json, { navigate = true } = {}) {
     added++;
   }
 
-  // Merge saved links
+  // Merge saved links (dedupe by card identity, not exact URL string)
   const existingLinks = getSavedLinks();
-  const existingUrls  = new Set(existingLinks.map(l => l.url));
   let linksAdded = 0;
   for (const item of linkPayloads) {
-    if (!item?.url?.trim() || existingUrls.has(item.url)) continue;
+    if (!item?.url?.trim()) continue;
+    if (existingLinks.some(l => sameSharedCardUrl(l.url, item.url))) continue;
     // Reject arbitrary-scheme injection; http:// only allowed on localhost (dev)
     if (!isSafeLinkUrl(item.url)) continue;
     existingLinks.push({ url: item.url, label: item.label || 'Contact', savedAt: item.savedAt || new Date().toISOString() });
-    existingUrls.add(item.url);
     linksAdded++;
   }
   saveSavedLinks(existingLinks);
+
+  // Merge connections (dedupe by card identity, not local id — same peer paired
+  // from another device shouldn't produce a second entry)
+  const existingConnections = getConnections();
+  const existingConnIds     = new Set(existingConnections.map(c => c.id));
+  let connsAdded = 0;
+  for (const item of connectionPayloads) {
+    if (!item?.id || !item?.peerNaddr || !item?.peerKey) continue;
+    if (existingConnIds.has(item.id)) continue;
+    if (existingConnections.some(c => sameCardAddress(c.peerNaddr, item.peerNaddr))) continue;
+    existingConnections.push({
+      id:        item.id,
+      peerLabel: item.peerLabel || 'Connection',
+      peerNaddr: item.peerNaddr,
+      peerKey:   item.peerKey,
+      myCardId:  item.myCardId || null,
+      pairedAt:  item.pairedAt || new Date().toISOString(),
+    });
+    existingConnIds.add(item.id);
+    connsAdded++;
+  }
+  saveConnections(existingConnections);
 
   // Restore field cache
   for (const [id, fieldData] of Object.entries(fieldsMap)) {
@@ -1495,7 +1941,8 @@ async function importBackup(json, { navigate = true } = {}) {
   }
 
   const linksPart = linksAdded > 0 ? t('alert.links.imported', { n: linksAdded, s: linksAdded !== 1 ? 's' : '' }) : '';
-  alert(t('alert.restore.done', { added, s: added !== 1 ? 's' : '', skipped, failed, links: linksPart }));
+  const connsPart = connsAdded > 0 ? t('alert.connections.imported', { n: connsAdded, s: connsAdded !== 1 ? 's' : '' }) : '';
+  alert(t('alert.restore.done', { added, s: added !== 1 ? 's' : '', skipped, failed, links: linksPart + connsPart }));
 
   // Sync pulls stay on the current screen (e.g. Saved Cards) instead of jumping to My Cards
   if (!navigate) return;
@@ -1509,22 +1956,25 @@ async function importBackup(json, { navigate = true } = {}) {
 // ---------------------------------------------------------------------------
 
 function buildSyncPayload() {
-  const cards      = getCards();
-  const savedLinks = getSavedLinks();
-  const fields     = {};
+  const cards       = getCards();
+  const savedLinks  = getSavedLinks();
+  const connections = getConnections();
+  const fields      = {};
   for (const card of cards) {
     const cached = localStorage.getItem(`e2e:fields:${card.id}`);
     if (cached) { try { fields[card.id] = JSON.parse(cached); } catch {} }
   }
-  return { version: 2, exported: new Date().toISOString(), cards, savedLinks, fields };
+  return { version: 3, exported: new Date().toISOString(), cards, savedLinks, connections, fields };
 }
 
-/** Re-render whichever list screen (My Cards / Saved Cards) is currently visible, without navigating */
+/** Re-render whichever list screen (My Cards / Saved Cards / Connections) is currently visible, without navigating */
 function refreshVisibleList() {
-  const screenCards = document.getElementById('screen-cards');
-  const screenSaved = document.getElementById('screen-saved');
+  const screenCards       = document.getElementById('screen-cards');
+  const screenSaved       = document.getElementById('screen-saved');
+  const screenConnections = document.getElementById('screen-connections');
   if (screenCards && !screenCards.classList.contains('hidden')) renderCardList();
   if (screenSaved && !screenSaved.classList.contains('hidden')) renderSavedLinks();
+  if (screenConnections && !screenConnections.classList.contains('hidden')) renderConnections();
 }
 
 function setSyncStatus(msg, isError) {

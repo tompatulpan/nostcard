@@ -174,6 +174,46 @@ export async function importSyncKey(rawKeyBytes) {
 }
 
 // ---------------------------------------------------------------------------
+// Pairing identity derivation (code → signing key + encryption key)
+// ---------------------------------------------------------------------------
+
+/** Fixed salt, distinct label from sync so the same code/passphrase never collides across features */
+const PAIR_SALT = 'nostr-vcard-pair-v1';
+
+/**
+ * Derive deterministic pairing-channel identity material from a pairing code.
+ * Same shape as deriveSyncSecrets — both devices holding the code (scanned
+ * from the same QR/link) independently compute the identical identity.
+ *
+ * @param {string} code
+ * @returns {Promise<{ pairNsec: Uint8Array, pairKeyRaw: Uint8Array }>}
+ */
+export async function derivePairingSecrets(code) {
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(code),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+
+  const [nsecBits, aesBits] = await Promise.all([
+    crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: new TextEncoder().encode(PAIR_SALT + ':nsec'), iterations: SYNC_PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey,
+      256
+    ),
+    crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: new TextEncoder().encode(PAIR_SALT + ':aes'), iterations: SYNC_PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey,
+      256
+    ),
+  ]);
+
+  return { pairNsec: new Uint8Array(nsecBits), pairKeyRaw: new Uint8Array(aesBits) };
+}
+
+// ---------------------------------------------------------------------------
 // Internal base64 helpers
 // ---------------------------------------------------------------------------
 

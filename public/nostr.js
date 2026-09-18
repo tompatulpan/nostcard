@@ -37,6 +37,9 @@ export const SYNC_KIND = 30078;
 /** Fixed d-tag identifying the sync snapshot event (one per sync identity) */
 const SYNC_D_TAG = 'nostr-vcard-sync';
 
+/** Custom addressable kind used for the ephemeral in-person pairing handshake */
+export const PAIR_KIND = 30403;
+
 /** Timeout for relay fetch operations (ms) */
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -278,6 +281,106 @@ export async function deleteSyncEvent(relays, syncNsec) {
 }
 
 // ---------------------------------------------------------------------------
+// Pairing handshake slots (kind 30403) — two devices sharing a code (derived
+// off-band, e.g. via QR) sign as the same identity but publish to different
+// d-tag "slots" ('a' = initiator, 'b' = responder) so their offers don't
+// overwrite each other.
+// ---------------------------------------------------------------------------
+
+/**
+ * Publish (or replace) one pairing slot.
+ * @param {string[]}   relays         WebSocket relay URLs
+ * @param {Uint8Array} pairNsec       Pairing identity's private key (derived from the shared code)
+ * @param {string}     slot           'a' (initiator) or 'b' (responder)
+ * @param {string}     encryptedBlob  base64(IV[12] + AES-256-GCM ciphertext)
+ * @returns {Promise<Array<{relay: string, ok: boolean}>>}
+ */
+export async function publishPairingSlot(relays, pairNsec, slot, encryptedBlob) {
+  const template = {
+    kind:       PAIR_KIND,
+    created_at: Math.floor(Date.now() / 1000),
+    tags:       [['d', slot]],
+    content:    encryptedBlob,
+  };
+
+  const event = finalizeEvent(template, pairNsec);
+  const pool  = new SimplePool();
+
+  try {
+    const publishPromises = relays.map(async relay => {
+      try {
+        await pool.publish([relay], event);
+        return { relay, ok: true };
+      } catch {
+        return { relay, ok: false };
+      }
+    });
+
+    const settled = await Promise.allSettled(publishPromises);
+    return settled.map(r =>
+      r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
+    );
+  } finally {
+    pool.close(relays);
+  }
+}
+
+/**
+ * Fetch one pairing slot's latest event.
+ * @param {string[]} relays    WebSocket relay URLs
+ * @param {string}   pairNpub  Pairing identity's public key (hex)
+ * @param {string}   slot      'a' or 'b'
+ * @returns {Promise<{content: string, created_at: number}|null>}
+ */
+export async function fetchPairingSlot(relays, pairNpub, slot) {
+  const pool = new SimplePool();
+
+  try {
+    const event = await Promise.race([
+      pool.get(relays, {
+        kinds:   [PAIR_KIND],
+        authors: [pairNpub],
+        '#d':    [slot],
+      }),
+      new Promise(resolve => setTimeout(() => resolve(null), FETCH_TIMEOUT_MS)),
+    ]);
+
+    if (!event) return null;
+    return { content: event.content, created_at: event.created_at };
+  } finally {
+    pool.close(relays);
+  }
+}
+
+/**
+ * Delete both pairing slots (best-effort NIP-09 — not all relays honour it).
+ * @param {string[]}   relays    WebSocket relay URLs
+ * @param {Uint8Array} pairNsec  Pairing identity's private key
+ * @returns {Promise<void>}
+ */
+export async function deletePairingSlots(relays, pairNsec) {
+  const pairNpub = getPublicKey(pairNsec);
+  const template = {
+    kind:       5,
+    created_at: Math.floor(Date.now() / 1000),
+    tags:       [
+      ['a', `${PAIR_KIND}:${pairNpub}:a`],
+      ['a', `${PAIR_KIND}:${pairNpub}:b`],
+    ],
+    content:    'deleted',
+  };
+
+  const event = finalizeEvent(template, pairNsec);
+  const pool  = new SimplePool();
+
+  try {
+    await Promise.allSettled(relays.map(relay => pool.publish([relay], event)));
+  } finally {
+    pool.close(relays);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // NIP-19 naddr encode / decode
 // ---------------------------------------------------------------------------
 
@@ -312,6 +415,25 @@ export function naddrDecode(naddr) {
   }
   const { kind, pubkey, identifier, relays } = decoded.data;
   return { kind, pubkey, identifier, relays: relays || [] };
+}
+
+/**
+ * Compare two naddr strings by the card identity they point to (pubkey + d-tag),
+ * ignoring relay hints — so re-sharing after adding/removing a relay, or a
+ * peer re-pairing, is recognised as the same card instead of producing a duplicate.
+ * Falls back to raw string equality if either naddr fails to decode.
+ * @param {string} naddrA
+ * @param {string} naddrB
+ * @returns {boolean}
+ */
+export function sameCardAddress(naddrA, naddrB) {
+  try {
+    const a = naddrDecode(naddrA);
+    const b = naddrDecode(naddrB);
+    return a.pubkey === b.pubkey && a.identifier === b.identifier;
+  } catch {
+    return naddrA === naddrB;
+  }
 }
 
 // ---------------------------------------------------------------------------

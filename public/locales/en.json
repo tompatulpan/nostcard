@@ -283,5 +283,38 @@
   "proof.step3.removed.title": "Card removed from the network.",
   "proof.step3.removed.detail": "The relay returned nothing. Your contact data is no longer accessible via this link.",
   "proof.caveat.heading": "Honest caveat about deletion",
-  "proof.caveat.body": "Deletion on Nostr is best-effort. A NIP-09 deletion event is sent and most well-behaved relays will comply. However, an archived or non-compliant relay may still hold a copy. This is a property of all public Nostr relays, not specific to this app."
+  "proof.caveat.body": "Deletion on Nostr is best-effort. A NIP-09 deletion event is sent and most well-behaved relays will comply. However, an archived or non-compliant relay may still hold a copy. This is a property of all public Nostr relays, not specific to this app.",
+
+  "cards.btn.connections": "🤝 Connections",
+
+  "connections.heading": "Connections",
+  "connections.btn.new": "+ Connect",
+  "connections.empty": "No connections yet. Tap \"+ Connect\" and scan a QR code in person to pair with someone.",
+  "connections.notYetFetched": "Fetching…",
+
+  "pair.start.heading": "Connect with someone",
+  "pair.start.pick.body": "Choose which card to share when they scan this code.",
+  "pair.start.active.body": "Ask the other person to scan this QR code or open the link — on their own phone, in person.",
+  "pair.start.publish.failed": "Could not publish pairing code: {{error}}",
+  "pair.start.checking": "Checking your card is reachable…",
+  "pair.card.unpublished": "This card isn't reachable on any relay yet. Open it in My Cards and tap Save & publish, then try connecting again.",
+  "pair.btn.useCard": "Use this card",
+  "pair.countdown": "⏱ Code expires in {{m}}:{{ss}}",
+  "pair.expired": "This code expired. Generate a new one.",
+  "pair.btn.regenerate": "Generate new code",
+
+  "pair.join.heading": "Connect",
+  "pair.join.loading": "Looking for the pairing code…",
+  "pair.join.found": "You're connecting with \"{{label}}\".",
+  "pair.join.pick.body": "Choose which of your cards to share back.",
+  "pair.join.success": "Connected with \"{{label}}\"!",
+  "pair.join.btn.done": "Go to Connections",
+  "pair.join.nocards": "You need a card of your own before connecting.",
+  "pair.join.nocards.hint": "Create one from My Cards, then reopen this link before it expires.",
+  "pair.join.error.title": "Invalid or expired code",
+  "pair.join.error.detail": "This pairing code was not found or has expired. Ask for a new QR code.",
+  "pair.join.error.badCode": "This pairing link looks malformed.",
+
+  "dialog.connection.remove.confirm": "Remove this connection?\n\nThis only removes it from your device — it does not notify the other person.",
+  "alert.connections.imported": ", {{n}} connection{{s}} imported"
 }

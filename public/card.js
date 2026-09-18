@@ -18,7 +18,7 @@
 
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard, buildVCard } from './vcard.js';
-import { naddrDecode, fetchCard } from './nostr.js';
+import { naddrDecode, fetchCard, sameCardAddress } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
 
 // ---------------------------------------------------------------------------
@@ -246,11 +246,13 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
     const currentUrl = location.href; // includes #key fragment
     let links = [];
     try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
-    const alreadySaved = links.some(l => l.url === currentUrl);
-    if (!alreadySaved) {
+    const idx = links.findIndex(l => sameSharedCardUrl(l.url, currentUrl));
+    if (idx >= 0) {
+      links[idx] = { ...links[idx], url: currentUrl, label: fields.fn || links[idx].label };
+    } else {
       links.push({ url: currentUrl, label: fields.fn || 'Contact', savedAt: new Date().toISOString() });
-      try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
     }
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
     saveLinkBtn.textContent = t('cv.btn.save.link.done');
     saveLinkBtn.disabled    = true;
     const saveLinkHint = document.createElement('p');
@@ -454,10 +456,13 @@ function showDownloadConfirmation(fn, trustId, cleanUrl) {
       const SAVED_KEY = 'e2e:saved-links';
       let links = [];
       try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
-      if (!links.some(l => l.url === cleanUrl)) {
+      const idx = links.findIndex(l => sameSharedCardUrl(l.url, cleanUrl));
+      if (idx >= 0) {
+        links[idx] = { ...links[idx], url: cleanUrl, label: label || links[idx].label };
+      } else {
         links.push({ url: cleanUrl, label: label || 'Contact', savedAt: new Date().toISOString() });
-        localStorage.setItem(SAVED_KEY, JSON.stringify(links));
       }
+      localStorage.setItem(SAVED_KEY, JSON.stringify(links));
     } catch { /* storage blocked — non-fatal */ }
   };
 
@@ -561,6 +566,18 @@ function showError(title, detail) {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Extract the naddr= query param from a share URL, or null if missing/malformed */
+function extractNaddrFromUrl(url) {
+  try { return new URL(url).searchParams.get('naddr'); } catch { return null; }
+}
+
+/** Compares two share URLs by card identity (naddr pubkey+d-tag), not exact string */
+function sameSharedCardUrl(urlA, urlB) {
+  const a = extractNaddrFromUrl(urlA), b = extractNaddrFromUrl(urlB);
+  if (!a || !b) return urlA === urlB;
+  return sameCardAddress(a, b);
+}
 
 function makeInitials(name) {
   return name
