@@ -37,8 +37,7 @@
         <p class="muted" data-i18n="setup.body">Your contact details are encrypted in the browser before being published to Nostr relays.
           No server can ever read the content — only people you share the link with.</p>
         <button id="btn-create-card" class="btn btn-primary btn-lg" data-i18n="setup.btn.create">Create my card</button>
-        <button id="btn-go-saved-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
-        <button id="btn-go-connections-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.connections">🤝 Connections</button>
+        <button id="btn-go-saved-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.saved">🔖 Contacts</button>
 
         <div class="screen-footer-actions">
           <button id="btn-advanced-setup" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
@@ -52,8 +51,7 @@
         <h2 data-i18n="cards.heading">My Cards</h2>
         <div class="cards-screen-actions">
           <button id="btn-new-card"    class="btn btn-primary" data-i18n="cards.btn.new">+ New Card</button>
-          <button id="btn-go-saved"    class="btn btn-teal" data-i18n="cards.btn.saved">🔖 Saved Cards</button>
-          <button id="btn-go-connections" class="btn btn-teal" data-i18n="cards.btn.connections">🤝 Connections</button>
+          <button id="btn-go-saved"    class="btn btn-teal" data-i18n="cards.btn.saved">🔖 Contacts</button>
         </div>
       </div>
       <div id="cards-list" class="cards-list"></div>
@@ -62,12 +60,12 @@
       </div>
     </section>
 
-    <!-- ── Saved Cards screen ──────────────────────────────────────────────── -->
+    <!-- ── Contacts screen (saved links + paired connections, merged) ───── -->
     <section id="screen-saved" class="screen hidden">
       <div class="cards-screen-header">
-        <h2 data-i18n="saved.heading">Saved Cards</h2>
+        <h2 data-i18n="saved.heading">Contacts</h2>
         <div class="cards-screen-actions">
-          <button id="btn-go-connections-saved" class="btn btn-teal" data-i18n="cards.btn.connections">🤝 Connections</button>
+          <button id="btn-connections-new" class="btn btn-primary" data-i18n="connections.btn.new">+ Connect</button>
           <button id="btn-back-to-cards" class="btn btn-success" data-i18n="saved.btn.back">← My Cards</button>
         </div>
       </div>
@@ -372,21 +370,6 @@
 
       </div>
 
-    </section>
-
-    <!-- ── Connections screen ───────────────────────────────────────────── -->
-    <section id="screen-connections" class="screen hidden">
-      <div class="cards-screen-header">
-        <h2 data-i18n="connections.heading">Connections</h2>
-        <div class="cards-screen-actions">
-          <button id="btn-connections-new"  class="btn btn-primary" data-i18n="connections.btn.new">+ Connect</button>
-          <button id="btn-connections-back" class="btn btn-success" data-i18n="saved.btn.back">← My Cards</button>
-        </div>
-      </div>
-      <div id="connections-list" class="cards-list"></div>
-      <div class="screen-footer-actions">
-        <button id="btn-advanced-connections" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
-      </div>
     </section>
 
     <!-- ── Pair: start (initiator, generates the QR/link) ──────────────── -->

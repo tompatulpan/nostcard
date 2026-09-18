@@ -35,7 +35,7 @@
   "sync.btn.open": "🔄 Sync",
   "sync.btn.open.title": "Sync your cards across devices/browsers",
   "cards.btn.new": "+ New Card",
-  "cards.btn.saved": "🔖 Saved Cards",
+  "cards.btn.saved": "🔖 Contacts",
   "cards.btn.logout": "🚪 Log out",
   "cards.btn.logout.title": "Remove all local keys and credentials",
   "cards.empty": "No cards yet. Create your first one above.",
@@ -45,9 +45,9 @@
   "cards.row.btn.share": "Share",
   "cards.row.btn.rename.title": "Rename",
 
-  "saved.heading": "Saved Cards",
+  "saved.heading": "Contacts",
   "saved.btn.back": "← My Cards",
-  "saved.empty": "No saved cards yet. Open a card link and choose \"My personal device\" to save it here.",
+  "saved.empty": "No contacts yet. Open a card link and choose \"My personal device\", or tap \"+ Connect\" to pair with someone in person.",
 
   "adv.btn.open": "⚙️ Advanced",
   "adv.btn.open.title": "Sync, backup, restore, and other advanced options",
@@ -285,12 +285,10 @@
   "proof.caveat.heading": "Honest caveat about deletion",
   "proof.caveat.body": "Deletion on Nostr is best-effort. A NIP-09 deletion event is sent and most well-behaved relays will comply. However, an archived or non-compliant relay may still hold a copy. This is a property of all public Nostr relays, not specific to this app.",
 
-  "cards.btn.connections": "🤝 Connections",
-
-  "connections.heading": "Connections",
   "connections.btn.new": "+ Connect",
-  "connections.empty": "No connections yet. Tap \"+ Connect\" and scan a QR code in person to pair with someone.",
   "connections.notYetFetched": "Fetching…",
+  "contacts.badge.paired": "🤝 Paired",
+  "contacts.badge.paired.title": "You paired in person — you both hold each other's card",
 
   "pair.start.heading": "Connect with someone",
   "pair.start.pick.body": "Choose which card to share when they scan this code.",

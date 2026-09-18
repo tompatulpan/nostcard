@@ -122,10 +122,8 @@ async function init() {
     });
     const screenCards = document.getElementById('screen-cards');
     const screenSaved = document.getElementById('screen-saved');
-    const screenConnections = document.getElementById('screen-connections');
     if (screenCards && !screenCards.classList.contains('hidden')) renderCardList();
     if (screenSaved && !screenSaved.classList.contains('hidden')) renderSavedLinks();
-    if (screenConnections && !screenConnections.classList.contains('hidden')) renderConnections();
     if (activeCardId) renderRelayManager();
     // Update type-select option labels and address subfield placeholders without losing user input
     document.querySelectorAll('.dynamic-type-select option').forEach(opt => {
@@ -151,7 +149,7 @@ async function init() {
 // Screens
 // ---------------------------------------------------------------------------
 
-const ALL_SCREENS = ['screen-setup', 'screen-cards', 'screen-editor', 'screen-saved', 'screen-card-view', 'screen-connections', 'screen-pair-start', 'screen-pair-join'];
+const ALL_SCREENS = ['screen-setup', 'screen-cards', 'screen-editor', 'screen-saved', 'screen-card-view', 'screen-pair-start', 'screen-pair-join'];
 
 function showScreen(name) {
   for (const s of ALL_SCREENS) {
@@ -166,7 +164,6 @@ function showSetup()     { activeCardId = null; showScreen('screen-setup');     
 function showCardList()  { activeCardId = null; showScreen('screen-cards');  renderCardList(); }
 function showEditor()    { showScreen('screen-editor'); }
 function showSavedLinks(){ activeCardId = null; showScreen('screen-saved');  renderSavedLinks(); }
-function showConnections(){ activeCardId = null; showScreen('screen-connections'); renderConnections(); }
 
 // ---------------------------------------------------------------------------
 // Router — location.hash is the single source of truth for the current screen
@@ -186,16 +183,15 @@ function route() {
   if (name === 'saved') { showSavedLinks(); return; }
   if (name === 'cards')  { showCardList();  return; }
   if (name === 'setup')  { showSetup();     return; }
-  if (name === 'connections') { showConnections(); return; }
+  if (name === 'connections') { go('/saved'); return; } // legacy route — merged into Contacts
   if (name === 'pair-join' && param) { showPairJoin(param); return; }
   if (name === 'pair') { showPairStart(); return; }
 
   // No/invalid hash — pick the sensible default screen and normalize the URL
   const cards = getCards();
-  if (cards.length > 0)                       go('/cards');
-  else if (getSavedLinks().length > 0)        go('/saved');
-  else if (getConnections().length > 0)       go('/connections');
-  else                                          go('/setup');
+  if (cards.length > 0)                                                go('/cards');
+  else if (getSavedLinks().length > 0 || getConnections().length > 0)  go('/saved');
+  else                                                                   go('/setup');
 }
 
 window.addEventListener('hashchange', route);
@@ -1308,20 +1304,31 @@ document.getElementById('modal-advanced').addEventListener('click', e => {
 });
 
 // ---------------------------------------------------------------------------
-// Saved links screen
+// Contacts screen — merged view of paired connections and plain saved links.
+// Storage stays separate (e2e:connections / e2e:saved-links); a saved link
+// pointing at an already-paired card is hidden so each contact appears once.
 // ---------------------------------------------------------------------------
 
 function renderSavedLinks() {
-  const links     = getSavedLinks();
-  const container = document.getElementById('saved-links-list');
+  const connections = getConnections();
+  const links       = getSavedLinks();
+  const container   = document.getElementById('saved-links-list');
   container.innerHTML = '';
 
-  if (links.length === 0) {
+  // Paired entry wins over a plain saved link for the same card
+  const unpairedLinks = links.filter(link => {
+    const naddr = extractNaddrFromUrl(link.url);
+    return !naddr || !connections.some(c => sameCardAddress(c.peerNaddr, naddr));
+  });
+
+  if (connections.length === 0 && unpairedLinks.length === 0) {
     container.innerHTML = `<p class="muted">${htmlEscape(t('saved.empty'))}</p>`;
     return;
   }
 
-  for (const link of links) {
+  for (const conn of connections) renderConnectionRow(container, conn);
+
+  for (const link of unpairedLinks) {
     const row = document.createElement('div');
     row.className = 'saved-link-row';
 
@@ -1361,34 +1368,16 @@ function renderSavedLinks() {
     row.appendChild(actions);
     container.appendChild(row);
   }
+
+  // Re-fetch each peer's card in the background so paired entries stay current
+  if (connections.length > 0) refreshConnections(connections);
 }
 
 // ---------------------------------------------------------------------------
 // Connections (mutual in-person pairing)
 // ---------------------------------------------------------------------------
 
-document.getElementById('btn-go-connections').addEventListener('click', () => go('/connections'));
-document.getElementById('btn-go-connections-setup').addEventListener('click', () => go('/connections'));
-document.getElementById('btn-go-connections-saved').addEventListener('click', () => go('/connections'));
-document.getElementById('btn-connections-back').addEventListener('click', () => go('/cards'));
 document.getElementById('btn-connections-new').addEventListener('click', () => go('/pair'));
-document.getElementById('btn-advanced-connections').addEventListener('click', openAdvancedModal);
-
-function renderConnections() {
-  const connections = getConnections();
-  const container   = document.getElementById('connections-list');
-  container.innerHTML = '';
-
-  if (connections.length === 0) {
-    container.innerHTML = `<p class="muted">${htmlEscape(t('connections.empty'))}</p>`;
-    return;
-  }
-
-  for (const conn of connections) renderConnectionRow(container, conn);
-
-  // Re-fetch each peer's card in the background so the list stays current
-  refreshConnections(connections);
-}
 
 function renderConnectionRow(container, conn) {
   const cached = getConnectionFields(conn.id);
@@ -1398,11 +1387,11 @@ function renderConnectionRow(container, conn) {
   row.dataset.connId = conn.id;
   row.innerHTML = `
     <div class="card-list-info">
-      <span class="card-list-name">${htmlEscape(conn.peerLabel || 'Connection')}</span>
+      <span class="card-list-name">${htmlEscape(conn.peerLabel || 'Connection')} <span class="relay-badge relay-badge--ok" title="${htmlEscape(t('contacts.badge.paired.title'))}">${htmlEscape(t('contacts.badge.paired'))}</span></span>
       <span class="card-list-meta conn-meta">${htmlEscape(cached?.fn || t('connections.notYetFetched'))}</span>
     </div>
     <div class="card-list-actions">
-      <button class="btn btn-ghost   btn-sm btn-conn-view">${htmlEscape(t('cards.row.btn.view'))}</button>
+      <button class="btn btn-primary btn-sm btn-conn-view">${htmlEscape(t('btn.open'))}</button>
       <button class="btn btn-danger  btn-sm btn-conn-remove">${htmlEscape(t('btn.remove'))}</button>
     </div>
   `;
@@ -1432,7 +1421,7 @@ async function refreshConnections(connections) {
 
 function viewConnection(conn) {
   const url = `${location.origin}/card?naddr=${encodeURIComponent(conn.peerNaddr)}#${encodeURIComponent(conn.peerKey)}`;
-  cvReturnRoute = '/connections';
+  cvReturnRoute = '/saved';
   showCardViewScreen(url, 'owner-preview');
 }
 
@@ -1440,7 +1429,7 @@ function removeConnection(id) {
   if (!confirm(t('dialog.connection.remove.confirm'))) return;
   saveConnections(getConnections().filter(c => c.id !== id));
   localStorage.removeItem(`e2e:connection-fields:${id}`);
-  renderConnections();
+  renderSavedLinks();
 }
 
 /** Render a compact list of the user's own cards with a "use this card" action */
@@ -1655,7 +1644,7 @@ async function completePairStart(pairNsec, peerPayload, myCardId) {
 
   try { await cleanupPairing(DEFAULT_RELAYS, pairNsec); } catch { /* best-effort */ }
 
-  go('/connections');
+  go('/saved');
 }
 
 document.getElementById('btn-pair-start-cancel').addEventListener('click', async () => {
@@ -1664,7 +1653,7 @@ document.getElementById('btn-pair-start-cancel').addEventListener('click', async
     stopPairStartPolling();
     try { await cleanupPairing(DEFAULT_RELAYS, pairNsec); } catch { /* best-effort */ }
   }
-  go('/connections');
+  go('/saved');
 });
 
 document.getElementById('btn-pair-start-copy').addEventListener('click', async () => {
@@ -1692,7 +1681,7 @@ async function showPairJoin(code) {
 
   // The code is a channel secret — remove it from the address bar and history
   // as soon as it's been captured (same hygiene as the #key fragment in card.js)
-  history.replaceState(null, '', location.pathname + '#/connections');
+  history.replaceState(null, '', location.pathname + '#/saved');
 
   if (!/^[a-zA-Z0-9]+$/.test(code)) {
     return showPairJoinError(t('pair.join.error.badCode'));
@@ -1756,7 +1745,7 @@ async function confirmPairJoin(identity, peerPayload, myCard) {
   document.getElementById('pair-join-success').classList.remove('hidden');
 }
 
-document.getElementById('btn-pair-join-done').addEventListener('click', () => go('/connections'));
+document.getElementById('btn-pair-join-done').addEventListener('click', () => go('/saved'));
 
 // ---------------------------------------------------------------------------
 // Backup & Restore
@@ -1997,14 +1986,12 @@ function buildSyncPayload() {
   return { version: 3, exported: new Date().toISOString(), cards, savedLinks, connections, fields };
 }
 
-/** Re-render whichever list screen (My Cards / Saved Cards / Connections) is currently visible, without navigating */
+/** Re-render whichever list screen (My Cards / Contacts) is currently visible, without navigating */
 function refreshVisibleList() {
-  const screenCards       = document.getElementById('screen-cards');
-  const screenSaved       = document.getElementById('screen-saved');
-  const screenConnections = document.getElementById('screen-connections');
+  const screenCards = document.getElementById('screen-cards');
+  const screenSaved = document.getElementById('screen-saved');
   if (screenCards && !screenCards.classList.contains('hidden')) renderCardList();
   if (screenSaved && !screenSaved.classList.contains('hidden')) renderSavedLinks();
-  if (screenConnections && !screenConnections.classList.contains('hidden')) renderConnections();
 }
 
 function setSyncStatus(msg, isError) {

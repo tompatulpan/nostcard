@@ -35,7 +35,7 @@
   "sync.btn.open": "🔄 Synkronisera",
   "sync.btn.open.title": "Synkronisera dina kort mellan enheter/webbläsare",
   "cards.btn.new": "+ Nytt kort",
-  "cards.btn.saved": "🔖 Sparade kort",
+  "cards.btn.saved": "🔖 Kontakter",
   "cards.btn.logout": "🚪 Logga ut",
   "cards.btn.logout.title": "Ta bort alla lokala nycklar och uppgifter",
   "cards.empty": "Inga kort ännu. Skapa ditt första ovan.",
@@ -45,9 +45,9 @@
   "cards.row.btn.share": "Dela",
   "cards.row.btn.rename.title": "Byt namn",
 
-  "saved.heading": "Sparade kort",
+  "saved.heading": "Kontakter",
   "saved.btn.back": "← Mina kort",
-  "saved.empty": "Inga sparade kort ännu. Öppna en kortlänk och välj \"Min personliga enhet\" för att spara den här.",
+  "saved.empty": "Inga kontakter ännu. Öppna en kortlänk och välj \"Min personliga enhet\", eller tryck på \"+ Anslut\" för att para ihop dig med någon personligen.",
 
   "adv.btn.open": "⚙️ Avancerat",
   "adv.btn.open.title": "Synkronisera, säkerhetskopiera, återställ och andra avancerade alternativ",
@@ -285,12 +285,10 @@
   "proof.caveat.heading": "Ärlig brasklapp om borttagning",
   "proof.caveat.body": "Borttagning på Nostr är ett bästa-försök. En NIP-09-borttagningshändelse skickas och de flesta välbehöriga reläer följer den. Men ett arkiverat eller icke-kompatibelt relä kan fortfarande ha en kopia. Det här är en egenskap hos alla offentliga Nostr-reläer, inte specifikt för den här appen.",
 
-  "cards.btn.connections": "🤝 Kontakter",
-
-  "connections.heading": "Kontakter",
   "connections.btn.new": "+ Anslut",
-  "connections.empty": "Inga kontakter ännu. Tryck på \"+ Anslut\" och skanna en QR-kod personligen för att para ihop dig med någon.",
   "connections.notYetFetched": "Hämtar…",
+  "contacts.badge.paired": "🤝 Ihopparad",
+  "contacts.badge.paired.title": "Ni parade ihop er personligen — ni har varandras kort",
 
   "pair.start.heading": "Anslut med någon",
   "pair.start.pick.body": "Välj vilket kort som ska delas när de skannar denna kod.",
