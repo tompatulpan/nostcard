@@ -1859,10 +1859,31 @@ async function importBackup(json, { navigate = true } = {}) {
 
   for (const payload of cardPayloads) {
     if (!payload?.id || !payload?.nsec || !payload?.key) { failed++; continue; }
-    if (existingIds.has(payload.id)) { skipped++; continue; }
 
     // Validate nsec looks like 64-char hex
     if (!/^[0-9a-f]{64}$/i.test(payload.nsec)) { failed++; continue; }
+
+    if (existingIds.has(payload.id)) {
+      // Card already known locally — refresh key/relays/label from the incoming
+      // snapshot (e.g. a key rotation on another device) instead of ignoring it.
+      const cards = getCards();
+      const idx   = cards.findIndex(c => c.id === payload.id);
+      if (idx >= 0 && cards[idx].nsec === payload.nsec) {
+        const validRelays = Array.isArray(payload.relays) ? payload.relays.filter(isValidRelayUrl) : [];
+        let changed = false;
+        if (payload.key && payload.key !== cards[idx].key) { cards[idx].key = payload.key; changed = true; }
+        if (validRelays.length > 0 && JSON.stringify(validRelays) !== JSON.stringify(cards[idx].relays)) { cards[idx].relays = validRelays; changed = true; }
+        if (payload.label && payload.label !== cards[idx].label) { cards[idx].label = payload.label; changed = true; }
+        if (changed) {
+          saveCards(cards);
+          // Old share links may have relied on the previous key — drop any cached trust for them
+          localStorage.removeItem(`e2e:trusted:${payload.id}`);
+          localStorage.removeItem(`e2e:trusted:${cards[idx].npub}:${payload.id}`);
+        }
+      }
+      skipped++;
+      continue;
+    }
 
     // Derive npub from nsec — never trust the value stored in the file
     let npub;
