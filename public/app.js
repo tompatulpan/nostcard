@@ -29,7 +29,7 @@
 
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
-import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS } from './nostr.js';
+import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations } from './i18n.js';
 import { generateSyncPassphrase, deriveSyncIdentity, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
@@ -1431,7 +1431,7 @@ async function refreshConnections(connections) {
 }
 
 function viewConnection(conn) {
-  const url = `${location.origin}/card?naddr=${conn.peerNaddr}#${conn.peerKey}`;
+  const url = `${location.origin}/card?naddr=${encodeURIComponent(conn.peerNaddr)}#${encodeURIComponent(conn.peerKey)}`;
   cvReturnRoute = '/connections';
   showCardViewScreen(url, 'owner-preview');
 }
@@ -1470,11 +1470,12 @@ function renderCardPicker(container, onPick) {
 /** Add a connection, or update the existing one if this peer card is already paired (dedupes by card identity, not exact naddr string — a relay-list edit or re-pairing shouldn't create a duplicate) */
 function upsertConnection(peerPayload, myCardId) {
   const connections = getConnections();
+  const peerLabel = String(peerPayload.label || 'Connection').slice(0, 100);
   const idx = connections.findIndex(c => sameCardAddress(c.peerNaddr, peerPayload.naddr));
   if (idx >= 0) {
     connections[idx] = {
       ...connections[idx],
-      peerLabel: peerPayload.label || connections[idx].peerLabel,
+      peerLabel: peerLabel,
       peerNaddr: peerPayload.naddr,
       peerKey:   peerPayload.key,
     };
@@ -1484,7 +1485,7 @@ function upsertConnection(peerPayload, myCardId) {
 
   const conn = {
     id:        generateRandom(8),
-    peerLabel: peerPayload.label || 'Connection',
+    peerLabel,
     peerNaddr: peerPayload.naddr,
     peerKey:   peerPayload.key,
     myCardId,
@@ -1493,6 +1494,17 @@ function upsertConnection(peerPayload, myCardId) {
   connections.push(conn);
   saveConnections(connections);
   return conn;
+}
+
+/**
+ * Validate a peer pairing payload before trusting it: the naddr must decode to a
+ * card-kind address and the key must be exactly 32 base64url bytes — rejects
+ * crafted payloads that could smuggle extra URL parameters or junk into storage.
+ */
+function isValidPeerPayload(p) {
+  if (!p || typeof p.naddr !== 'string' || typeof p.key !== 'string') return false;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(p.key)) return false;
+  try { return naddrDecode(p.naddr).kind === CARD_KIND; } catch { return false; }
 }
 
 /**
@@ -1604,8 +1616,21 @@ async function beginPairStart(card) {
     try {
       const found = await fetchPairingPayload(DEFAULT_RELAYS, pairNpub, pairKeyRaw, 'b');
       if (found && pairStartState === myState && !myState.completing) {
+        if (!isValidPeerPayload(found.payload)) {
+          console.warn('[app] rejected malformed pairing response');
+          return;
+        }
         myState.completing = true;
-        await completePairStart(pairNsec, found.payload, card.id);
+        // Anyone holding the code can write slot b — an explicit accept makes a
+        // hijacked handshake visible instead of silently stored.
+        const label = String(found.payload.label || 'Connection').slice(0, 100);
+        if (confirm(t('dialog.pair.accept.confirm', { label }))) {
+          await completePairStart(pairNsec, found.payload, card.id);
+        } else {
+          stopPairStartPolling();
+          try { await cleanupPairing(DEFAULT_RELAYS, pairNsec); } catch { /* best-effort */ }
+          showPairStart();
+        }
       }
     } catch (err) {
       console.warn('[app] pairing poll error (non-fatal):', err.message);
@@ -1665,6 +1690,10 @@ async function showPairJoin(code) {
   document.getElementById('pair-join-nocards').classList.add('hidden');
   document.getElementById('pair-join-error').classList.add('hidden');
 
+  // The code is a channel secret — remove it from the address bar and history
+  // as soon as it's been captured (same hygiene as the #key fragment in card.js)
+  history.replaceState(null, '', location.pathname + '#/connections');
+
   if (!/^[a-zA-Z0-9]+$/.test(code)) {
     return showPairJoinError(t('pair.join.error.badCode'));
   }
@@ -1676,7 +1705,7 @@ async function showPairJoin(code) {
   } catch {
     return showPairJoinError(t('pair.join.error.detail'));
   }
-  if (!offer) return showPairJoinError(t('pair.join.error.detail'));
+  if (!offer || !isValidPeerPayload(offer.payload)) return showPairJoinError(t('pair.join.error.detail'));
 
   document.getElementById('pair-join-loading').classList.add('hidden');
 
@@ -1917,12 +1946,13 @@ async function importBackup(json, { navigate = true } = {}) {
   const existingConnIds     = new Set(existingConnections.map(c => c.id));
   let connsAdded = 0;
   for (const item of connectionPayloads) {
-    if (!item?.id || !item?.peerNaddr || !item?.peerKey) continue;
+    if (!item?.id) continue;
+    if (!isValidPeerPayload({ naddr: item.peerNaddr, key: item.peerKey })) continue;
     if (existingConnIds.has(item.id)) continue;
     if (existingConnections.some(c => sameCardAddress(c.peerNaddr, item.peerNaddr))) continue;
     existingConnections.push({
       id:        item.id,
-      peerLabel: item.peerLabel || 'Connection',
+      peerLabel: String(item.peerLabel || 'Connection').slice(0, 100),
       peerNaddr: item.peerNaddr,
       peerKey:   item.peerKey,
       myCardId:  item.myCardId || null,

@@ -29,7 +29,7 @@ export const DEFAULT_RELAYS = [
 ];
 
 /** NIP-33 addressable replaceable event kind for vCard blobs */
-const CARD_KIND = 30402;
+export const CARD_KIND = 30402;
 
 /** NIP-78 "application-specific data" kind used for the cross-device sync snapshot */
 export const SYNC_KIND = 30078;

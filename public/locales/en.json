@@ -316,5 +316,6 @@
   "pair.join.error.badCode": "This pairing link looks malformed.",
 
   "dialog.connection.remove.confirm": "Remove this connection?\n\nThis only removes it from your device — it does not notify the other person.",
+  "dialog.pair.accept.confirm": "\"{{label}}\" responded to your pairing code.\n\nIs this the person standing in front of you? Only accept if you are pairing in person right now.",
   "alert.connections.imported": ", {{n}} connection{{s}} imported"
 }

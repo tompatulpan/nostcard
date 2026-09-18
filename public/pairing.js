@@ -12,6 +12,10 @@
  *   - The code is equivalent to a decryption key — never log it, never send
  *     it anywhere but the URL fragment (or QR contents scanned in person).
  *   - Offers older than PAIR_TTL_MS are treated as expired and ignored.
+ *   - Slot payloads embed the card's AES key; slot deletion after handshake is
+ *     best-effort (NIP-09), so an archiving relay may retain the ciphertext.
+ *     If a pairing code may have leaked (e.g. a photo of the QR), rotate the
+ *     card's key to invalidate what the archived payload points to.
  */
 
 import { generateRandom, derivePairingSecrets, importSyncKey, encryptVCard, decryptVCard } from './crypto.js';

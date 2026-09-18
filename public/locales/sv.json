@@ -316,5 +316,6 @@
   "pair.join.error.badCode": "Denna parningslänk verkar felaktig.",
 
   "dialog.connection.remove.confirm": "Ta bort denna kontakt?\n\nDetta tar bara bort den från din enhet — det meddelar inte den andra personen.",
+  "dialog.pair.accept.confirm": "\"{{label}}\" svarade på din parningskod.\n\nÄr detta personen framför dig? Acceptera bara om ni parar ihop er personligen just nu.",
   "alert.connections.imported": ", {{n}} kontakt{{s}} importerad{{s}}"
 }
