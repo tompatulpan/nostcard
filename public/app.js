@@ -119,16 +119,7 @@ async function init() {
     }
   });
 
-  const cards = getCards();
-  if (cards.length === 0) {
-    if (getSavedLinks().length > 0) {
-      showSavedLinks();
-    } else {
-      showSetup();
-    }
-    return;
-  }
-  showCardList();
+  route();
 }
 
 // ---------------------------------------------------------------------------
@@ -146,10 +137,38 @@ function showScreen(name) {
   document.getElementById('cv-btn-back').classList.toggle('hidden',     name !== 'screen-card-view');
 }
 
-function showSetup()     { showScreen('screen-setup');     }
-function showCardList()  { showScreen('screen-cards');  renderCardList(); }
+function showSetup()     { activeCardId = null; showScreen('screen-setup');     }
+function showCardList()  { activeCardId = null; showScreen('screen-cards');  renderCardList(); }
 function showEditor()    { showScreen('screen-editor'); }
-function showSavedLinks(){ showScreen('screen-saved');  renderSavedLinks(); }
+function showSavedLinks(){ activeCardId = null; showScreen('screen-saved');  renderSavedLinks(); }
+
+// ---------------------------------------------------------------------------
+// Router — location.hash is the single source of truth for the current screen
+// (enables deep links like index.html#/saved and working back/forward)
+// ---------------------------------------------------------------------------
+
+/** Navigate to a route (e.g. '/cards', '/editor/abc123', '/saved', '/setup') */
+function go(path) {
+  if (location.hash === `#${path}`) { route(); } else { location.hash = path; }
+}
+
+function route() {
+  const hash = location.hash.replace(/^#\/?/, '');
+  const [name, param] = hash.split('/');
+
+  if (name === 'editor' && param && getCard(param)) { openEditor(param); return; }
+  if (name === 'saved') { showSavedLinks(); return; }
+  if (name === 'cards')  { showCardList();  return; }
+  if (name === 'setup')  { showSetup();     return; }
+
+  // No/invalid hash — pick the sensible default screen and normalize the URL
+  const cards = getCards();
+  if (cards.length > 0)                 go('/cards');
+  else if (getSavedLinks().length > 0)  go('/saved');
+  else                                   go('/setup');
+}
+
+window.addEventListener('hashchange', route);
 
 // ---------------------------------------------------------------------------
 // Card list
@@ -203,7 +222,7 @@ function renderCardList() {
     `;
 
     row.querySelector('.btn-card-view').addEventListener('click', () => viewCardFromList(card));
-    row.querySelector('.btn-card-edit').addEventListener('click', () => openEditor(card.id));
+    row.querySelector('.btn-card-edit').addEventListener('click', () => go(`/editor/${card.id}`));
     row.querySelector('.btn-card-share').addEventListener('click', () => openShareModalForCard(card));
     row.querySelector('.btn-card-rename').addEventListener('click', () => renameCard(row, card));
 
@@ -582,9 +601,7 @@ async function createCard(label, prefillFields = null) {
 
   activeCardId = id;
   if (!prefillFields) {
-    showEditor();
-    renderRelayManager();
-    restoreFields(id);
+    go(`/editor/${id}`);
   }
 }
 
@@ -680,7 +697,7 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
   activeCardId = null;
   btn.disabled = false;
 
-  if (remaining.length === 0) { showSetup(); } else { showCardList(); }
+  go(remaining.length === 0 ? '/setup' : '/cards');
 });
 
 // ---------------------------------------------------------------------------
@@ -834,11 +851,11 @@ document.getElementById('btn-verify-privacy').addEventListener('click', (e) => {
 });
 
 document.getElementById('cv-btn-back').addEventListener('click', () => {
-  if (activeCardId) { showEditor(); } else { showCardList(); }
+  go(activeCardId ? `/editor/${activeCardId}` : '/cards');
 });
 
 document.getElementById('cv-btn-back-error').addEventListener('click', () => {
-  if (activeCardId) { showEditor(); } else { showCardList(); }
+  go(activeCardId ? `/editor/${activeCardId}` : '/cards');
 });
 
 async function showCardViewScreen(url, mode) {
@@ -1190,20 +1207,19 @@ function renderRelayManager() {
 // ---------------------------------------------------------------------------
 
 document.getElementById('btn-back-cards').addEventListener('click', () => {
-  activeCardId = null;
-  showCardList();
+  go('/cards');
 });
 
 document.getElementById('btn-back-to-cards').addEventListener('click', () => {
-  showCardList();
+  go('/cards');
 });
 
 document.getElementById('btn-go-saved').addEventListener('click', () => {
-  showSavedLinks();
+  go('/saved');
 });
 
 document.getElementById('btn-go-saved-setup').addEventListener('click', () => {
-  showSavedLinks();
+  go('/saved');
 });
 
 document.getElementById('btn-clear-all').addEventListener('click', () => {
@@ -1485,7 +1501,7 @@ async function importBackup(json, { navigate = true } = {}) {
   if (!navigate) return;
 
   const cards = getCards();
-  if (cards.length > 0) { showCardList(); } else { showSetup(); }
+  go(cards.length > 0 ? '/cards' : '/setup');
 }
 
 // ---------------------------------------------------------------------------
