@@ -1390,27 +1390,23 @@ function renderConnectionRow(container, conn) {
   const info = document.createElement('div');
   info.className = 'saved-link-info';
 
+  // Label: the peer's actual name (from their vCard) — same as link-shared
+  // rows where link.label IS the contact's fn. Falls back to the pairing
+  // label until the vCard has been fetched.
   const nameEl = document.createElement('span');
   nameEl.className = 'saved-link-label';
-  nameEl.textContent = conn.peerLabel || 'Connection';
+  nameEl.textContent = cached?.fn || conn.peerLabel || 'Connection';
   const badge = document.createElement('span');
   badge.className = 'relay-badge relay-badge--ok';
   badge.title = t('contacts.badge.paired.title');
   badge.textContent = t('contacts.badge.paired');
   nameEl.appendChild(badge);
 
-  // Show the peer's actual name (from their vCard) as a subtitle — mirrors
-  // how link-shared rows show the contact's fn as the label.
-  const subEl = document.createElement('span');
-  subEl.className = 'saved-link-date conn-fn';
-  subEl.textContent = cached?.fn || t('connections.notYetFetched');
-
   const dateEl = document.createElement('span');
   dateEl.className = 'saved-link-date conn-meta';
   dateEl.textContent = formatDate(conn.updatedAt || conn.pairedAt);
 
   info.appendChild(nameEl);
-  info.appendChild(subEl);
   info.appendChild(dateEl);
 
   const actions = document.createElement('div');
@@ -1444,8 +1440,16 @@ async function refreshConnections(connections) {
       const fields    = parseVCard(vcardText);
       saveConnectionFields(conn.id, fields);
 
-      const fnEl = document.querySelector(`.saved-link-row[data-conn-id="${conn.id}"] .conn-fn`);
-      if (fnEl) fnEl.textContent = fields.fn || t('connections.notYetFetched');
+      const row = document.querySelector(`.saved-link-row[data-conn-id="${conn.id}"]`);
+      if (row) {
+        const labelEl = row.querySelector('.saved-link-label');
+        if (labelEl && fields.fn) {
+          // Preserve the paired badge appended to the label
+          const badge = labelEl.querySelector('.relay-badge');
+          labelEl.textContent = fields.fn;
+          if (badge) labelEl.appendChild(badge);
+        }
+      }
     } catch (err) {
       console.warn('[app] connection refresh failed (non-fatal):', err.message);
     }
