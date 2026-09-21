@@ -947,7 +947,7 @@ async function showCardViewScreen(url, mode) {
     renderCvCard(fields, vcardText, true, true);
   } else {
     // Trust keyed by pubkey:cardId — see card.js
-    showCvTrustGate(`${pubkey}:${cardId}`, fields, vcardText, url);
+    showCvTrustGate(`${pubkey}:${cardId}`, fields, vcardText, url, event.created_at);
   }
 }
 
@@ -976,9 +976,10 @@ function setCvTrust(trustId) {
   } catch {}
 }
 
-function showCvTrustGate(trustId, fields, vcardText, shareUrl) {
+function showCvTrustGate(trustId, fields, vcardText, shareUrl, eventCreatedAt) {
+  const relayTs = eventCreatedAt ? new Date(eventCreatedAt * 1000).toISOString() : new Date().toISOString();
   if (getCvTrust(trustId)) {
-    autoSaveLink(shareUrl, fields.fn);
+    autoSaveLink(shareUrl, fields.fn, relayTs);
     renderCvCard(fields, vcardText, true, false);
     return;
   }
@@ -987,7 +988,7 @@ function showCvTrustGate(trustId, fields, vcardText, shareUrl) {
 
   document.getElementById('cv-btn-trusted').onclick = () => {
     setCvTrust(trustId);
-    autoSaveLink(shareUrl, fields.fn);
+    autoSaveLink(shareUrl, fields.fn, relayTs);
     document.getElementById('cv-screen-trust').classList.add('hidden');
     renderCvCard(fields, vcardText, true, false);
   };
@@ -1009,17 +1010,19 @@ function sameSharedCardUrl(urlA, urlB) {
   return sameCardAddress(a, b);
 }
 
-function autoSaveLink(url, label) {
+function autoSaveLink(url, label, relayTs) {
   const SAVED_KEY = 'e2e:saved-links';
   let links = [];
   try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
   const idx = links.findIndex(l => sameSharedCardUrl(l.url, url));
-  const now = new Date().toISOString();
+  const ts = relayTs || new Date().toISOString();
   if (idx >= 0) {
-    // Same card, possibly re-shared with a new key/relay — keep the freshest link, don't duplicate
-    links[idx] = { ...links[idx], url, label: label || links[idx].label, updatedAt: now };
+    // Same card, possibly re-shared with a new key/relay — keep the freshest link, don't duplicate.
+    // updatedAt reflects the card's last change on the relays (event created_at), not the local
+    // re-open time, so the contacts list shows when the owner actually republished.
+    links[idx] = { ...links[idx], url, label: label || links[idx].label, updatedAt: ts };
   } else {
-    links.push({ url, label: label || 'Contact', savedAt: now, updatedAt: now });
+    links.push({ url, label: label || 'Contact', savedAt: new Date().toISOString(), updatedAt: ts });
   }
   try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
 }
@@ -1430,6 +1433,7 @@ function renderConnectionRow(container, conn) {
 }
 
 async function refreshConnections(connections) {
+  let updated = false;
   for (const conn of connections) {
     try {
       const decoded   = naddrDecode(conn.peerNaddr);
@@ -1440,6 +1444,14 @@ async function refreshConnections(connections) {
       const fields    = parseVCard(vcardText);
       saveConnectionFields(conn.id, fields);
 
+      // Update updatedAt to the relay event's created_at so the contacts
+      // list reflects when the peer last republished — not the local fetch time.
+      const relayTs = event.created_at ? new Date(event.created_at * 1000).toISOString() : null;
+      if (relayTs && conn.updatedAt !== relayTs) {
+        conn.updatedAt = relayTs;
+        updated = true;
+      }
+
       const row = document.querySelector(`.saved-link-row[data-conn-id="${conn.id}"]`);
       if (row) {
         const labelEl = row.querySelector('.saved-link-label');
@@ -1449,11 +1461,14 @@ async function refreshConnections(connections) {
           labelEl.textContent = fields.fn;
           if (badge) labelEl.appendChild(badge);
         }
+        const dateEl = row.querySelector('.conn-meta');
+        if (dateEl) dateEl.textContent = formatDate(conn.updatedAt || conn.pairedAt);
       }
     } catch (err) {
       console.warn('[app] connection refresh failed (non-fatal):', err.message);
     }
   }
+  if (updated) saveConnections(connections);
 }
 
 function viewConnection(conn) {

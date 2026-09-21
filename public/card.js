@@ -94,6 +94,10 @@ async function init() {
 
   const fields = parseVCard(vcardText);
 
+  // Relay-side timestamp (when the owner last published) — used as updatedAt
+  // for saved links so the contacts list reflects the card's last real change.
+  const relayTs = event.created_at ? new Date(event.created_at * 1000).toISOString() : null;
+
   // Trust is keyed by pubkey:cardId so a different owner reusing a card ID
   // cannot inherit a previously granted trust flag.
   const trustId = `${pubkey}:${cardId}`;
@@ -105,16 +109,16 @@ async function init() {
     const cleanUrl = `${location.origin}${location.pathname}?${cleanParams}${location.hash}`;
     if (getTrust(trustId)) {
       downloadVcf(vcardText, fields.fn);
-      showDownloadConfirmation(fields.fn, trustId, cleanUrl);
+      showDownloadConfirmation(fields.fn, trustId, cleanUrl, relayTs);
     } else {
-      showDownloadGate(fields.fn, trustId, cleanUrl, vcardText);
+      showDownloadGate(fields.fn, trustId, cleanUrl, vcardText, relayTs);
     }
     return;
   }
 
   // Always show the trust gate — owner preview is handled by the inline viewer
   // in app.js and never navigates to card.html, so no mode param is honoured here.
-  showTrustGate(trustId, fields, vcardText);
+  showTrustGate(trustId, fields, vcardText, relayTs);
 }
 
 // ---------------------------------------------------------------------------
@@ -147,10 +151,10 @@ function setTrust(trustId) {
   } catch { /* storage blocked */ }
 }
 
-function showTrustGate(trustId, fields, vcardText) {
+function showTrustGate(trustId, fields, vcardText, relayTs) {
   if (getTrust(trustId)) {
     // Returning trusted visitor — skip the gate
-    renderCard(fields, vcardText, true, false);
+    renderCard(fields, vcardText, true, false, relayTs);
     return;
   }
 
@@ -160,12 +164,12 @@ function showTrustGate(trustId, fields, vcardText) {
   document.getElementById('btn-trusted').addEventListener('click', () => {
     setTrust(trustId);
     document.getElementById('screen-trust').classList.add('hidden');
-    renderCard(fields, vcardText, true, false);
+    renderCard(fields, vcardText, true, false, relayTs);
   });
 
   document.getElementById('btn-public').addEventListener('click', () => {
     document.getElementById('screen-trust').classList.add('hidden');
-    renderCard(fields, vcardText, false, false);
+    renderCard(fields, vcardText, false, false, relayTs);
   });
 }
 
@@ -173,7 +177,7 @@ function showTrustGate(trustId, fields, vcardText) {
 // Render
 // ---------------------------------------------------------------------------
 
-function renderCard(fields, vcardText, trusted, ownerPreview) {
+function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
   document.title = t('page.title.card.loaded', { fn: fields.fn || t('cv.contact.fallback') });
 
   // Avatar initials
@@ -247,11 +251,11 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
     let links = [];
     try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
     const idx = links.findIndex(l => sameSharedCardUrl(l.url, currentUrl));
-    const now = new Date().toISOString();
+    const ts = relayTs || new Date().toISOString();
     if (idx >= 0) {
-      links[idx] = { ...links[idx], url: currentUrl, label: fields.fn || links[idx].label, updatedAt: now };
+      links[idx] = { ...links[idx], url: currentUrl, label: fields.fn || links[idx].label, updatedAt: ts };
     } else {
-      links.push({ url: currentUrl, label: fields.fn || 'Contact', savedAt: now, updatedAt: now });
+      links.push({ url: currentUrl, label: fields.fn || 'Contact', savedAt: new Date().toISOString(), updatedAt: ts });
     }
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
     saveLinkBtn.textContent = t('cv.btn.save.link.done');
@@ -395,7 +399,7 @@ function fieldRow(icon, type, text, href) {
 
 // Shown when ?dl=1 is opened on a device not yet trusted — requires an
 // explicit click before the .vcf is written to disk.
-function showDownloadGate(fn, trustId, cleanUrl, vcardText) {
+function showDownloadGate(fn, trustId, cleanUrl, vcardText, relayTs) {
   document.getElementById('screen-loading').classList.add('hidden');
 
   const panel = document.createElement('div');
@@ -417,7 +421,7 @@ function showDownloadGate(fn, trustId, cleanUrl, vcardText) {
   btn.textContent = t('dl.confirm.btn');
   btn.addEventListener('click', () => {
     downloadVcf(vcardText, fn);
-    showDownloadConfirmation(fn, trustId, cleanUrl);
+    showDownloadConfirmation(fn, trustId, cleanUrl, relayTs);
   });
 
   panel.appendChild(icon);
@@ -431,7 +435,7 @@ function showDownloadGate(fn, trustId, cleanUrl, vcardText) {
   section.classList.remove('hidden');
 }
 
-function showDownloadConfirmation(fn, trustId, cleanUrl) {
+function showDownloadConfirmation(fn, trustId, cleanUrl, relayTs) {
   document.getElementById('screen-loading').classList.add('hidden');
 
   const panel = document.createElement('div');
@@ -458,11 +462,11 @@ function showDownloadConfirmation(fn, trustId, cleanUrl) {
       let links = [];
       try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
       const idx = links.findIndex(l => sameSharedCardUrl(l.url, cleanUrl));
-      const now = new Date().toISOString();
+      const ts = relayTs || new Date().toISOString();
       if (idx >= 0) {
-        links[idx] = { ...links[idx], url: cleanUrl, label: label || links[idx].label, updatedAt: now };
+        links[idx] = { ...links[idx], url: cleanUrl, label: label || links[idx].label, updatedAt: ts };
       } else {
-        links.push({ url: cleanUrl, label: label || 'Contact', savedAt: now, updatedAt: now });
+        links.push({ url: cleanUrl, label: label || 'Contact', savedAt: new Date().toISOString(), updatedAt: ts });
       }
       localStorage.setItem(SAVED_KEY, JSON.stringify(links));
     } catch { /* storage blocked — non-fatal */ }
