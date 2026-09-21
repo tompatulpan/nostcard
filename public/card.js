@@ -247,10 +247,11 @@ function renderCard(fields, vcardText, trusted, ownerPreview) {
     let links = [];
     try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
     const idx = links.findIndex(l => sameSharedCardUrl(l.url, currentUrl));
+    const now = new Date().toISOString();
     if (idx >= 0) {
-      links[idx] = { ...links[idx], url: currentUrl, label: fields.fn || links[idx].label };
+      links[idx] = { ...links[idx], url: currentUrl, label: fields.fn || links[idx].label, updatedAt: now };
     } else {
-      links.push({ url: currentUrl, label: fields.fn || 'Contact', savedAt: new Date().toISOString() });
+      links.push({ url: currentUrl, label: fields.fn || 'Contact', savedAt: now, updatedAt: now });
     }
     try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
     saveLinkBtn.textContent = t('cv.btn.save.link.done');
@@ -457,10 +458,11 @@ function showDownloadConfirmation(fn, trustId, cleanUrl) {
       let links = [];
       try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
       const idx = links.findIndex(l => sameSharedCardUrl(l.url, cleanUrl));
+      const now = new Date().toISOString();
       if (idx >= 0) {
-        links[idx] = { ...links[idx], url: cleanUrl, label: label || links[idx].label };
+        links[idx] = { ...links[idx], url: cleanUrl, label: label || links[idx].label, updatedAt: now };
       } else {
-        links.push({ url: cleanUrl, label: label || 'Contact', savedAt: new Date().toISOString() });
+        links.push({ url: cleanUrl, label: label || 'Contact', savedAt: now, updatedAt: now });
       }
       localStorage.setItem(SAVED_KEY, JSON.stringify(links));
     } catch { /* storage blocked — non-fatal */ }

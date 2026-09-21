@@ -4,7 +4,7 @@
  * State stored in localStorage:
  *   e2e:cards          JSON array of card credential objects
  *   e2e:fields:<id>    per-card cached vCard fields
- *   e2e:saved-links    JSON array of { url, label, savedAt }
+ *   e2e:saved-links    JSON array of { url, label, savedAt, updatedAt }
  *   e2e:exported:<id>  "1" — marks a card as backed up
  *   e2e:sync-identity  JSON { syncNsecHex, syncNpub, syncKeyRaw (base64url), createdAt } — cached passphrase-derived sync identity
  *   e2e:sync-meta      JSON { lastPushedAt, lastPulledAt }
@@ -1014,11 +1014,12 @@ function autoSaveLink(url, label) {
   let links = [];
   try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
   const idx = links.findIndex(l => sameSharedCardUrl(l.url, url));
+  const now = new Date().toISOString();
   if (idx >= 0) {
     // Same card, possibly re-shared with a new key/relay — keep the freshest link, don't duplicate
-    links[idx] = { ...links[idx], url, label: label || links[idx].label };
+    links[idx] = { ...links[idx], url, label: label || links[idx].label, updatedAt: now };
   } else {
-    links.push({ url, label: label || 'Contact', savedAt: new Date().toISOString() });
+    links.push({ url, label: label || 'Contact', savedAt: now, updatedAt: now });
   }
   try { localStorage.setItem(SAVED_KEY, JSON.stringify(links)); } catch {}
 }
@@ -1332,7 +1333,7 @@ function renderSavedLinks() {
     const row = document.createElement('div');
     row.className = 'saved-link-row';
 
-    const saved = link.savedAt ? new Date(link.savedAt).toLocaleDateString() : '';
+    const saved = (link.updatedAt || link.savedAt) ? new Date(link.updatedAt || link.savedAt).toLocaleDateString() : '';
 
     const info = document.createElement('div');
     info.className = 'saved-link-info';
@@ -1959,7 +1960,8 @@ async function importBackup(json, { navigate = true } = {}) {
     if (existingLinks.some(l => sameSharedCardUrl(l.url, item.url))) continue;
     // Reject arbitrary-scheme injection; http:// only allowed on localhost (dev)
     if (!isSafeLinkUrl(item.url)) continue;
-    existingLinks.push({ url: item.url, label: item.label || 'Contact', savedAt: item.savedAt || new Date().toISOString() });
+    const stamp = item.savedAt || new Date().toISOString();
+    existingLinks.push({ url: item.url, label: item.label || 'Contact', savedAt: stamp, updatedAt: item.updatedAt || stamp });
     linksAdded++;
   }
   saveSavedLinks(existingLinks);
