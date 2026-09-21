@@ -1871,7 +1871,20 @@ async function importBackup(json, { navigate = true } = {}) {
       if (idx >= 0 && cards[idx].nsec === payload.nsec) {
         const validRelays = Array.isArray(payload.relays) ? payload.relays.filter(isValidRelayUrl) : [];
         let changed = false;
-        if (payload.key && payload.key !== cards[idx].key) { cards[idx].key = payload.key; changed = true; }
+        if (payload.key && payload.key !== cards[idx].key) {
+          // Keys differ (rotation on one side). Only adopt the incoming key if it
+          // actually decrypts the event on the relays — never blindly downgrade
+          // to a stale pre-rotation key from an old backup.
+          const relaysToCheck = validRelays.length > 0 ? validRelays : cards[idx].relays;
+          try {
+            const event = await fetchCard(relaysToCheck, cards[idx].npub, payload.id);
+            if (event) {
+              const currentWorks  = await keyDecryptsBlob(cards[idx].key, event.content);
+              const incomingWorks = await keyDecryptsBlob(payload.key, event.content);
+              if (incomingWorks && !currentWorks) { cards[idx].key = payload.key; changed = true; }
+            }
+          } catch { /* relays unreachable — keep current key */ }
+        }
         if (validRelays.length > 0 && JSON.stringify(validRelays) !== JSON.stringify(cards[idx].relays)) { cards[idx].relays = validRelays; changed = true; }
         if (payload.label && payload.label !== cards[idx].label) { cards[idx].label = payload.label; changed = true; }
         if (changed) {
@@ -1893,11 +1906,12 @@ async function importBackup(json, { navigate = true } = {}) {
     const validRelays = Array.isArray(payload.relays) ? payload.relays.filter(isValidRelayUrl) : [];
     const relayList   = validRelays.length > 0 ? validRelays : [...DEFAULT_RELAYS];
 
-    // Verify card exists on relays
+    // Verify card exists on relays AND that the backup's key can decrypt it
+    // (the relay event may have been re-encrypted after a key rotation)
     let found = false;
     try {
       const event = await fetchCard(relayList, npub, payload.id);
-      found = !!event;
+      found = !!event && await keyDecryptsBlob(payload.key, event.content);
     } catch {}
 
     const cards = getCards();
@@ -2263,6 +2277,15 @@ function buildDownloadUrl(card) {
 function canonicalUrl(cardId, npub, relays) {
   const naddr = naddrEncode(npub, cardId, relays);
   return `${location.origin}/card?naddr=${naddr}`;
+}
+
+/** True if the stored key fragment decrypts the given encrypted blob */
+async function keyDecryptsBlob(keyFragment, encryptedBlob) {
+  try {
+    const key = await importCardKey(keyFragment);
+    await decryptVCard(encryptedBlob, key);
+    return true;
+  } catch { return false; }
 }
 
 /** Import the card's AES key from its stored base64url fragment string */
