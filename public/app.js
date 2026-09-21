@@ -15,7 +15,7 @@
  *   { id, label, nsec, npub, key, relays }
  *
  * Each connection object (mutual in-person pairing — see pairing.js):
- *   { id, peerLabel, peerNaddr, peerKey, myCardId, pairedAt }
+ *   { id, peerLabel, peerNaddr, peerKey, myCardId, pairedAt, updatedAt }
  *
  * AES key encoded in the URL fragment (#) of every share link —
  * never sent to any relay or server.
@@ -1384,20 +1384,52 @@ function renderConnectionRow(container, conn) {
   const cached = getConnectionFields(conn.id);
 
   const row = document.createElement('div');
-  row.className = 'card-list-row';
+  row.className = 'saved-link-row';
   row.dataset.connId = conn.id;
-  row.innerHTML = `
-    <div class="card-list-info">
-      <span class="card-list-name">${htmlEscape(conn.peerLabel || 'Connection')} <span class="relay-badge relay-badge--ok" title="${htmlEscape(t('contacts.badge.paired.title'))}">${htmlEscape(t('contacts.badge.paired'))}</span></span>
-      <span class="card-list-meta conn-meta">${htmlEscape(cached?.fn || t('connections.notYetFetched'))}</span>
-    </div>
-    <div class="card-list-actions">
-      <button class="btn btn-primary btn-sm btn-conn-view">${htmlEscape(t('btn.open'))}</button>
-      <button class="btn btn-danger  btn-sm btn-conn-remove">${htmlEscape(t('btn.remove'))}</button>
-    </div>
-  `;
-  row.querySelector('.btn-conn-view').addEventListener('click', () => viewConnection(conn));
-  row.querySelector('.btn-conn-remove').addEventListener('click', () => removeConnection(conn.id));
+
+  const info = document.createElement('div');
+  info.className = 'saved-link-info';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'saved-link-label';
+  nameEl.textContent = conn.peerLabel || 'Connection';
+  const badge = document.createElement('span');
+  badge.className = 'relay-badge relay-badge--ok';
+  badge.title = t('contacts.badge.paired.title');
+  badge.textContent = t('contacts.badge.paired');
+  nameEl.appendChild(badge);
+
+  // Show the peer's actual name (from their vCard) as a subtitle — mirrors
+  // how link-shared rows show the contact's fn as the label.
+  const subEl = document.createElement('span');
+  subEl.className = 'saved-link-date conn-fn';
+  subEl.textContent = cached?.fn || t('connections.notYetFetched');
+
+  const dateEl = document.createElement('span');
+  dateEl.className = 'saved-link-date conn-meta';
+  dateEl.textContent = formatDate(conn.updatedAt || conn.pairedAt);
+
+  info.appendChild(nameEl);
+  info.appendChild(subEl);
+  info.appendChild(dateEl);
+
+  const actions = document.createElement('div');
+  actions.className = 'saved-link-actions';
+
+  const openBtn = document.createElement('button');
+  openBtn.className = 'btn btn-primary btn-sm';
+  openBtn.textContent = t('btn.open');
+  openBtn.addEventListener('click', () => viewConnection(conn));
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'btn btn-danger btn-sm';
+  removeBtn.textContent = t('btn.remove');
+  removeBtn.addEventListener('click', () => removeConnection(conn.id));
+
+  actions.appendChild(openBtn);
+  actions.appendChild(removeBtn);
+  row.appendChild(info);
+  row.appendChild(actions);
   container.appendChild(row);
 }
 
@@ -1412,8 +1444,8 @@ async function refreshConnections(connections) {
       const fields    = parseVCard(vcardText);
       saveConnectionFields(conn.id, fields);
 
-      const metaEl = document.querySelector(`.card-list-row[data-conn-id="${conn.id}"] .conn-meta`);
-      if (metaEl) metaEl.textContent = fields.fn || '';
+      const fnEl = document.querySelector(`.saved-link-row[data-conn-id="${conn.id}"] .conn-fn`);
+      if (fnEl) fnEl.textContent = fields.fn || t('connections.notYetFetched');
     } catch (err) {
       console.warn('[app] connection refresh failed (non-fatal):', err.message);
     }
@@ -1462,12 +1494,14 @@ function upsertConnection(peerPayload, myCardId) {
   const connections = getConnections();
   const peerLabel = String(peerPayload.label || 'Connection').slice(0, 100);
   const idx = connections.findIndex(c => sameCardAddress(c.peerNaddr, peerPayload.naddr));
+  const now = new Date().toISOString();
   if (idx >= 0) {
     connections[idx] = {
       ...connections[idx],
       peerLabel: peerLabel,
       peerNaddr: peerPayload.naddr,
       peerKey:   peerPayload.key,
+      updatedAt: now,
     };
     saveConnections(connections);
     return connections[idx];
@@ -1479,7 +1513,8 @@ function upsertConnection(peerPayload, myCardId) {
     peerNaddr: peerPayload.naddr,
     peerKey:   peerPayload.key,
     myCardId,
-    pairedAt:  new Date().toISOString(),
+    pairedAt:  now,
+    updatedAt: now,
   };
   connections.push(conn);
   saveConnections(connections);
@@ -1976,13 +2011,15 @@ async function importBackup(json, { navigate = true } = {}) {
     if (!isValidPeerPayload({ naddr: item.peerNaddr, key: item.peerKey })) continue;
     if (existingConnIds.has(item.id)) continue;
     if (existingConnections.some(c => sameCardAddress(c.peerNaddr, item.peerNaddr))) continue;
+    const stamp = item.pairedAt || new Date().toISOString();
     existingConnections.push({
       id:        item.id,
       peerLabel: String(item.peerLabel || 'Connection').slice(0, 100),
       peerNaddr: item.peerNaddr,
       peerKey:   item.peerKey,
       myCardId:  item.myCardId || null,
-      pairedAt:  item.pairedAt || new Date().toISOString(),
+      pairedAt:  stamp,
+      updatedAt: item.updatedAt || stamp,
     });
     existingConnIds.add(item.id);
     connsAdded++;
