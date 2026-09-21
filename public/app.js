@@ -155,7 +155,7 @@ function showScreen(name) {
   for (const s of ALL_SCREENS) {
     document.getElementById(s).classList.toggle('hidden', s !== name);
   }
-  document.getElementById('btn-back-cards').classList.toggle('hidden',  name !== 'screen-editor');
+  document.getElementById('btn-back-cards').classList.toggle('hidden',  !(name === 'screen-editor' || name === 'screen-pair-start' || name === 'screen-pair-join'));
   document.getElementById('btn-delete-card').classList.toggle('hidden', name !== 'screen-editor');
   document.getElementById('cv-btn-back').classList.toggle('hidden',     name !== 'screen-card-view');
 }

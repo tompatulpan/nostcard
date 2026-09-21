@@ -14,7 +14,6 @@
   "btn.cancel": "Avbryt",
   "btn.open": "Öppna",
   "btn.remove": "Ta bort",
-  "btn.back.cards": "← Mina kort",
   "btn.save.qr": "Spara QR som PNG",
 
   "setup.heading": "Skapa ditt krypterade kontaktkort",
@@ -46,7 +45,6 @@
   "cards.row.btn.rename.title": "Byt namn",
 
   "saved.heading": "Kontakter",
-  "saved.btn.back": "← Mina kort",
   "saved.empty": "Inga kontakter ännu. Öppna en kortlänk och välj \"Min personliga enhet\", eller tryck på \"+ Anslut\" för att para ihop dig med någon personligen.",
 
   "adv.btn.open": "⚙️ Avancerat",

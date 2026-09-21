@@ -14,7 +14,6 @@
   "btn.cancel": "Cancel",
   "btn.open": "Open",
   "btn.remove": "Remove",
-  "btn.back.cards": "← My Cards",
   "btn.save.qr": "Save QR as PNG",
 
   "setup.heading": "Create your encrypted contact card",
@@ -46,7 +45,6 @@
   "cards.row.btn.rename.title": "Rename",
 
   "saved.heading": "Contacts",
-  "saved.btn.back": "← My Cards",
   "saved.empty": "No contacts yet. Open a card link and choose \"My personal device\", or tap \"+ Connect\" to pair with someone in person.",
 
   "adv.btn.open": "⚙️ Advanced",
