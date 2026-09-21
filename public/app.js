@@ -149,7 +149,7 @@ async function init() {
 // Screens
 // ---------------------------------------------------------------------------
 
-const ALL_SCREENS = ['screen-setup', 'screen-cards', 'screen-editor', 'screen-saved', 'screen-card-view', 'screen-pair-start', 'screen-pair-join'];
+const ALL_SCREENS = ['screen-setup', 'screen-cards', 'screen-editor', 'screen-saved', 'screen-card-view', 'screen-pair-start', 'screen-pair-join', 'screen-help'];
 
 function showScreen(name) {
   for (const s of ALL_SCREENS) {
@@ -164,6 +164,7 @@ function showSetup()     { activeCardId = null; showScreen('screen-setup');     
 function showCardList()  { activeCardId = null; showScreen('screen-cards');  renderCardList(); }
 function showEditor()    { showScreen('screen-editor'); }
 function showSavedLinks(){ activeCardId = null; showScreen('screen-saved');  renderSavedLinks(); }
+function showHelp()      { activeCardId = null; showScreen('screen-help'); }
 
 // ---------------------------------------------------------------------------
 // Router — location.hash is the single source of truth for the current screen
@@ -174,6 +175,15 @@ function showSavedLinks(){ activeCardId = null; showScreen('screen-saved');  ren
 function go(path) {
   if (location.hash === `#${path}`) { route(); } else { location.hash = path; }
 }
+
+/** The sensible screen for a user with no explicit route */
+function defaultRoute() {
+  if (getCards().length > 0)                                     return '/cards';
+  if (getSavedLinks().length > 0 || getConnections().length > 0) return '/saved';
+  return '/setup';
+}
+
+let helpReturnRoute = null; // route the user was on before opening Help
 
 function route() {
   const hash = location.hash.replace(/^#\/?/, '');
@@ -186,12 +196,10 @@ function route() {
   if (name === 'connections') { go('/saved'); return; } // legacy route — merged into Contacts
   if (name === 'pair-join' && param) { showPairJoin(param); return; }
   if (name === 'pair') { showPairStart(); return; }
+  if (name === 'help') { showHelp(); return; }
 
   // No/invalid hash — pick the sensible default screen and normalize the URL
-  const cards = getCards();
-  if (cards.length > 0)                                                go('/cards');
-  else if (getSavedLinks().length > 0 || getConnections().length > 0)  go('/saved');
-  else                                                                   go('/setup');
+  go(defaultRoute());
 }
 
 window.addEventListener('hashchange', route);
@@ -1255,6 +1263,19 @@ function renderRelayManager() {
 
 document.getElementById('btn-back-cards').addEventListener('click', () => {
   go('/cards');
+});
+
+// Help — reachable from every screen; back returns to where you came from
+document.getElementById('btn-help').addEventListener('click', () => {
+  const current = location.hash.replace(/^#\/?/, '');
+  if (current && current !== 'help') helpReturnRoute = '/' + current;
+  go('/help');
+});
+
+document.getElementById('btn-help-back').addEventListener('click', () => {
+  const target = (helpReturnRoute && helpReturnRoute !== '/help') ? helpReturnRoute : defaultRoute();
+  helpReturnRoute = null;
+  go(target);
 });
 
 document.getElementById('btn-back-to-cards').addEventListener('click', () => {

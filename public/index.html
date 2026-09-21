@@ -23,6 +23,7 @@
         <button id="btn-back-cards"  class="btn btn-success btn-sm hidden" data-i18n="cv.btn.back">← Back</button>
         <button id="cv-btn-back"     class="btn btn-success btn-sm hidden" data-i18n="cv.btn.back">← Back</button>
         <button id="btn-delete-card" class="btn btn-danger  btn-sm hidden" data-i18n="editor.btn.delete" data-i18n-title="editor.btn.delete.title" title="Delete this card permanently">Delete card</button>
+        <button id="btn-help" class="btn btn-ghost btn-sm" data-i18n="help.btn.open" data-i18n-title="help.btn.open.title" title="How to use this app">? Help</button>
         <div class="lang-switcher" id="lang-switcher">
           <button class="lang-btn" data-lang="en">EN</button>
           <button class="lang-btn" data-lang="sv">SV</button>
@@ -433,6 +434,79 @@
           <div class="error-icon">⛔</div>
           <h3 data-i18n="pair.join.error.title">Invalid or expired code</h3>
           <p class="muted" id="pair-join-error-detail"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Help screen ──────────────────────────────────────────────────── -->
+    <section id="screen-help" class="screen hidden">
+      <div class="card-panel help-panel">
+        <h2 data-i18n="help.heading">How this app works</h2>
+        <p class="muted" data-i18n-html="help.intro">
+          nostr-vcard shares contact cards that are encrypted in your browser and published to the Nostr network.
+          There are no accounts and no central server — only you hold the keys.
+        </p>
+
+        <h3 data-i18n="help.gettingstarted.heading">Getting started</h3>
+        <ul class="help-list">
+          <li data-i18n-html="help.gettingstarted.1">**Create my card** generates a fresh Nostr identity and encryption key inside your browser. Nothing is sent anywhere yet.</li>
+          <li data-i18n-html="help.gettingstarted.2">Fill in your details and press **Save &amp; publish** — the card is encrypted (AES-256-GCM) and published to public Nostr relays.</li>
+          <li data-i18n-html="help.gettingstarted.3">Cards are **live**: saving again updates the same card, and every shared link always shows your latest details.</li>
+          <li data-i18n-html="help.gettingstarted.4">Your keys are stored only in this browser. Use **Advanced → Backup** to move to another device.</li>
+        </ul>
+
+        <h3 data-i18n="help.share.heading">Ways to share a card</h3>
+        <ul class="help-list">
+          <li data-i18n-html="help.share.1">**Share link** — the decryption key is in the <code>#fragment</code> of the URL. Anyone with the full link can view the card in any browser — no app, no account.</li>
+          <li data-i18n-html="help.share.2">**QR code** — the share dialog shows the link as a scannable QR code.</li>
+          <li data-i18n-html="help.share.3">**Add-to-contacts link** — opening it downloads the card as a <code>.vcf</code> file straight into the contacts app.</li>
+          <li data-i18n-html="help.share.4">**In-person pairing** — exchange cards with someone standing next to you (see below).</li>
+        </ul>
+
+        <h3 data-i18n="help.tech.heading">The technology — Nostr</h3>
+        <p class="muted" data-i18n-html="help.tech.body">
+          Nostr is a decentralized messaging protocol. Your card is a signed event (kind 30402) published to public relays —
+          simple servers that anyone can run. This website is just a static interface; the card data lives on the relays.
+        </p>
+        <ul class="help-list">
+          <li data-i18n-html="help.tech.1">**Encryption:** AES-256-GCM via the browser's built-in Web Crypto API. The key never leaves your browser except inside the link's <code>#fragment</code> — which browsers never send to any server.</li>
+          <li data-i18n-html="help.tech.2">**Relays:** they store only ciphertext. A relay operator can see the card <strong>name</strong> and update timestamps — never your contact details. Avoid full personal names as card names.</li>
+          <li data-i18n-html="help.tech.3">**No lock-in:** because the data lives on the relays and the key in the link, a card can be opened from any deployment of this app — even one hosted on <code>localhost</code>.</li>
+          <li data-i18n-html="help.tech.4">**Deletion is best-effort:** deleting a card sends a NIP-09 deletion request. Well-behaved relays comply, but an archived relay may keep a copy — this is a property of all public relays.</li>
+        </ul>
+
+        <h3 data-i18n="help.trust.heading">Trust models</h3>
+        <p class="muted" data-i18n="help.trust.intro">
+          When someone opens a card link, the app first asks where they are. The answer controls what is stored on that device.
+        </p>
+        <ul class="help-list">
+          <li data-i18n-html="help.trust.trusted">**My personal device** — the link is saved locally for quick access and the device is remembered for 30 days. Bookmarking is encouraged and downloading the contact as a .vcf is allowed.</li>
+          <li data-i18n-html="help.trust.public">**Shared or public computer** — nothing is saved. The session auto-clears when the tab is hidden, after 5 minutes, or on "Done". Downloading is disabled.</li>
+          <li data-i18n-html="help.trust.link">**The link is the password** — anyone holding the full link can read the card. For extra safety, send the base link and the <code>#key</code> part through two different channels (e.g. email + Signal).</li>
+        </ul>
+
+        <h3 data-i18n="help.pair.heading">In-person pairing (Connect)</h3>
+        <p class="muted" data-i18n-html="help.pair.body">
+          **+ Connect** starts a mutual exchange: you get a QR code, the other person scans it, and you each pick which of your cards to share.
+          Both cards end up saved under Contacts. The pairing code expires after 30 minutes and the exchange runs over the relays as an
+          encrypted handshake — only accept when the person is actually in front of you.
+        </p>
+
+        <h3 data-i18n="help.access.heading">Controlling your data</h3>
+        <ul class="help-list">
+          <li data-i18n-html="help.access.1">**Rotate key** — generates a new encryption key and re-publishes the card. All previous share links stop working immediately.</li>
+          <li data-i18n-html="help.access.2">**Delete card** — removes the card from this device and sends a deletion request to all relays (best-effort).</li>
+          <li data-i18n-html="help.access.3">**Verify privacy** — the editor's privacy proof shows exactly what a relay can see versus what the key unlocks.</li>
+        </ul>
+
+        <h3 data-i18n="help.backup.heading">Backup and sync</h3>
+        <ul class="help-list">
+          <li data-i18n-html="help.backup.1">**Backup** exports a JSON file containing everything, including your private keys. Anyone with that file controls your cards — store it securely.</li>
+          <li data-i18n-html="help.backup.2">**Sync** publishes an encrypted snapshot of your cards to your relays using a passphrase. Enter the same passphrase on another device to pull it in — anyone with the passphrase can read and overwrite the snapshot, so keep it secret.</li>
+        </ul>
+
+        <div class="modal-actions" style="margin-top:1.5rem">
+          <button id="btn-help-back" class="btn btn-success" data-i18n="cv.btn.back">← Back</button>
         </div>
       </div>
     </section>

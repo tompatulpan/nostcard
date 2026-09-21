@@ -812,3 +812,45 @@ kbd {
   .lang-switcher { margin-left: 4px; }
   .lang-btn { font-size: 10px; padding: 2px 5px; }
 }
+
+/* ── Help screen ─────────────────────────────────────────────────────────── */
+
+.help-panel { max-width: 760px; margin: 0 auto; }
+
+.help-panel h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 1.75rem 0 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.help-panel h3:first-of-type {
+  margin-top: 1rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+.help-panel p { margin: 0 0 0.5rem; }
+
+.help-list {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.35rem;
+  list-style: disc;
+}
+
+.help-list li {
+  margin-bottom: 0.4rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.help-list li strong { color: var(--text); }
+.help-list li code,
+.help-panel p code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
