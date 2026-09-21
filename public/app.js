@@ -30,7 +30,7 @@
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
 import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
-import { initI18n, t, setLang, getCurrentLang, applyTranslations } from './i18n.js';
+import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } from './i18n.js';
 import { generateSyncPassphrase, deriveSyncIdentity, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
 
@@ -1333,7 +1333,7 @@ function renderSavedLinks() {
     const row = document.createElement('div');
     row.className = 'saved-link-row';
 
-    const saved = (link.updatedAt || link.savedAt) ? new Date(link.updatedAt || link.savedAt).toLocaleDateString() : '';
+    const saved = formatDate(link.updatedAt || link.savedAt);
 
     const info = document.createElement('div');
     info.className = 'saved-link-info';

@@ -192,6 +192,7 @@ textarea { resize: vertical; }
   transition: background .15s, opacity .15s;
   white-space: nowrap;
   font-family: inherit;
+  text-decoration: none;
 }
 
 .btn:disabled { opacity: .5; cursor: not-allowed; }

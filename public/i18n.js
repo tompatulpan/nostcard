@@ -88,6 +88,24 @@ export async function setLang(lang) {
 /** Returns the currently active language code. */
 export function getCurrentLang() { return _lang; }
 
+/**
+ * Format an ISO date string using the active locale's date format.
+ *   en → M/D/YYYY  (e.g. 9/21/2026)
+ *   sv → YYYY-MM-DD (e.g. 2026-09-21)
+ * Returns '' for falsy input.
+ */
+export function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return _lang === 'en'
+    ? `${m}/${day}/${y}`
+    : `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 // ---------------------------------------------------------------------------
 // Internals
 // ---------------------------------------------------------------------------
