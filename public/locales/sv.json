@@ -195,6 +195,7 @@
   "cv.bookmark.body": "Den här länken visar alltid de senaste uppgifterna — bokmärk den för att hålla dig uppdaterad. Tryck <kbd>Ctrl+D</kbd> <span class=\"hint-mac\">(eller <kbd>⌘D</kbd> på Mac)</span> och spara i en mapp som heter <strong>Kontakter</strong>.",
   "cv.bookmark.warning": "⚠️ <strong>Bokmärk inte på delade eller offentliga datorer.</strong>",
   "cv.public.banner": "🏛️ **Offentligt enhetsläge** — sessionen rensas automatiskt när du lämnar eller efter 5 minuter.",
+  "cv.public.warning": "⚠️ <strong>Länken sparas inte på den här enheten. Bokmärk den inte på en delad eller offentlig dator — vem som helst som gör det kan öppna kortet senare.</strong>",
   "cv.download.hint": "Laddar ned en ögonblicksbild av dagens uppgifter. Använd den sparade länken för att alltid få det senaste.",
   "cv.saved.hint": "Öppna igen från Sparade kort när som helst för att alltid se de senaste uppgifterna.",
   "cv.countdown": "⏱ Rensas automatiskt om {{m}}:{{ss}}",

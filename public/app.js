@@ -914,6 +914,17 @@ async function showCardViewScreen(url, mode) {
   document.getElementById('cv-btn-save-link').classList.add('hidden');
   document.getElementById('cv-btn-download').style.display = '';
 
+  // Reset the bookmark hint: clear any public-mode overrides from a previous
+  // open and re-hide the public warning (trusted opens show the instructions).
+  const cvHint = document.querySelector('.cv-update-hint');
+  if (cvHint) {
+    cvHint.querySelectorAll('.update-hint-title, .update-hint-body').forEach(el => {
+      el.style.display = '';
+    });
+    const cvWarning = cvHint.querySelector('.public-warning');
+    if (cvWarning) cvWarning.classList.add('hidden');
+  }
+
   // Parse url
   const urlObj  = new URL(url);
   const naddr   = urlObj.searchParams.get('naddr');
@@ -1106,7 +1117,14 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
   if (!trusted) {
     document.getElementById('cv-public-mode-banner').classList.remove('hidden');
     const hint = document.querySelector('.cv-update-hint');
-    if (hint) hint.style.display = 'none';
+    if (hint) {
+      // Hide the trusted-only bookmark instructions, keep the public warning
+      hint.querySelectorAll('.update-hint-title, .update-hint-body:not(.public-warning)').forEach(el => {
+        el.style.display = 'none';
+      });
+      const warning = hint.querySelector('.public-warning');
+      if (warning) warning.classList.remove('hidden');
+    }
   }
 
   let cvKillTimer = null, cvCountdownInterval = null;

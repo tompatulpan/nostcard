@@ -195,6 +195,7 @@
   "cv.bookmark.body": "This link always shows the latest details — bookmark it to stay up to date. Press <kbd>Ctrl+D</kbd> <span class=\"hint-mac\">(or <kbd>⌘D</kbd> on Mac)</span> and save to a folder called <strong>Contacts</strong>.",
   "cv.bookmark.warning": "⚠️ <strong>Do not bookmark on shared or public computers.</strong>",
   "cv.public.banner": "🏛️ **Public device mode** — session auto-clears when you leave or after 5 minutes.",
+  "cv.public.warning": "⚠️ <strong>This link is not saved on this device. Do not bookmark it on a shared or public computer — anyone who does could reopen this card later.</strong>",
   "cv.download.hint": "Downloads a snapshot of today's details. Use the saved link to always get the latest.",
   "cv.saved.hint": "Reopen from Saved Cards anytime to always see the latest details.",
   "cv.countdown": "⏱ Auto-clears in {{m}}:{{ss}}",

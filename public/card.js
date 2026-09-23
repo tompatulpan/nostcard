@@ -272,11 +272,21 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
     saveLinkBtn.insertAdjacentElement('afterend', saveLinkHint);
   }
 
-  // Public mode: banner + hide bookmark hint
+  // Public mode: banner + bookmark hint swapped for a "not saved here" warning
   if (!trusted) {
     document.getElementById('public-mode-banner').classList.remove('hidden');
     const hint = document.querySelector('.update-hint');
-    if (hint) hint.style.display = 'none';
+    if (hint) {
+      // Hide the trusted-only bookmark instructions, keep the public warning
+      hint.querySelectorAll('.update-hint-title, .update-hint-body:not(.public-warning)').forEach(el => {
+        el.style.display = 'none';
+      });
+      const warning = hint.querySelector('.public-warning');
+      if (warning) warning.classList.remove('hidden');
+    }
+    // Drop the #key from the address bar and history right away — on a shared
+    // device it must not linger for anyone to reopen the card later.
+    history.replaceState(null, '', location.pathname + location.search);
   }
 
   // Auto-kill: tab hidden — public mode only; disabled in owner-preview
@@ -406,6 +416,9 @@ function fieldRow(icon, type, text, href) {
 // explicit click before the .vcf is written to disk.
 function showDownloadGate(fn, trustId, cleanUrl, vcardText, relayTs) {
   document.getElementById('screen-loading').classList.add('hidden');
+  // Non-trusted device: drop the #key from the address bar/history immediately.
+  // cleanUrl was already captured, so saving after an explicit "Yes" still works.
+  history.replaceState(null, '', location.pathname + location.search);
 
   const panel = document.createElement('div');
   panel.className = 'card-panel centered';
