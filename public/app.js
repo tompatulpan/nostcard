@@ -886,7 +886,9 @@ document.getElementById('btn-verify-privacy').addEventListener('click', (e) => {
   if (!activeCardId) return;
   const card = getCard(activeCardId);
   if (!card) return;
-  const proofUrl = `proof.html?url=${encodeURIComponent(buildShareUrl(card))}`;
+  // Pass the share URL (which contains the #key) in the fragment — the query
+  // string is transmitted to servers, the fragment never is.
+  const proofUrl = `proof.html#url=${encodeURIComponent(buildShareUrl(card))}`;
   e.currentTarget.href = proofUrl;
 });
 

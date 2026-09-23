@@ -311,14 +311,18 @@ btnCheckDel.addEventListener('click', runStep3);
 
 // ---------------------------------------------------------------------------
 // Auto-fill — if opened via the "Verify privacy" button the share URL is
-// passed as ?url=<encoded>  so the user can run the demo in one click
+// passed in the location fragment (#url=<encoded>) so the user can run the
+// demo in one click. The share URL contains the AES key, which must never
+// travel in the query string (servers see it).
 // ---------------------------------------------------------------------------
 
 (function autofill() {
   try {
-    // searchParams.get() already decodes — a second decode would corrupt '%' sequences
-    const param = new URL(location.href).searchParams.get('url');
+    const param = new URLSearchParams(location.hash.slice(1)).get('url');
     if (param) {
+      // The fragment holds the key — scrub it from the address bar and history
+      // once captured (same hygiene as the #key fragment in card.js)
+      history.replaceState(null, '', location.pathname);
       urlInput.value = param;
       btnRun.click();
     }
