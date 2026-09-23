@@ -621,7 +621,7 @@ async function createCard(label, prefillFields = null) {
   const vcardText = buildVCard(fields);
   const blob      = await encryptVCard(vcardText, aesKey);
 
-  const results = await publishCard(relays, nsec, id, blob, label);
+  const results = await publishCard(relays, nsec, id, blob);
 
   const nsecHex = bytesToHex(nsec);
   const cards   = getCards();
@@ -681,7 +681,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     const vcardText   = buildVCard(fields);
     const blob        = await encryptVCard(vcardText, aesKey);
 
-    const results = await publishCard(card.relays, nsecBytes, activeCardId, blob, card.label);
+    const results = await publishCard(card.relays, nsecBytes, activeCardId, blob);
 
     localStorage.setItem(`e2e:fields:${activeCardId}`, JSON.stringify(fields));
     localStorage.setItem(`e2e:relay-status:${activeCardId}`, JSON.stringify(results));
@@ -781,7 +781,7 @@ document.getElementById('btn-rotate-key').addEventListener('click', async () => 
     const blob       = await encryptVCard(vcardText, newAesKey);
 
     // Re-publish with the same d-tag (NIP-33 replaces the old event on relays)
-    const results = await publishCard(card.relays, nsecBytes, activeCardId, blob, card.label);
+    const results = await publishCard(card.relays, nsecBytes, activeCardId, blob);
     localStorage.setItem(`e2e:relay-status:${activeCardId}`, JSON.stringify(results));
 
     // Persist the new key; invalidate any stored recipient trust (stale sessions)
@@ -1624,7 +1624,7 @@ async function ensureCardPublished(card) {
     const nsecBytes = hexToBytes(card.nsec);
     const vcardText = buildVCard(fields);
     const blob      = await encryptVCard(vcardText, aesKey);
-    const results   = await publishCard(card.relays, nsecBytes, card.id, blob, card.label);
+    const results   = await publishCard(card.relays, nsecBytes, card.id, blob);
     localStorage.setItem(`e2e:relay-status:${card.id}`, JSON.stringify(results));
     return results.some(r => r.ok);
   } catch {
@@ -2045,7 +2045,7 @@ async function importBackup(json, { navigate = true } = {}) {
             const fields    = fieldsMap[payload.id];
             const vcardText = buildVCard(fields);
             const blob      = await encryptVCard(vcardText, aesKey);
-            const results   = await publishCard(relayList, nsecBytes, payload.id, blob, payload.label);
+            const results   = await publishCard(relayList, nsecBytes, payload.id, blob);
             localStorage.setItem(`e2e:relay-status:${payload.id}`, JSON.stringify(results));
           } catch {}
         }

@@ -78,18 +78,21 @@ export function derivePublicKey(nsec) {
  * NIP-33 semantics: relays keep only the latest event per (pubkey, kind, d-tag),
  * so re-publishing with the same d-tag automatically replaces the old event.
  *
+ * No title/label tag is published — the relay must learn nothing about the
+ * card owner beyond the public address (npub + d-tag). The label stays local;
+ * recipients see the name from the decrypted vCard (FN field).
+ *
  * @param {string[]}   relays         WebSocket relay URLs
  * @param {Uint8Array} nsec           Owner's private key (raw 32 bytes)
  * @param {string}     cardId         8-char card identifier (d-tag)
  * @param {string}     encryptedBlob  base64(IV[12] + AES-256-GCM ciphertext)
- * @param {string}     label          Human-readable card label (plaintext is fine)
  * @returns {Promise<Array<{relay: string, ok: boolean}>>}
  */
-export async function publishCard(relays, nsec, cardId, encryptedBlob, label) {
+export async function publishCard(relays, nsec, cardId, encryptedBlob) {
   const template = {
     kind:       CARD_KIND,
     created_at: Math.floor(Date.now() / 1000),
-    tags:       [['d', cardId], ['title', label]],
+    tags:       [['d', cardId]],
     content:    encryptedBlob,
   };
 

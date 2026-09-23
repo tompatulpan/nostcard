@@ -88,7 +88,7 @@
           <div class="field-group" style="margin-bottom:1.25rem">
             <label><span data-i18n="editor.cardname.label">Card name</span> <span class="req">*</span></label>
             <input id="card-name" type="text" placeholder="Work, Personal, Minimal…" data-i18n-placeholder="editor.cardname.placeholder" />
-            <p class="muted" style="font-size:0.8rem;margin-top:0.25rem" data-i18n="editor.cardname.hint">Shown on your My Cards list. Published as plaintext on relays — visible to relay operators.</p>
+            <p class="muted" style="font-size:0.8rem;margin-top:0.25rem" data-i18n="editor.cardname.hint">Shown on your My Cards list. Never published to relays — stays on this device.</p>
           </div>
 
           <div class="field-group">
@@ -185,7 +185,7 @@
           </div>
 
           <p class="muted" style="margin-top:1.5rem;font-size:0.8rem" data-i18n-html="share.warning">
-            ⚠️ The card <strong>name</strong> and update timestamps are visible to relay operators in plaintext. Avoid using full personal names as the card name.
+            Relays never see your contact details or the card name — only ciphertext and update timestamps.
           </p>
         </div>
 
@@ -230,7 +230,7 @@
       <div class="modal">
         <h3><span data-i18n="share.modal.prefix">Share — </span><strong id="share-label"></strong></h3>
         <p class="muted" data-i18n-html="share.modal.warning">⚠️ Treat this link like a password — anyone who has it can read the card. The decryption key is in the <code>#fragment</code>, which browsers never send to any server.</p>
-        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem" data-i18n="share.modal.relay.note">The card name and update timestamps are visible to relay operators in plaintext.</p>
+        <p class="muted" style="font-size:0.85rem;margin-top:0.5rem" data-i18n="share.modal.relay.note">Relays store only ciphertext. Update timestamps are visible to relay operators.</p>
 
         <div class="share-url-box">
           <input id="share-url" type="text" readonly />
@@ -474,7 +474,7 @@
         </p>
         <ul class="help-list">
           <li data-i18n-html="help.tech.1">**Encryption:** AES-256-GCM via the browser's built-in Web Crypto API. The key never leaves your browser except inside the link's <code>#fragment</code> — which browsers never send to any server.</li>
-          <li data-i18n-html="help.tech.2">**Relays:** they store only ciphertext. A relay operator can see the card <strong>name</strong> and update timestamps — never your contact details. Avoid full personal names as card names.</li>
+          <li data-i18n-html="help.tech.2">**Relays:** they store only ciphertext. A relay operator can see when the card was updated — never the card name or your contact details. Cards published with older app versions may still carry the name until they are re-saved.</li>
           <li data-i18n-html="help.tech.3">**No lock-in:** because the data lives on the relays and the key in the link, a card can be opened from any deployment of this app — even one hosted on <code>localhost</code>.</li>
           <li data-i18n-html="help.tech.4">**Deletion is best-effort:** deleting a card sends a NIP-09 deletion request. Well-behaved relays comply, but an archived relay may keep a copy — this is a property of all public relays.</li>
         </ul>
