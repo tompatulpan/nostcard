@@ -1,5 +1,5 @@
 {
-  "name": "nostr-vcard",
+  "name": "nostcard",
   "version": "1.0.0",
   "description": "Zero-knowledge, client-side encrypted vCard sharing via Nostr relays",
   "private": true,
@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "npx --yes serve public -l 8788 --no-clipboard",
     "build:vendor": "esbuild vendor-entry.js --bundle --format=esm --minify --outfile=public/vendor/nostr-tools.js",
-    "deploy": "wrangler pages deploy public --project-name nostr-vcard"
+    "deploy": "wrangler pages deploy public --project-name nostcard"
   },
   "license": "MIT",
   "notes": [

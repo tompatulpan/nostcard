@@ -1,5 +1,5 @@
 /**
- * app.js — Owner app for nostr-vcard
+ * app.js — Owner app for NostCard
  *
  * State stored in localStorage:
  *   e2e:cards          JSON array of card credential objects
@@ -966,7 +966,7 @@ function showCvError(title, detail) {
   document.getElementById('cv-screen-error').classList.remove('hidden');
 }
 
-const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const TRUST_TTL_MS = 1 * 60 * 60 * 1000; // 1 hour — TEMPORARY for testing, intended value: 30 days (30 * 24 * 60 * 60 * 1000)
 
 function getCvTrust(trustId) {
   try {
@@ -1846,7 +1846,7 @@ function exportBackup() {
     connections, // includes peerKey (AES key) — keep the file secure
     fields,
   };
-  downloadJson(backup, `nostr-vcard-backup-${backup.exported.slice(0, 10)}.json`);
+  downloadJson(backup, `nostcard-backup-${backup.exported.slice(0, 10)}.json`);
   for (const card of cards) localStorage.setItem(`e2e:exported:${card.id}`, '1');
 }
 
@@ -1893,13 +1893,13 @@ async function importBackup(json, { navigate = true } = {}) {
   let cardPayloads = [], linkPayloads = [], fieldsMap = {}, connectionPayloads = [];
 
   if (json?.version === 3 && Array.isArray(json.cards)) {
-    // v3 — nostr-vcard native backup (adds connections)
+    // v3 — NostCard native backup (adds connections)
     cardPayloads       = json.cards;
     linkPayloads       = Array.isArray(json.savedLinks) ? json.savedLinks : [];
     fieldsMap          = (json.fields && typeof json.fields === 'object') ? json.fields : {};
     connectionPayloads = Array.isArray(json.connections) ? json.connections : [];
   } else if (json?.version === 2 && Array.isArray(json.cards)) {
-    // v2 — nostr-vcard native backup
+    // v2 — NostCard native backup
     cardPayloads = json.cards;
     linkPayloads = Array.isArray(json.savedLinks) ? json.savedLinks : [];
     fieldsMap    = (json.fields && typeof json.fields === 'object') ? json.fields : {};

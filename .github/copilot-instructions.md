@@ -1,4 +1,4 @@
-# Copilot Instructions — nostr-vcard
+# Copilot Instructions — NostCard
 
 ## Project purpose
 
@@ -52,7 +52,7 @@ Key properties:
 ## File structure
 
 ```
-nostr-vcard/
+nostcard/
   .github/
     copilot-instructions.md   ← this file
   public/

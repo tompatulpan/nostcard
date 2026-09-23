@@ -1,10 +1,10 @@
 {
-  "page.title.index": "Mina kort — nostr-vcard",
+  "page.title.index": "Mina kort — NostCard",
   "page.title.card": "Kontaktkort",
   "page.title.card.loaded": "{{fn}} — Krypterat kort",
-  "page.title.proof": "Integritetsbevis — nostr-vcard",
+  "page.title.proof": "Integritetsbevis — NostCard",
 
-  "header.logo.index": "🔐 nostr-vcard",
+  "header.logo.index": "🔐 NostCard",
   "header.logo.card": "🔐 Krypterat kontaktkort",
   "header.logo.proof": "🔍 Integritetsbevis",
 
@@ -118,7 +118,7 @@
   "share.modal.dl.label": "📱 Lägg-till-kontakt-länk (laddar automatiskt ned .vcf vid öppning):",
 
   "restore.modal.heading": "Återställ säkerhetskopia",
-  "restore.modal.body": "Klistra in innehållet i en säkerhetskopifil (JSON). Både v2 (nostr-vcard) och v1 (äldre) format accepteras.",
+  "restore.modal.body": "Klistra in innehållet i en säkerhetskopifil (JSON). Både v2 (NostCard) och v1 (äldre) format accepteras.",
   "restore.modal.placeholder": "{\"version\":2,\"cards\":[...]}",
   "restore.modal.btn.confirm": "Återställ",
 
@@ -169,7 +169,7 @@
   "alert.restore.done": "Återställning klar: {{added}} kort tillagda, {{skipped}} överhoppade (redan befintliga), {{failed}} misslyckades{{links}}.",
   "alert.backup.error": "Det gick inte att läsa säkerhetskopifilen.",
   "alert.json.error": "Ogiltig JSON — kontrollera att du klistrade in hela säkerhetskopitexten.",
-  "alert.unknown.format": "Okänt format. Se till att du klistrar in en giltig nostr-vcard-säkerhetskopia.",
+  "alert.unknown.format": "Okänt format. Se till att du klistrar in en giltig NostCard-säkerhetskopia.",
   "alert.links.imported": ", {{n}} sparade länkar importerade",
   "alert.sync.error": "Synkfel: {{error}}",
   "alert.sync.deleted": "Synkad ögonblicksbild raderad från reläer.",
@@ -318,7 +318,7 @@
   "help.btn.open": "? Hjälp",
   "help.btn.open.title": "Så använder du appen",
   "help.heading": "Så fungerar appen",
-  "help.intro": "nostr-vcard delar kontaktkort som krypteras i din webbläsare och publiceras på Nostr-nätverket. Det finns inga konton och ingen central server — bara du har nycklarna.",
+  "help.intro": "NostCard delar kontaktkort som krypteras i din webbläsare och publiceras på Nostr-nätverket. Det finns inga konton och ingen central server — bara du har nycklarna.",
   "help.gettingstarted.heading": "Kom igång",
   "help.gettingstarted.1": "**Skapa mitt kort** skapar en ny Nostr-identitet och krypteringsnyckel inne i din webbläsare. Inget skickas iväg något vid det tillfället.",
   "help.gettingstarted.2": "Fyll i dina uppgifter och tryck på **Spara & publicera** — kortet krypteras (AES-256-GCM) och publiceras på offentliga Nostr-reläer.",

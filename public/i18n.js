@@ -1,5 +1,5 @@
 /**
- * i18n.js — Lightweight internationalisation for nostr-vcard
+ * i18n.js — Lightweight internationalisation for NostCard
  *
  * Usage:
  *   import { initI18n, t, setLang, getCurrentLang, applyTranslations } from './i18n.js';

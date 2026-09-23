@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Cards — nostr-vcard</title>
+  <title>My Cards — NostCard</title>
   <link rel="icon" href="favicon.ico" sizes="any" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
@@ -12,14 +12,14 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="nostr-vcard" />
+  <meta name="apple-mobile-web-app-title" content="NostCard" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app-shell">
 
     <header class="top-bar">
-      <span class="logo" data-i18n="header.logo.index">🔐 nostr-vcard</span>
+      <span class="logo" data-i18n="header.logo.index">🔐 NostCard</span>
       <div class="top-bar-actions">
         <button id="btn-back-cards"  class="btn btn-success btn-sm hidden" data-i18n="cv.btn.back">← Back</button>
         <button id="cv-btn-back"     class="btn btn-success btn-sm hidden" data-i18n="cv.btn.back">← Back</button>
@@ -216,7 +216,7 @@
     <div id="modal-restore" class="modal-overlay hidden">
       <div class="modal">
         <h3 data-i18n="restore.modal.heading">Restore backup</h3>
-        <p class="muted" data-i18n="restore.modal.body">Paste the contents of a backup JSON file. Both v2 (nostr-vcard) and v1 (legacy) formats are accepted.</p>
+        <p class="muted" data-i18n="restore.modal.body">Paste the contents of a backup JSON file. Both v2 (NostCard) and v1 (legacy) formats are accepted.</p>
         <textarea id="restore-paste-input" rows="8" placeholder='{"version":2,"cards":[...]}' data-i18n-placeholder="restore.modal.placeholder"></textarea>
         <div class="modal-actions">
           <button id="btn-restore-paste-confirm" class="btn btn-primary" data-i18n="restore.modal.btn.confirm">Restore</button>
@@ -444,7 +444,7 @@
       <div class="card-panel help-panel">
         <h2 data-i18n="help.heading">How this app works</h2>
         <p class="muted" data-i18n-html="help.intro">
-          nostr-vcard shares contact cards that are encrypted in your browser and published to the Nostr network.
+          NostCard shares contact cards that are encrypted in your browser and published to the Nostr network.
           There are no accounts and no central server — only you hold the keys.
         </p>
 

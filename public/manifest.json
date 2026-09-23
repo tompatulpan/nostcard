@@ -1,6 +1,6 @@
 {
-  "name": "nostr-vcard",
-  "short_name": "vCard",
+  "name": "NostCard",
+  "short_name": "NostCard",
   "description": "Zero-knowledge, end-to-end encrypted contact card sharing over Nostr.",
   "start_url": "/index.html",
   "scope": "/",

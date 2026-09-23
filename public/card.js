@@ -1,5 +1,5 @@
 /**
- * card.js — Recipient page for nostr-vcard
+ * card.js — Recipient page for NostCard
  *
  * Flow:
  *  1. Parse ?naddr= from query string; parse #AES-key from fragment
@@ -125,7 +125,7 @@ async function init() {
 // Trust gate
 // ---------------------------------------------------------------------------
 
-const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const TRUST_TTL_MS = 1 * 60 * 60 * 1000; // 1 hour — TEMPORARY for testing, intended value: 30 days (30 * 24 * 60 * 60 * 1000)
 
 function getTrust(trustId) {
   try {

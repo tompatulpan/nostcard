@@ -122,7 +122,8 @@ export function generateRandom(length) {
 /** PBKDF2 iterations — OWASP-recommended minimum for PBKDF2-HMAC-SHA256 (2023 guidance) */
 const SYNC_PBKDF2_ITERATIONS = 600_000;
 
-/** Fixed salt: identity is fully determined by the passphrase, same on every device */
+/** Fixed salt: identity is fully determined by the passphrase, same on every device.
+ *  Protocol constant — do not rename: it is part of the KDF input, renaming breaks decryption of existing synced snapshots. */
 const SYNC_SALT = 'nostr-vcard-sync-v1';
 
 /**
@@ -177,7 +178,8 @@ export async function importSyncKey(rawKeyBytes) {
 // Pairing identity derivation (code → signing key + encryption key)
 // ---------------------------------------------------------------------------
 
-/** Fixed salt, distinct label from sync so the same code/passphrase never collides across features */
+/** Fixed salt, distinct label from sync so the same code/passphrase never collides across features.
+ *  Protocol constant — do not rename: it is part of the KDF input, renaming breaks existing pairing codes. */
 const PAIR_SALT = 'nostr-vcard-pair-v1';
 
 /**

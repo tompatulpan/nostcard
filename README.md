@@ -1,4 +1,4 @@
-# nostr-vcard ()- We need a new name!!)
+# NostCard
 
 Decentrilized, Zero-knowledge, client-side encrypted contact card (vCard) sharing via the Nostr protocol.
 
@@ -67,14 +67,14 @@ No build step. The app imports nostr-tools directly from `https://esm.sh` at run
 npx wrangler login
 
 # Create the Pages project (once)
-npx wrangler pages project create nostr-vcard
+npx wrangler pages project create nostcard
 
 # Deploy or update (every time)
 npm run deploy
 ```
 
-The deploy script runs `wrangler pages deploy public --project-name nostr-vcard`.  
-Your site is live at `https://nostr-vcard.pages.dev` (or a custom domain you configure in the Cloudflare dashboard).
+The deploy script runs `wrangler pages deploy public --project-name nostcard`.  
+Your site is live at `https://nostcard.pages.dev` (or a custom domain you configure in the Cloudflare dashboard).
 
 **Cloudflare dashboard (no CLI):**  
 Go to [pages.cloudflare.com](https://pages.cloudflare.com) → Create project → Direct Upload → drag & drop the `public/` folder.

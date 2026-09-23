@@ -1,10 +1,10 @@
 {
-  "page.title.index": "My Cards — nostr-vcard",
+  "page.title.index": "My Cards — NostCard",
   "page.title.card": "Contact Card",
   "page.title.card.loaded": "{{fn}} — Encrypted Card",
-  "page.title.proof": "Privacy Proof — nostr-vcard",
+  "page.title.proof": "Privacy Proof — NostCard",
 
-  "header.logo.index": "🔐 nostr-vcard",
+  "header.logo.index": "🔐 NostCard",
   "header.logo.card": "🔐 Encrypted Contact Card",
   "header.logo.proof": "🔍 Privacy Proof",
 
@@ -118,7 +118,7 @@
   "share.modal.dl.label": "📱 Add-to-contacts link (auto-downloads .vcf on open):",
 
   "restore.modal.heading": "Restore backup",
-  "restore.modal.body": "Paste the contents of a backup JSON file. Both v2 (nostr-vcard) and v1 (legacy) formats are accepted.",
+  "restore.modal.body": "Paste the contents of a backup JSON file. Both v2 (NostCard) and v1 (legacy) formats are accepted.",
   "restore.modal.placeholder": "{\"version\":2,\"cards\":[...]}",
   "restore.modal.btn.confirm": "Restore",
 
@@ -169,7 +169,7 @@
   "alert.restore.done": "Restore complete: {{added}} card{{s}} added, {{skipped}} skipped (already present), {{failed}} failed{{links}}.",
   "alert.backup.error": "Could not read backup file.",
   "alert.json.error": "Invalid JSON — check that you pasted the full backup text.",
-  "alert.unknown.format": "Unrecognised format. Make sure you are pasting a valid nostr-vcard backup.",
+  "alert.unknown.format": "Unrecognised format. Make sure you are pasting a valid NostCard backup.",
   "alert.links.imported": ", {{n}} saved link{{s}} imported",
   "alert.sync.error": "Sync error: {{error}}",
   "alert.sync.deleted": "Synced snapshot deleted from relays.",
@@ -318,7 +318,7 @@
   "help.btn.open": "? Help",
   "help.btn.open.title": "How to use this app",
   "help.heading": "How this app works",
-  "help.intro": "nostr-vcard shares contact cards that are encrypted in your browser and published to the Nostr network. There are no accounts and no central server — only you hold the keys.",
+  "help.intro": "NostCard shares contact cards that are encrypted in your browser and published to the Nostr network. There are no accounts and no central server — only you hold the keys.",
   "help.gettingstarted.heading": "Getting started",
   "help.gettingstarted.1": "**Create my card** generates a fresh Nostr identity and encryption key inside your browser. Nothing is sent anywhere yet.",
   "help.gettingstarted.2": "Fill in your details and press **Save & publish** — the card is encrypted (AES-256-GCM) and published to public Nostr relays.",

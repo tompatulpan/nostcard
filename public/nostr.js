@@ -1,5 +1,5 @@
 /**
- * nostr.js — Nostr protocol layer for nostr-vcard
+ * nostr.js — Nostr protocol layer for NostCard
  *
  * Handles keypair generation, event publishing, fetching, and naddr encoding.
  * All relay I/O is done via nostr-tools SimplePool (self-hosted bundle in vendor/).
@@ -34,7 +34,8 @@ export const CARD_KIND = 30402;
 /** NIP-78 "application-specific data" kind used for the cross-device sync snapshot */
 export const SYNC_KIND = 30078;
 
-/** Fixed d-tag identifying the sync snapshot event (one per sync identity) */
+/** Fixed d-tag identifying the sync snapshot event (one per sync identity).
+ *  Protocol constant — do not rename: changing it orphans sync snapshots already published to relays. */
 const SYNC_D_TAG = 'nostr-vcard-sync';
 
 /** Custom addressable kind used for the ephemeral in-person pairing handshake */
