@@ -128,6 +128,7 @@
   "sync.join.label": "Already have a sync passphrase?",
   "sync.join.placeholder": "word-word-word-word-word-word-word-word",
   "sync.btn.join": "Pull with this passphrase",
+  "sync.join.error.weak": "That doesn't look like a generated sync passphrase (8 words separated by hyphens). Custom passphrases aren't accepted: the encrypted snapshot is public on the relays, and a guessable passphrase would let someone crack all your card keys offline.",
   "sync.reveal.warning": "⚠️ Save this passphrase now — it's shown only once. Anyone with it can read and overwrite your synced snapshot.",
   "sync.btn.push": "Push",
   "sync.btn.pull": "Pull",
@@ -349,5 +350,5 @@
   "help.access.3": "**Verify privacy** — the editor's privacy proof shows exactly what a relay can see versus what the key unlocks.",
   "help.backup.heading": "Backup and sync",
   "help.backup.1": "**Backup** exports a JSON file containing everything, including your private keys. Anyone with that file controls your cards — store it securely.",
-  "help.backup.2": "**Sync** publishes an encrypted snapshot of your cards to your relays using a passphrase. Enter the same passphrase on another device to pull it in — anyone with the passphrase can read and overwrite the snapshot, so keep it secret."
+  "help.backup.2": "**Sync** publishes an encrypted snapshot of your cards to your relays using a generated passphrase. Enter the same passphrase on another device to pull it in — anyone with the passphrase can read and overwrite the snapshot, so keep it secret."
 }

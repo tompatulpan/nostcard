@@ -37,6 +37,27 @@ export function generateSyncPassphrase() {
   return words.join('-');
 }
 
+/** Minimum accepted word count for a sync passphrase (6 words ≈ 66 bits — far
+ *  beyond offline brute-force reach at 600k PBKDF2 iterations). */
+const MIN_PASSPHRASE_WORDS = 6;
+
+const BIP39_WORD_SET = new Set(BIP39_ENGLISH);
+
+/**
+ * True if the passphrase has the generated form: hyphen-separated words from
+ * the BIP39 wordlist, at least MIN_PASSPHRASE_WORDS of them. The generator is
+ * the only legitimate source of sync passphrases, so rejecting every other
+ * form blocks weak hand-typed passphrases: the encrypted snapshot is public on
+ * the relays and contains every card's private key — a guessable passphrase
+ * would let anyone brute-force it offline.
+ * @param {string} passphrase
+ * @returns {boolean}
+ */
+export function isValidSyncPassphrase(passphrase) {
+  const words = passphrase.split('-');
+  return words.length >= MIN_PASSPHRASE_WORDS && words.every(w => BIP39_WORD_SET.has(w));
+}
+
 // ---------------------------------------------------------------------------
 // Identity derivation
 // ---------------------------------------------------------------------------

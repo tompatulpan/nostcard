@@ -128,6 +128,7 @@
   "sync.join.label": "Har du redan en synk-lösenfras?",
   "sync.join.placeholder": "ord-ord-ord-ord-ord-ord-ord-ord",
   "sync.btn.join": "Hämta med denna lösenfras",
+  "sync.join.error.weak": "Det ser inte ut som en genererad synk-lösenfras (8 ord separerade med bindestreck). Egenhittade lösenfraser accepteras inte: den krypterade ögonblicksbilden finns publikt på reläerna, och en gissningsbar lösenfras skulle låta någon knäcka alla dina kortnycklar offline.",
   "sync.reveal.warning": "⚠️ Spara den här lösenfrasen nu — den visas bara en gång. Den som har den kan läsa och skriva över din synkade data.",
   "sync.btn.push": "Skicka",
   "sync.btn.pull": "Hämta",
@@ -349,5 +350,5 @@
   "help.access.3": "**Verifiera integritet** — redigerarens integritetsbevis visar exakt vad ett relä kan se, jämfört med vad nyckeln låser upp.",
   "help.backup.heading": "Säkerhetskopiering och synk",
   "help.backup.1": "**Säkerhetskopiera** exporterar en JSON-fil med allt, inklusive dina privata nycklar. Vem som helst med den filen kan styra dina kort — förvara den säkert.",
-  "help.backup.2": "**Synk** publicerar en krypterad ögonblicksbild av dina kort till dina reläer med hjälp av en lösenfras. Ange samma lösenfras på en annan enhet för att hämta in den — vem som helst med lösenfrasen kan läsa och skriva över ögonblicksbilden, så håll den hemlig."
+  "help.backup.2": "**Synk** publicerar en krypterad ögonblicksbild av dina kort till dina reläer med hjälp av en genererad lösenfras. Ange samma lösenfras på en annan enhet för att hämta in den — vem som helst med lösenfrasen kan läsa och skriva över ögonblicksbilden, så håll den hemlig."
 }

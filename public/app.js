@@ -31,7 +31,7 @@ import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, 
 import { buildVCard, parseVCard } from './vcard.js';
 import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } from './i18n.js';
-import { generateSyncPassphrase, deriveSyncIdentity, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
+import { generateSyncPassphrase, deriveSyncIdentity, isValidSyncPassphrase, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
 
 // ---------------------------------------------------------------------------
@@ -2224,6 +2224,13 @@ document.getElementById('btn-sync-join').addEventListener('click', async () => {
   const input = document.getElementById('sync-join-passphrase-input');
   const passphrase = input.value.trim();
   if (!passphrase) return;
+  // Only generated passphrases are accepted — see isValidSyncPassphrase in sync.js.
+  // Check before deriving anything: a rejected passphrase must never become a
+  // persisted (and therefore pushable) identity on this device.
+  if (!isValidSyncPassphrase(passphrase)) {
+    alert(t('sync.join.error.weak'));
+    return;
+  }
   const btn = document.getElementById('btn-sync-join');
   btn.disabled = true;
   try {
