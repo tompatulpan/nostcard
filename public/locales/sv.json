@@ -342,7 +342,7 @@
   "help.trust.public": "**Delad eller offentlig dator** — ingenting sparas. Sessionen rensas automatiskt när fliken döljs, efter 5 minuter eller vid \"Klart\". Nedladdning är avstängd.",
   "help.trust.link": "**Länken är lösenordet** — vem som helst med hela länken kan läsa kortet. För extra säkerhet: skicka grundlänken och <code>#nyckeldelen</code> via två olika kanaler (t.ex. e-post + Signal).",
   "help.pair.heading": "Koppling i person (Connect)",
-  "help.pair.body": "**+ Koppla ihop** startar ett ömsesidigt utbyte: du får en QR-kod, den andra personen skannar den och ni väljer var sitt kort att dela. Båda korten sparas under Kontakter. Kopplingskoden går ut efter 30 minuter och utbytet körs över reläerna som en krypterad handskakning — acceptera bara när personen faktiskt står framför dig.",
+  "help.pair.body": "**+ Koppla ihop** startar ett ömsesidigt utbyte: du får en QR-kod, den andra personen skannar den och ni väljer var sitt kort att dela. Båda korten sparas under Kontakter. Handskakningen är ett krypterat utbyte över reläerna och koden slutar fungera efter 30 minuter — acceptera bara när personen faktiskt står framför dig. Behandla koden som ett lösenord: om någon kan ha fotograferat den, rotera kortets nyckel efteråt för att vara säker.",
   "help.access.heading": "Kontrollera dina data",
   "help.access.1": "**Rotera nyckel** — skapar en ny krypteringsnyckel och publicerar kortet igen. Alla tidigare delade länkar slutar fungera omedelbart.",
   "help.access.2": "**Radera kort** — tar bort kortet från den här enheten och skickar en raderingsbegäran till alla reläer (icke-garanterat).",

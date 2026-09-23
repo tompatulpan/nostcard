@@ -1637,7 +1637,7 @@ let pairStartState = null; // { pairNsec, pollInterval, countdownInterval, fetch
 function showPairStart() {
   activeCardId = null;
   showScreen('screen-pair-start');
-  stopPairStartPolling();
+  abandonPairStart();
   document.getElementById('pair-start-pick').classList.remove('hidden');
   document.getElementById('pair-start-active').classList.add('hidden');
   document.getElementById('pair-start-expired').classList.add('hidden');
@@ -1651,6 +1651,21 @@ function stopPairStartPolling() {
     clearInterval(pairStartState.countdownInterval);
     pairStartState = null;
   }
+}
+
+/**
+ * Stop any in-progress pairing and scrub its slots from the relays (best-effort
+ * overwrite + delete — see cleanupPairing in pairing.js). Covers every exit
+ * path: expiry, regenerate, cancel, and navigating away mid-pairing. Without
+ * this, an abandoned pairing leaves the payload — which contains the card's
+ * AES key — live on the relays indefinitely. Safe to fire-and-forget: the old
+ * identity is captured before the state is discarded.
+ */
+async function abandonPairStart() {
+  const state = pairStartState;
+  stopPairStartPolling();
+  if (!state) return;
+  try { await cleanupPairing(DEFAULT_RELAYS, state.pairNsec); } catch { /* best-effort */ }
 }
 
 async function beginPairStart(card) {
@@ -1736,7 +1751,7 @@ async function beginPairStart(card) {
 }
 
 function onPairStartExpired() {
-  stopPairStartPolling();
+  abandonPairStart();
   document.getElementById('pair-start-active').classList.add('hidden');
   document.getElementById('pair-start-expired').classList.remove('hidden');
 }
@@ -1752,11 +1767,7 @@ async function completePairStart(pairNsec, peerPayload, myCardId) {
 }
 
 document.getElementById('btn-pair-start-cancel').addEventListener('click', async () => {
-  if (pairStartState) {
-    const { pairNsec } = pairStartState;
-    stopPairStartPolling();
-    try { await cleanupPairing(DEFAULT_RELAYS, pairNsec); } catch { /* best-effort */ }
-  }
+  await abandonPairStart();
   go('/saved');
 });
 

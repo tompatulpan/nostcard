@@ -342,7 +342,7 @@
   "help.trust.public": "**Shared or public computer** — nothing is saved. The session auto-clears when the tab is hidden, after 5 minutes, or on \"Done\". Downloading is disabled.",
   "help.trust.link": "**The link is the password** — anyone holding the full link can read the card. For extra safety, send the base link and the <code>#key</code> part through two different channels (e.g. email + Signal).",
   "help.pair.heading": "In-person pairing (Connect)",
-  "help.pair.body": "**+ Connect** starts a mutual exchange: you get a QR code, the other person scans it, and you each pick which of your cards to share. Both cards end up saved under Contacts. The pairing code expires after 30 minutes and the exchange runs over the relays as an encrypted handshake — only accept when the person is actually in front of you.",
+  "help.pair.body": "**+ Connect** starts a mutual exchange: you get a QR code, the other person scans it, and you each pick which of your cards to share. Both cards end up saved under Contacts. The handshake is an encrypted exchange over the relays and the code stops working after 30 minutes — only accept when the person is actually in front of you. Treat the code like a password: if someone may have photographed it, rotate your card key afterwards to be safe.",
   "help.access.heading": "Controlling your data",
   "help.access.1": "**Rotate key** — generates a new encryption key and re-publishes the card. All previous share links stop working immediately.",
   "help.access.2": "**Delete card** — removes the card from this device and sends a deletion request to all relays (best-effort).",

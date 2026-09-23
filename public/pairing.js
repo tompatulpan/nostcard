@@ -12,10 +12,12 @@
  *   - The code is equivalent to a decryption key — never log it, never send
  *     it anywhere but the URL fragment (or QR contents scanned in person).
  *   - Offers older than PAIR_TTL_MS are treated as expired and ignored.
- *   - Slot payloads embed the card's AES key; slot deletion after handshake is
- *     best-effort (NIP-09), so an archiving relay may retain the ciphertext.
- *     If a pairing code may have leaked (e.g. a photo of the QR), rotate the
- *     card's key to invalidate what the archived payload points to.
+ *   - Slot payloads embed the card's AES key; cleanup overwrites both slots with
+ *     empty content (NIP-33 replacement — relays that honour replacement drop
+ *     the payload even if they ignore deletions) and then sends a NIP-09 delete.
+ *     An archive relay that snapshots every event may still retain the original
+ *     ciphertext. If a pairing code may have leaked (e.g. a photo of the QR),
+ *     rotate the card's key to invalidate what the archived payload points to.
  */
 
 import { generateRandom, derivePairingSecrets, importSyncKey, encryptVCard, decryptVCard } from './crypto.js';
@@ -79,11 +81,22 @@ export async function fetchPairingPayload(relays, pairNpub, pairKeyRaw, slot, ma
 }
 
 /**
- * Best-effort cleanup of both pairing slots once a handshake is complete (or cancelled).
+ * Best-effort cleanup of both pairing slots once a handshake completes, is
+ * cancelled, or expires. Slots are first overwritten with empty content —
+ * NIP-33 replacement makes relays drop the real payload immediately, even
+ * those that ignore NIP-09 deletions — and then deleted. Residual risk: an
+ * archive relay that snapshots every event keeps the original ciphertext, and
+ * a leaked pairing code can still decrypt it there. Rotate the card key if
+ * the code may have been captured.
+ *
  * @param {string[]}   relays
  * @param {Uint8Array} pairNsec
  * @returns {Promise<void>}
  */
 export async function cleanupPairing(relays, pairNsec) {
+  try {
+    await publishPairingSlot(relays, pairNsec, 'a', '');
+    await publishPairingSlot(relays, pairNsec, 'b', '');
+  } catch { /* best-effort — fall through to deletion */ }
   await deletePairingSlots(relays, pairNsec);
 }
