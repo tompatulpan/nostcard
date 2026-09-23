@@ -982,7 +982,7 @@ function showCvError(title, detail) {
   document.getElementById('cv-screen-error').classList.remove('hidden');
 }
 
-const TRUST_TTL_MS = 1 * 60 * 60 * 1000; // 1 hour — TEMPORARY for testing, intended value: 30 days (30 * 24 * 60 * 60 * 1000)
+const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (30 * 24 * 60 * 60 * 1000)
 
 function getCvTrust(trustId) {
   // TODO: duplicate of card.js getTrust() and missing the sliding-TTL bump —
