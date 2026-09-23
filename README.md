@@ -1,6 +1,6 @@
-# nostr-vcard
+# nostr-vcard ()- We need a new name!!)
 
-Zero-knowledge, client-side encrypted contact card (vCard) sharing via the Nostr protocol.
+Decentrilized, Zero-knowledge, client-side encrypted contact card (vCard) sharing via the Nostr protocol.
 
 Owners publish AES-256-GCM encrypted contact data as signed Nostr events to public relays.  
 Recipients open a single link in any browser — no app install, no account, no central server.
@@ -11,6 +11,41 @@ Recipients open a single link in any browser — no app install, no account, no 
 - The **encrypted blob** is stored on public Nostr relays as a NIP-33 addressable event (kind 30402).
 - The **relay** only ever sees ciphertext. It cannot read the contact data.
 - Updating a card re-publishes a new event; relays auto-replace it (same `d` tag). No API token needed.
+
+## Using the app
+
+1. **Create a card** — a fresh Nostr identity and AES encryption key are generated inside your browser. Nothing is sent anywhere yet.
+2. **Fill in your details** and press *Save & publish* — the card is encrypted (AES-256-GCM) and published to public relays.
+3. **Share it** (see below) — recipients open a plain link in any browser. No app, no account.
+4. **Keep it live** — saving again updates the same card, so every shared link always shows your latest details.
+
+Your keys never leave your browser except inside the links you share. Use *Advanced → Backup* to move to another device.
+
+## Ways to share a card
+
+- **Share link** — the decryption key rides in the `#fragment`. Anyone with the full link can view the card.
+- **QR code** — the share dialog renders the link as a scannable QR code.
+- **Add-to-contacts link** — opens with a `?dl=1` parameter and downloads the card as a `.vcf` file straight into the contacts app.
+- **In-person pairing** — *+ Connect* starts a mutual exchange: one person shows a QR, the other scans it, and both pick which card to share back. Pairing codes expire after 30 minutes.
+
+## Trust models
+
+The share link **is the password** — anyone holding the full link can read the card. For extra safety, send the base link and the `#key` through two different channels (e.g. email + Signal).
+
+When a recipient opens a card, the app asks where they are, and the answer controls what is stored on that device:
+
+| Choice | What happens |
+| --- | --- |
+| **My personal device** | Link saved locally, device remembered for 30 days, `.vcf` download allowed, bookmarking encouraged. |
+| **Shared / public computer** | Nothing saved. Session auto-clears on tab switch, after 5 minutes, or on "Done". Download disabled. |
+
+Owner controls:
+
+- **Rotate key** — re-encrypts with a new key and re-publishes; all old links stop working immediately.
+- **Delete card** — removes local credentials and sends a NIP-09 deletion request (best-effort; an archived relay may keep a copy).
+- **Verify privacy** — a built-in proof page shows exactly what a relay sees versus what the key unlocks.
+
+The app ships with a full in-app help page at `index.html#/help`.
 
 ## Quick start (local dev)
 
