@@ -740,6 +740,11 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
 // ---------------------------------------------------------------------------
 
 document.getElementById('btn-rotate-key').addEventListener('click', async () => {
+  // NOTE: rotating breaks already-paired contacts and previously shared links
+  // on recipient devices — their stored peerKey/link URL keeps the old key, so
+  // opening the card fails with "Decryption failed" and the paired badge stays
+  // on a contact that can no longer be opened. No channel exists to push the
+  // new key to peers; recipients must re-pair or receive the new link.
   if (!activeCardId) return;
   const card = getCard(activeCardId);
   if (!card) return;
@@ -969,6 +974,9 @@ function showCvError(title, detail) {
 const TRUST_TTL_MS = 1 * 60 * 60 * 1000; // 1 hour — TEMPORARY for testing, intended value: 30 days (30 * 24 * 60 * 60 * 1000)
 
 function getCvTrust(trustId) {
+  // TODO: duplicate of card.js getTrust() and missing the sliding-TTL bump —
+  // expiry is not extended on each trusted open here. Keep in sync with
+  // card.js, or extract both into a shared module.
   try {
     const raw = localStorage.getItem(`e2e:trusted:${trustId}`);
     if (!raw) return false;

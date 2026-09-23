@@ -11,7 +11,7 @@
     "wrangler": "^4.85.0"
   },
   "scripts": {
-    "dev": "npx --yes serve public -l 8788 --no-clipboard",
+    "dev": "npx --yes serve public -l 8123 --no-clipboard",
     "build:vendor": "esbuild vendor-entry.js --bundle --format=esm --minify --outfile=public/vendor/nostr-tools.js",
     "deploy": "wrangler pages deploy public --project-name nostcard"
   },

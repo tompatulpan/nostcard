@@ -136,6 +136,11 @@ function getTrust(trustId) {
       localStorage.removeItem(`e2e:trusted:${trustId}`);
       return false;
     }
+    // Sliding TTL — each trusted visit extends the window from now
+    localStorage.setItem(
+      `e2e:trusted:${trustId}`,
+      JSON.stringify({ ok: true, expires: Date.now() + TRUST_TTL_MS })
+    );
     return true;
   } catch {
     return false;

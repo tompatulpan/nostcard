@@ -51,7 +51,7 @@ The app ships with a full in-app help page at `index.html#/help`.
 
 ```bash
 npm install
-npm run dev          # serves public/ at http://localhost:8788
+npm run dev          # serves public/ at http://localhost:8123
 ```
 
 No build step. The app imports nostr-tools directly from `https://esm.sh` at runtime.
@@ -124,7 +124,7 @@ The card data lives on Nostr relays, not on your hosting domain. If the original
 Host the `public/` folder anywhere (even `localhost`) and construct the card URL manually:
 
 ```
-http://localhost:8788/card?naddr=<naddr1...>#<AES-key>
+http://localhost:8123/card?naddr=<naddr1...>#<AES-key>
 ```
 
 The `naddr` encodes the relays, so the new host will fetch the blob from the same Nostr relays.  
