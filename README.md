@@ -26,7 +26,7 @@ Your keys never leave your browser except inside the links you share. Use *Advan
 - **Share link** — the decryption key rides in the `#fragment`. Anyone with the full link can view the card.
 - **QR code** — the share dialog renders the link as a scannable QR code.
 - **Add-to-contacts link** — opens with a `?dl=1` parameter and downloads the card as a `.vcf` file straight into the contacts app.
-- **In-person pairing** — *+ Connect* starts a mutual exchange: one person shows a QR, the other scans it, and both pick which card to share back. Pairing codes expire after 30 minutes.
+- **In-person pairing** — *+ Connect* starts a mutual exchange: one person shows a QR, the other scans it, and both pick which card to share back. Codes stop working after 30 minutes and the exchange is scrubbed from the relays afterwards (best-effort). Treat a pairing code like a password — if it may have been photographed, rotate the card key.
 
 ## Trust models
 
@@ -54,7 +54,9 @@ npm install
 npm run dev          # serves public/ at http://localhost:8123
 ```
 
-No build step. The app imports nostr-tools directly from `https://esm.sh` at runtime.
+No build step. nostr-tools is bundled into `public/vendor/nostr-tools.js` (rebuild with `npm run build:vendor`) — no CDN is used at runtime.
+
+`npm run dev` enforces the same security headers as production via `public/serve.json`. Production headers live in `public/_headers` (Cloudflare Pages).
 
 ---
 
@@ -107,11 +109,7 @@ Or connect the GitHub repo in the Netlify dashboard and set **Publish directory*
 
 Copy the contents of `public/` to your web root. No server-side logic required.
 
-Recommended `Content-Security-Policy` header (set in your host config):
-
-```
-Content-Security-Policy: default-src 'self'; connect-src 'self' wss:; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline'
-```
+Set the security headers from `public/_headers` in your host config — CSP (`script-src 'self'`, `connect-src 'self' wss:`, etc.), `X-Content-Type-Options`, `X-Frame-Options: DENY`, and `Referrer-Policy: no-referrer`. `_headers` is the source of truth for the exact policy.
 
 ---
 

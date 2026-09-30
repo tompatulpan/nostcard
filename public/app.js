@@ -943,7 +943,17 @@ async function showCardViewScreen(url, mode) {
     return;
   }
 
-  const { pubkey, identifier: cardId, relays } = decoded;
+  // Same hardening as card.js: reject wrong-kind addresses and unsafe relay hints
+  if (decoded.kind !== CARD_KIND) {
+    showCvError(t('error.invalidLink.title'), t('error.invalidLink.malformedNaddr'));
+    return;
+  }
+  const { pubkey, identifier: cardId } = decoded;
+  const relays = (decoded.relays || []).filter(isValidRelayUrl);
+  if (relays.length === 0) {
+    showCvError(t('error.invalidLink.title'), t('error.invalidLink.noRelays'));
+    return;
+  }
 
   let aesKey;
   try { aesKey = await fragmentToKey(fragment); } catch {
@@ -1486,7 +1496,9 @@ async function refreshConnections(connections) {
   for (const conn of connections) {
     try {
       const decoded   = naddrDecode(conn.peerNaddr);
-      const event     = await fetchCard(decoded.relays, decoded.pubkey, decoded.identifier);
+      const relays    = (decoded.relays || []).filter(isValidRelayUrl);
+      if (relays.length === 0) continue;
+      const event     = await fetchCard(relays, decoded.pubkey, decoded.identifier);
       if (!event) continue;
       const aesKey    = await fragmentToKey(conn.peerKey);
       const vcardText = await decryptVCard(event.content, aesKey);

@@ -18,7 +18,7 @@
 
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard, buildVCard } from './vcard.js';
-import { naddrDecode, fetchCard, sameCardAddress } from './nostr.js';
+import { naddrDecode, fetchCard, sameCardAddress, isValidRelayUrl, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
 
 // ---------------------------------------------------------------------------
@@ -58,9 +58,16 @@ async function init() {
     return showError(t('error.invalidLink.title'), t('error.invalidLink.malformedNaddr'));
   }
 
-  const { pubkey, identifier: cardId, relays } = decoded;
+  // A crafted naddr could point at the wrong event kind or carry unsafe relay
+  // URLs — only card-kind addresses with wss:// (or ws:// in dev) hints are used.
+  if (decoded.kind !== CARD_KIND) {
+    return showError(t('error.invalidLink.title'), t('error.invalidLink.malformedNaddr'));
+  }
 
-  if (!relays || relays.length === 0) {
+  const { pubkey, identifier: cardId } = decoded;
+  const relays = (decoded.relays || []).filter(isValidRelayUrl);
+
+  if (relays.length === 0) {
     return showError(t('error.invalidLink.title'), t('error.invalidLink.noRelays'));
   }
 
