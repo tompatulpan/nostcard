@@ -84,11 +84,11 @@ async function init() {
   try {
     event = await fetchCard(relays, pubkey, cardId);
   } catch (err) {
-    return showError(t('error.network.title'), t('error.network.detail'));
+    return showError(t('error.network.title'), t('error.network.detail'), true);
   }
 
   if (!event) {
-    return showError(t('error.notFound.title'), t('error.notFound.detail'));
+    return showError(t('error.notFound.title'), t('error.notFound.detail'), true);
   }
 
   // Decrypt
@@ -587,10 +587,22 @@ function downloadVcf(vcardText, fn) {
 // Error screen
 // ---------------------------------------------------------------------------
 
-function showError(title, detail) {
+function showError(title, detail, retryable = false) {
   document.getElementById('screen-loading').classList.add('hidden');
   document.getElementById('error-title').textContent  = title;
   document.getElementById('error-detail').textContent = detail;
+
+  // "Not found" and network errors are often transient relay flakiness —
+  // offer a reload rather than making the recipient believe the card is gone.
+  if (retryable) {
+    const btn = document.createElement('button');
+    btn.className   = 'btn btn-primary';
+    btn.style.marginTop = '1rem';
+    btn.textContent  = t('error.retry.btn');
+    btn.addEventListener('click', () => location.reload());
+    document.getElementById('error-detail').insertAdjacentElement('afterend', btn);
+  }
+
   document.getElementById('screen-error').classList.remove('hidden');
 }
 

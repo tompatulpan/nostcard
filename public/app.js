@@ -901,6 +901,7 @@ document.getElementById('cv-btn-back-error').addEventListener('click', () => {
 });
 
 async function showCardViewScreen(url, mode) {
+  cvLastLoad = { url, mode };
   showScreen('screen-card-view');
 
   // Reset inline viewer state
@@ -963,11 +964,11 @@ async function showCardViewScreen(url, mode) {
 
   let event;
   try { event = await fetchCard(relays, pubkey, cardId); } catch {
-    showCvError(t('error.network.title'), t('error.network.detail'));
+    showCvError(t('error.network.title'), t('error.network.detail'), true);
     return;
   }
   if (!event) {
-    showCvError(t('error.notFound.title'), t('error.notFound.detail'));
+    showCvError(t('error.notFound.title'), t('error.notFound.detail'), true);
     return;
   }
 
@@ -987,12 +988,29 @@ async function showCardViewScreen(url, mode) {
   }
 }
 
-function showCvError(title, detail) {
+function showCvError(title, detail, retryable = false) {
   document.getElementById('cv-screen-loading').classList.add('hidden');
   document.getElementById('cv-error-title').textContent  = title;
   document.getElementById('cv-error-detail').textContent = detail;
+
+  // Relay flakiness is the usual cause of the retryable errors — offer a retry
+  // instead of a dead end (mirrors the retry button on card.html).
+  document.getElementById('cv-btn-retry')?.remove();
+  if (retryable && cvLastLoad) {
+    const btn = document.createElement('button');
+    btn.id        = 'cv-btn-retry';
+    btn.className = 'btn btn-primary';
+    btn.style.cssText = 'margin-top:1rem;margin-right:8px';
+    btn.textContent = t('error.retry.btn');
+    btn.addEventListener('click', () => showCardViewScreen(cvLastLoad.url, cvLastLoad.mode));
+    document.getElementById('cv-btn-back-error').insertAdjacentElement('beforebegin', btn);
+  }
+
   document.getElementById('cv-screen-error').classList.remove('hidden');
 }
+
+/** Last inline-viewer load attempt — lets the error screen offer a retry. */
+let cvLastLoad = null;
 
 const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (30 * 24 * 60 * 60 * 1000)
 
@@ -1982,7 +2000,7 @@ async function importBackup(json, { navigate = true } = {}) {
   }
 
   const existingIds = new Set(getCards().map(c => c.id));
-  let added = 0, skipped = 0, failed = 0;
+  let added = 0, skipped = 0, failed = 0, republished = 0, unpublished = 0;
 
   for (const payload of cardPayloads) {
     if (!payload?.id || !payload?.nsec || !payload?.key) { failed++; continue; }
@@ -2033,13 +2051,15 @@ async function importBackup(json, { navigate = true } = {}) {
     const validRelays = Array.isArray(payload.relays) ? payload.relays.filter(isValidRelayUrl) : [];
     const relayList   = validRelays.length > 0 ? validRelays : [...DEFAULT_RELAYS];
 
-    // Verify card exists on relays AND that the backup's key can decrypt it
-    // (the relay event may have been re-encrypted after a key rotation)
-    let found = false;
+    // Check whether the card is on the relays at all. If an event exists but
+    // the backup's key can't decrypt it, the key was rotated after the backup —
+    // the card is still live, and re-publishing the stale backup key would
+    // break the links shared after the rotation, so we leave it alone.
+    let event = null;
     try {
-      const event = await fetchCard(relayList, npub, payload.id);
-      found = !!event && await keyDecryptsBlob(payload.key, event.content);
+      event = await fetchCard(relayList, npub, payload.id);
     } catch {}
+    const onNetwork = !!event;
 
     const cards = getCards();
     cards.push({
@@ -2057,21 +2077,26 @@ async function importBackup(json, { navigate = true } = {}) {
       localStorage.setItem(`e2e:fields:${payload.id}`, JSON.stringify(fieldsMap[payload.id]));
     }
 
-    if (!found) {
-      // Card not on relay — offer re-publish if we have fields
+    if (!onNetwork) {
+      // Card not on the relays at all — a restore must also re-publish it,
+      // otherwise the card exists only locally and every shared link stays
+      // broken until the owner opens the editor and hits Save.
       if (fieldsMap[payload.id]) {
-        const shouldRepublish = confirm(t('dialog.republish.confirm', { label: payload.label || payload.id }));
-        if (shouldRepublish) {
-          try {
-            const aesKey    = await importCardKey(payload.key);
-            const nsecBytes = hexToBytes(payload.nsec);
-            const fields    = fieldsMap[payload.id];
-            const vcardText = buildVCard(fields);
-            const blob      = await encryptVCard(vcardText, aesKey);
-            const results   = await publishCard(relayList, nsecBytes, payload.id, blob);
-            localStorage.setItem(`e2e:relay-status:${payload.id}`, JSON.stringify(results));
-          } catch {}
-        }
+        try {
+          const aesKey    = await importCardKey(payload.key);
+          const nsecBytes = hexToBytes(payload.nsec);
+          const fields    = { ...fieldsMap[payload.id] };
+          fields.sourceUrl = canonicalUrl(payload.id, npub, relayList);
+          const vcardText = buildVCard(fields);
+          const blob      = await encryptVCard(vcardText, aesKey);
+          const results   = await publishCard(relayList, nsecBytes, payload.id, blob);
+          localStorage.setItem(`e2e:relay-status:${payload.id}`, JSON.stringify(results));
+          if (results.some(r => r.ok)) republished++;
+        } catch {}
+      } else {
+        // No cached fields — the vCard can't be rebuilt, so the owner must
+        // open the card and Save once. Reported in the restore summary.
+        unpublished++;
       }
     }
 
@@ -2126,7 +2151,9 @@ async function importBackup(json, { navigate = true } = {}) {
 
   const linksPart = linksAdded > 0 ? t('alert.links.imported', { n: linksAdded, s: linksAdded !== 1 ? 's' : '' }) : '';
   const connsPart = connsAdded > 0 ? t('alert.connections.imported', { n: connsAdded, s: connsAdded !== 1 ? 's' : '' }) : '';
-  alert(t('alert.restore.done', { added, s: added !== 1 ? 's' : '', skipped, failed, links: linksPart + connsPart }));
+  const republishedPart = republished > 0 ? t('alert.restore.republished', { n: republished, s: republished !== 1 ? 's' : '' }) : '';
+  const unpublishedPart = unpublished > 0 ? t('alert.restore.notpublished', { n: unpublished, s: unpublished !== 1 ? 's' : '' }) : '';
+  alert(t('alert.restore.done', { added, s: added !== 1 ? 's' : '', skipped, failed, links: linksPart + connsPart + republishedPart + unpublishedPart }));
 
   // Sync pulls stay on the current screen (e.g. Saved Cards) instead of jumping to My Cards
   if (!navigate) return;

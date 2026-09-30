@@ -22,10 +22,17 @@ import { generateSecretKey, getPublicKey, finalizeEvent, SimplePool, nip19 }
 // Constants
 // ---------------------------------------------------------------------------
 
+/**
+ * Default relay set. Chosen for reliability and verified to accept kind 30402
+ * writes; relay.nostr.band was removed after its WebSocket endpoint stopped
+ * responding — every operation touching it wasted the connection timeout.
+ * Users can add/remove relays per card in the editor.
+ */
 export const DEFAULT_RELAYS = [
   'wss://relay.damus.io',
-  'wss://relay.nostr.band',
   'wss://nos.lol',
+  'wss://nostr.mom',
+  'wss://offchain.pub',
 ];
 
 /** NIP-33 addressable replaceable event kind for vCard blobs */
@@ -41,8 +48,25 @@ const SYNC_D_TAG = 'nostr-vcard-sync';
 /** Custom addressable kind used for the ephemeral in-person pairing handshake */
 export const PAIR_KIND = 30403;
 
-/** Timeout for relay fetch operations (ms) */
+/** Timeout for the first relay fetch attempt (ms) */
 const FETCH_TIMEOUT_MS = 10_000;
+
+/** Timeout for the retry attempt (ms) — slow relays and flaky connections get a second, longer window */
+const FETCH_RETRY_TIMEOUT_MS = 15_000;
+
+// ---------------------------------------------------------------------------
+// Shared relay pool
+// ---------------------------------------------------------------------------
+
+/**
+ * One SimplePool for the whole module. Connections are reused across publish /
+ * fetch / delete operations instead of being opened and torn down per call.
+ * Handshake rate limits make the connect-per-operation pattern a reliability
+ * problem — relay.damus.io intermittently answers 503 to a burst of rapid
+ * successive handshakes, which the old new-SimplePool-per-call code produced
+ * constantly (one pool + close per fetch, publish, sync and pairing poll).
+ */
+const sharedPool = new SimplePool();
 
 // ---------------------------------------------------------------------------
 // Keypair generation
@@ -97,26 +121,21 @@ export async function publishCard(relays, nsec, cardId, encryptedBlob) {
   };
 
   const event = finalizeEvent(template, nsec);
-  const pool  = new SimplePool();
 
-  try {
-    const publishPromises = relays.map(async relay => {
-      try {
-        await pool.publish([relay], event);
-        return { relay, ok: true };
-      } catch {
-        return { relay, ok: false };
-      }
-    });
+  const publishPromises = relays.map(async relay => {
+    try {
+      await sharedPool.publish([relay], event);
+      return { relay, ok: true };
+    } catch {
+      return { relay, ok: false };
+    }
+  });
 
-    // Use allSettled so a single relay failure doesn't abort the rest
-    const settled = await Promise.allSettled(publishPromises);
-    return settled.map(r =>
-      r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
-    );
-  } finally {
-    pool.close(relays);
-  }
+  // Use allSettled so a single relay failure doesn't abort the rest
+  const settled = await Promise.allSettled(publishPromises);
+  return settled.map(r =>
+    r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -126,30 +145,43 @@ export async function publishCard(relays, nsec, cardId, encryptedBlob) {
 /**
  * Fetch the latest card event for a given owner + card ID from the given relays.
  *
- * @param {string[]} relays   WebSocket relay URLs
+ * Robustness: relays are flaky — a first attempt that comes up empty (timeout,
+ * dropped connection, relay briefly offline) is retried once with the default
+ * relays added to the pool and a longer timeout. Without this, one slow relay
+ * reads as "card not found" even though the event is live on another relay.
+ *
+ * @param {string[]} relays   WebSocket relay URLs (from the naddr hints)
  * @param {string}   npub     Owner's public key (hex)
  * @param {string}   cardId   Card identifier (d-tag)
+ * @param {{fallbackRelays?: string[]}} [opts] Extra relays to add on the retry
+ *   attempt. Defaults to DEFAULT_RELAYS; pass [] to disable the fallback.
  * @returns {Promise<{content: string, created_at: number}|null>}
  *   Returns the event content (encrypted blob) and timestamp, or null if not found.
  */
-export async function fetchCard(relays, npub, cardId) {
-  const pool = new SimplePool();
+export async function fetchCard(relays, npub, cardId, { fallbackRelays = DEFAULT_RELAYS } = {}) {
+  const event = await fetchCardOnce(relays, npub, cardId, FETCH_TIMEOUT_MS);
+  if (event) return event;
 
-  try {
-    const event = await Promise.race([
-      pool.get(relays, {
-        kinds:   [CARD_KIND],
-        authors: [npub],
-        '#d':    [cardId],
-      }),
-      new Promise(resolve => setTimeout(() => resolve(null), FETCH_TIMEOUT_MS)),
-    ]);
-
-    if (!event) return null;
-    return { content: event.content, created_at: event.created_at, tags: event.tags || [] };
-  } finally {
-    pool.close(relays);
+  const retryRelays = [...relays];
+  for (const relay of (fallbackRelays || [])) {
+    if (!retryRelays.includes(relay) && isValidRelayUrl(relay)) retryRelays.push(relay);
   }
+  return fetchCardOnce(retryRelays, npub, cardId, FETCH_RETRY_TIMEOUT_MS);
+}
+
+/** Single fetch attempt against the given relay list with an outer timeout. */
+async function fetchCardOnce(relays, npub, cardId, timeoutMs) {
+  const event = await Promise.race([
+    sharedPool.get(relays, {
+      kinds:   [CARD_KIND],
+      authors: [npub],
+      '#d':    [cardId],
+    }),
+    new Promise(resolve => setTimeout(() => resolve(null), timeoutMs)),
+  ]);
+
+  if (!event) return null;
+  return { content: event.content, created_at: event.created_at, tags: event.tags || [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -176,13 +208,7 @@ export async function deleteCard(relays, nsec, cardId) {
   };
 
   const event = finalizeEvent(template, nsec);
-  const pool  = new SimplePool();
-
-  try {
-    await Promise.allSettled(relays.map(relay => pool.publish([relay], event)));
-  } finally {
-    pool.close(relays);
-  }
+  await Promise.allSettled(relays.map(relay => sharedPool.publish([relay], event)));
 }
 
 // ---------------------------------------------------------------------------
@@ -208,25 +234,20 @@ export async function publishSyncEvent(relays, syncNsec, encryptedBlob) {
   };
 
   const event = finalizeEvent(template, syncNsec);
-  const pool  = new SimplePool();
 
-  try {
-    const publishPromises = relays.map(async relay => {
-      try {
-        await pool.publish([relay], event);
-        return { relay, ok: true };
-      } catch {
-        return { relay, ok: false };
-      }
-    });
+  const publishPromises = relays.map(async relay => {
+    try {
+      await sharedPool.publish([relay], event);
+      return { relay, ok: true };
+    } catch {
+      return { relay, ok: false };
+    }
+  });
 
-    const settled = await Promise.allSettled(publishPromises);
-    return settled.map(r =>
-      r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
-    );
-  } finally {
-    pool.close(relays);
-  }
+  const settled = await Promise.allSettled(publishPromises);
+  return settled.map(r =>
+    r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
+  );
 }
 
 /**
@@ -237,23 +258,17 @@ export async function publishSyncEvent(relays, syncNsec, encryptedBlob) {
  * @returns {Promise<{content: string, created_at: number}|null>}
  */
 export async function fetchSyncEvent(relays, syncNpub) {
-  const pool = new SimplePool();
+  const event = await Promise.race([
+    sharedPool.get(relays, {
+      kinds:   [SYNC_KIND],
+      authors: [syncNpub],
+      '#d':    [SYNC_D_TAG],
+    }),
+    new Promise(resolve => setTimeout(() => resolve(null), FETCH_TIMEOUT_MS)),
+  ]);
 
-  try {
-    const event = await Promise.race([
-      pool.get(relays, {
-        kinds:   [SYNC_KIND],
-        authors: [syncNpub],
-        '#d':    [SYNC_D_TAG],
-      }),
-      new Promise(resolve => setTimeout(() => resolve(null), FETCH_TIMEOUT_MS)),
-    ]);
-
-    if (!event) return null;
-    return { content: event.content, created_at: event.created_at };
-  } finally {
-    pool.close(relays);
-  }
+  if (!event) return null;
+  return { content: event.content, created_at: event.created_at };
 }
 
 /**
@@ -275,13 +290,7 @@ export async function deleteSyncEvent(relays, syncNsec) {
   };
 
   const event = finalizeEvent(template, syncNsec);
-  const pool  = new SimplePool();
-
-  try {
-    await Promise.allSettled(relays.map(relay => pool.publish([relay], event)));
-  } finally {
-    pool.close(relays);
-  }
+  await Promise.allSettled(relays.map(relay => sharedPool.publish([relay], event)));
 }
 
 // ---------------------------------------------------------------------------
@@ -308,25 +317,20 @@ export async function publishPairingSlot(relays, pairNsec, slot, encryptedBlob) 
   };
 
   const event = finalizeEvent(template, pairNsec);
-  const pool  = new SimplePool();
 
-  try {
-    const publishPromises = relays.map(async relay => {
-      try {
-        await pool.publish([relay], event);
-        return { relay, ok: true };
-      } catch {
-        return { relay, ok: false };
-      }
-    });
+  const publishPromises = relays.map(async relay => {
+    try {
+      await sharedPool.publish([relay], event);
+      return { relay, ok: true };
+    } catch {
+      return { relay, ok: false };
+    }
+  });
 
-    const settled = await Promise.allSettled(publishPromises);
-    return settled.map(r =>
-      r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
-    );
-  } finally {
-    pool.close(relays);
-  }
+  const settled = await Promise.allSettled(publishPromises);
+  return settled.map(r =>
+    r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
+  );
 }
 
 /**
@@ -337,23 +341,17 @@ export async function publishPairingSlot(relays, pairNsec, slot, encryptedBlob) 
  * @returns {Promise<{content: string, created_at: number}|null>}
  */
 export async function fetchPairingSlot(relays, pairNpub, slot) {
-  const pool = new SimplePool();
+  const event = await Promise.race([
+    sharedPool.get(relays, {
+      kinds:   [PAIR_KIND],
+      authors: [pairNpub],
+      '#d':    [slot],
+    }),
+    new Promise(resolve => setTimeout(() => resolve(null), FETCH_TIMEOUT_MS)),
+  ]);
 
-  try {
-    const event = await Promise.race([
-      pool.get(relays, {
-        kinds:   [PAIR_KIND],
-        authors: [pairNpub],
-        '#d':    [slot],
-      }),
-      new Promise(resolve => setTimeout(() => resolve(null), FETCH_TIMEOUT_MS)),
-    ]);
-
-    if (!event) return null;
-    return { content: event.content, created_at: event.created_at };
-  } finally {
-    pool.close(relays);
-  }
+  if (!event) return null;
+  return { content: event.content, created_at: event.created_at };
 }
 
 /**
@@ -375,13 +373,7 @@ export async function deletePairingSlots(relays, pairNsec) {
   };
 
   const event = finalizeEvent(template, pairNsec);
-  const pool  = new SimplePool();
-
-  try {
-    await Promise.allSettled(relays.map(relay => pool.publish([relay], event)));
-  } finally {
-    pool.close(relays);
-  }
+  await Promise.allSettled(relays.map(relay => sharedPool.publish([relay], event)));
 }
 
 // ---------------------------------------------------------------------------
