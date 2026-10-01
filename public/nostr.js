@@ -437,7 +437,12 @@ export function sameCardAddress(naddrA, naddrB) {
 // ---------------------------------------------------------------------------
 
 /**
- * Validate a relay URL. Accepts wss:// always; ws:// only on localhost/dev.
+ * Validate a relay URL. Accepts wss:// always; ws:// only from a local
+ * development origin — localhost, or a private-LAN IP served over plain http
+ * (e.g. testing the dev server from a phone at http://192.168.x.x:8123
+ * against a local test relay). Deployed pages (https, public domain) never
+ * accept insecure relays, so a crafted share link can't direct a recipient's
+ * browser at ws:// hosts.
  * @param {string} url
  * @returns {boolean}
  */
@@ -445,12 +450,30 @@ export function isValidRelayUrl(url) {
   try {
     const u = new URL(url);
     if (u.protocol === 'wss:') return true;
-    // Allow ws:// only in local development
-    if (u.protocol === 'ws:' &&
-        (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-      return true;
-    }
+    if (u.protocol === 'ws:' && isLocalDevOrigin()) return true;
     return false;
+  } catch {
+    return false;
+  }
+}
+
+/** True when the current page is served from a local development origin. */
+function isLocalDevOrigin() {
+  try {
+    const host = location.hostname;
+    if (host === 'localhost' || host === '::1' || host === '[::1]') return true;
+    // Loopback and private LAN IPs (RFC 1918) + IPv4 link-local — but only
+    // over plain http; an https page on a private IP is not a dev server
+    // we set up.
+    if (location.protocol !== 'http:') return false;
+    const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!m) return false;
+    const a = Number(m[1]), b = Number(m[2]);
+    return a === 127
+      || a === 10
+      || (a === 192 && b === 168)
+      || (a === 172 && b >= 16 && b <= 31)
+      || (a === 169 && b === 254);
   } catch {
     return false;
   }
