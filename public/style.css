@@ -411,6 +411,31 @@ textarea { resize: vertical; }
   color: var(--text-muted);
 }
 
+/* ── Contacts paste box ──────────────────────────────────────────────────── */
+
+.paste-contact-box {
+  margin: 0 0 4px;
+}
+.paste-contact-error {
+  font-size: 0.85rem;
+  margin: 4px 0 12px;
+  color: var(--danger);
+}
+
+/* ── Share modal: split-sharing section ──────────────────────────────────── */
+
+.share-split {
+  margin: 10px 0 0;
+}
+.share-split summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.share-split .share-url-box {
+  margin: 8px 0;
+}
+
 .qr-container {
   display: flex;
   justify-content: center;

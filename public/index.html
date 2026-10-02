@@ -71,6 +71,14 @@
           <button id="btn-back-to-cards" class="btn btn-success" data-i18n="cv.btn.back">← Back</button>
         </div>
       </div>
+
+      <!-- Add a contact by pasting a share link (any variant) -->
+      <div class="share-url-box paste-contact-box">
+        <input id="paste-contact-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a share link to add a contact…" data-i18n-placeholder="contacts.paste.placeholder" />
+        <button id="btn-paste-contact" class="btn btn-teal btn-sm" data-i18n="contacts.paste.btn">Add contact</button>
+      </div>
+      <p id="paste-contact-error" class="paste-contact-error muted hidden"></p>
+
       <div id="saved-links-list" class="cards-list"></div>
       <div class="screen-footer-actions">
         <button id="btn-advanced-saved" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
@@ -232,16 +240,38 @@
         <p class="muted" data-i18n-html="share.modal.warning">⚠️ Treat this link like a password — anyone who has it can read the card. The decryption key is in the <code>#fragment</code>, which browsers never send to any server.</p>
         <p class="muted" style="font-size:0.85rem;margin-top:0.5rem" data-i18n="share.modal.relay.note">Relays store only ciphertext. Update timestamps are visible to relay operators.</p>
 
+        <p class="muted" style="margin-top:1rem;margin-bottom:0.25rem;font-size:0.85rem" data-i18n="share.modal.url.label">🔗 Share link — opens the card in any browser:</p>
         <div class="share-url-box">
           <input id="share-url" type="text" readonly />
           <button id="btn-copy-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
         </div>
 
-        <p class="muted" style="margin-top:1rem;margin-bottom:0.25rem;font-size:0.85rem" data-i18n="share.modal.dl.label">📱 Add-to-contacts link (auto-downloads .vcf on open):</p>
+        <p class="muted" style="margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.85rem" data-i18n="share.modal.compact.label">📦 Compact link — no web address; paste it under Contacts in this app:</p>
+        <div class="share-url-box">
+          <input id="share-compact" type="text" readonly />
+          <button id="btn-copy-compact" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+        </div>
+
+        <p class="muted" style="margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.85rem" data-i18n="share.modal.dl.label">📱 Add-to-contacts link (auto-downloads .vcf on open):</p>
         <div class="share-url-box">
           <input id="dl-url" type="text" readonly />
           <button id="btn-copy-dl-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
         </div>
+
+        <details class="share-split">
+          <summary data-i18n="share.more.toggle">Send the link in two parts (more secure)</summary>
+          <p class="muted" style="font-size:0.85rem;margin-top:0.5rem" data-i18n-html="share.split.note">The base link is not secret — relays already see the card address. Send it by email or chat, and send the key through a different, end-to-end encrypted channel (e.g. Signal). The card only opens for someone holding both parts.</p>
+          <p class="muted" style="margin:0.5rem 0 0.25rem;font-size:0.85rem" data-i18n="share.split.base.label">Part 1 — base link (not secret):</p>
+          <div class="share-url-box">
+            <input id="share-url-base" type="text" readonly />
+            <button id="btn-copy-base-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+          </div>
+          <p class="muted" style="margin:0.5rem 0 0.25rem;font-size:0.85rem" data-i18n="share.split.key.label">Part 2 — decryption key (secret — handle like a password):</p>
+          <div class="share-url-box">
+            <input id="share-key" type="text" readonly />
+            <button id="btn-copy-key" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+          </div>
+        </details>
 
         <div id="qr-container" class="qr-container"></div>
 
@@ -462,9 +492,18 @@
         <h3 data-i18n="help.share.heading">Ways to share a card</h3>
         <ul class="help-list">
           <li data-i18n-html="help.share.1">**Share link** — the decryption key is in the <code>#fragment</code> of the URL. Anyone with the full link can view the card in any browser — no app, no account.</li>
+          <li data-i18n-html="help.share.compact">**Compact link** — the same card as <code>naddr</code> + key with no web address. It cannot be opened in a browser directly — paste it under Contacts instead. The web part of a link is only a viewer; the card address and key are what matter.</li>
           <li data-i18n-html="help.share.2">**QR code** — the share dialog shows the link as a scannable QR code.</li>
           <li data-i18n-html="help.share.3">**Add-to-contacts link** — opening it downloads the card as a <code>.vcf</code> file straight into the contacts app.</li>
           <li data-i18n-html="help.share.4">**In-person pairing** — exchange cards with someone standing next to you (see below).</li>
+          <li data-i18n-html="help.share.5">**Paste a link** — under Contacts, paste any share link to add it as a contact. The card is fetched inside the app, so the link is never opened as a page and never lands in the browser's history.</li>
+        </ul>
+
+        <h3 data-i18n="help.install.heading">Use as an app on your phone</h3>
+        <ul class="help-list">
+          <li data-i18n-html="help.install.ios">**iPhone/iPad (Safari):** tap the Share button and choose **Add to Home Screen**. The icon opens the site in Safari, so the browser's history and address bar still apply. For an app-like window without browser controls, use the Shortcuts app to create a shortcut that opens the site.</li>
+          <li data-i18n-html="help.install.android">**Android (Chrome):** open the menu and choose **Add to Home screen / Install app**. It installs as a standalone app; card links opened inside it do not appear in the browser's address-bar history.</li>
+          <li data-i18n-html="help.install.caveat">**Privacy note:** the app clears the <code>#key</code> from the address bar and history as soon as a link opens, but it cannot reach what the browser recorded before that (typed URLs, synced history) or the app the link was sent in. For maximum privacy, open links in the installed app or in a private window.</li>
         </ul>
 
         <h3 data-i18n="help.tech.heading">The technology — Nostr</h3>

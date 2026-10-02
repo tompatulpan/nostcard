@@ -831,6 +831,16 @@ function openShareModal(card) {
   document.getElementById('share-label').textContent = card.label;
   document.getElementById('share-url').value         = shareUrl;
   document.getElementById('dl-url').value            = dlUrl;
+  // Compact link: naddr + key with no web address — the web part is only a
+  // viewer, so the pair alone identifies the card. Pasting it under Contacts
+  // resolves it on this origin; it cannot be opened in a browser directly.
+  const naddrParam = new URL(shareUrl).searchParams.get('naddr');
+  const keyFrag    = shareUrl.split('#')[1] || '';
+  document.getElementById('share-compact').value = naddrParam && keyFrag ? `${naddrParam}#${keyFrag}` : '';
+  // Split-sharing fields: the base link (no #key) and the key on its own, for
+  // sending the two parts through different channels (e.g. email + Signal).
+  document.getElementById('share-url-base').value = shareUrl.split('#')[0];
+  document.getElementById('share-key').value      = keyFrag;
   document.getElementById('modal-share').classList.remove('hidden');
 
   const qrContainer = document.getElementById('qr-container');
@@ -850,6 +860,30 @@ document.getElementById('btn-copy-dl-url').addEventListener('click', async () =>
   const url = document.getElementById('dl-url').value;
   try { await navigator.clipboard.writeText(url); } catch { /* fallback: select */ }
   const btn = document.getElementById('btn-copy-dl-url');
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+});
+
+document.getElementById('btn-copy-base-url').addEventListener('click', async () => {
+  const url = document.getElementById('share-url-base').value;
+  try { await navigator.clipboard.writeText(url); } catch { /* fallback: select */ }
+  const btn = document.getElementById('btn-copy-base-url');
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+});
+
+document.getElementById('btn-copy-key').addEventListener('click', async () => {
+  const key = document.getElementById('share-key').value;
+  try { await navigator.clipboard.writeText(key); } catch { /* fallback: select */ }
+  const btn = document.getElementById('btn-copy-key');
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+});
+
+document.getElementById('btn-copy-compact').addEventListener('click', async () => {
+  const compact = document.getElementById('share-compact').value;
+  try { await navigator.clipboard.writeText(compact); } catch { /* fallback: select */ }
+  const btn = document.getElementById('btn-copy-compact');
   btn.textContent = t('btn.copied');
   setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
 });
@@ -1452,6 +1486,65 @@ function renderSavedLinks() {
 
   // Re-fetch each peer's card in the background so paired entries stay current
   if (connections.length > 0) refreshConnections(connections);
+}
+
+// ---------------------------------------------------------------------------
+// Contacts — add a contact by pasting a share link
+// ---------------------------------------------------------------------------
+
+document.getElementById('btn-paste-contact').addEventListener('click', () => addContactFromPaste());
+document.getElementById('paste-contact-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addContactFromPaste();
+});
+document.getElementById('paste-contact-input').addEventListener('input', () => {
+  document.getElementById('paste-contact-error').classList.add('hidden');
+});
+
+/**
+ * Normalize any share-link variant into a share URL on this origin, or null.
+ * Accepts the compact form (naddr#key, no web address) and full links
+ * (plain or ?dl=1) from any deployment of the app — only the naddr and the
+ * #key matter. Key-only pastes are rejected: without the card address there
+ * is nothing to fetch.
+ */
+function normalizePastedShareLink(raw) {
+  const text = (raw || '').trim();
+  if (!text) return null;
+
+  // Compact form: naddr#key — resolve on this origin
+  const compact = text.match(/^(naddr1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)#([A-Za-z0-9_-]+)$/i);
+  if (compact) {
+    return `${location.origin}/card?naddr=${encodeURIComponent(compact[1].toLowerCase())}#${encodeURIComponent(compact[2])}`;
+  }
+
+  let urlObj;
+  try { urlObj = new URL(text); } catch { return null; }
+  if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') return null;
+  const naddr   = urlObj.searchParams.get('naddr');
+  const fragment = urlObj.hash.slice(1);
+  if (!naddr || !fragment) return null;
+  let key = fragment;
+  try { key = decodeURIComponent(fragment); } catch { /* keep raw — base64url needs no decoding */ }
+  // Rebuild on this origin: drops ?dl=1 and any query-string noise.
+  return `${location.origin}/card?naddr=${encodeURIComponent(naddr)}#${encodeURIComponent(key)}`;
+}
+
+function addContactFromPaste() {
+  const input = document.getElementById('paste-contact-input');
+  const errEl = document.getElementById('paste-contact-error');
+  const url   = normalizePastedShareLink(input.value);
+  if (!url) {
+    errEl.textContent = t('contacts.paste.error');
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+  input.value = '';
+  // Reuse the inline viewer: it validates the naddr, fetches and decrypts the
+  // card (with its own error screens and retry), and the trust gate auto-saves
+  // the link. No navigation happens, so nothing lands in browser history.
+  cvReturnRoute = '/saved';
+  showCardViewScreen(url, 'saved-card');
 }
 
 // ---------------------------------------------------------------------------
