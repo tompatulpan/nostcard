@@ -142,7 +142,46 @@ async function init() {
     }
   });
 
+  if (handleShareTargetLaunch()) return;
+
   route();
+}
+
+/**
+ * Web Share Target launch: a link shared to the PWA arrives as query params.
+ * Some apps put the URL in `text` instead of `url`, so check both.
+ * Returns true if a shared card link was handled.
+ */
+function handleShareTargetLaunch() {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('shared-url') && !params.has('shared-text')) return false;
+
+  const candidates = [params.get('shared-url'), params.get('shared-text'), params.get('shared-title')];
+  let url = null;
+  for (const c of candidates) {
+    if (!c) continue;
+    // The shared text may contain surrounding words — extract the first URL-ish token
+    for (const token of c.split(/\s+/)) {
+      url = normalizePastedShareLink(token);
+      if (url) break;
+    }
+    if (url) break;
+  }
+
+  // Strip the shared data from the address bar either way
+  history.replaceState(null, '', location.pathname);
+
+  if (!url) {
+    go('/saved');
+    const errEl = document.getElementById('paste-contact-error');
+    errEl.textContent = t('contacts.share.error');
+    errEl.classList.remove('hidden');
+    return true;
+  }
+
+  cvReturnRoute = '/saved';
+  showCardViewScreen(url, 'saved-card');
+  return true;
 }
 
 // ---------------------------------------------------------------------------

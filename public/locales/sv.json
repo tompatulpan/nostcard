@@ -49,6 +49,8 @@
   "contacts.paste.placeholder": "Klistra in en delningslänk för att lägga till en kontakt…",
   "contacts.paste.btn": "Lägg till kontakt",
   "contacts.paste.error": "Det ser inte ut som en komplett delningslänk — klistra in hela URL:en inklusive #nyckeln.",
+  "contacts.paste.toggle": "Klistra in en delningslänk i stället…",
+  "contacts.share.error": "Det delade innehållet innehöll ingen giltig kortlänk — den måste inkludera #nyckel-delen.",
 
   "adv.btn.open": "⚙️ Avancerat",
   "adv.btn.open.title": "Synkronisera, säkerhetskopiera, återställ och andra avancerade alternativ",

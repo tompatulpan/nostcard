@@ -73,10 +73,13 @@
       </div>
 
       <!-- Add a contact by pasting a share link (any variant) -->
-      <div class="share-url-box paste-contact-box">
-        <input id="paste-contact-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a share link to add a contact…" data-i18n-placeholder="contacts.paste.placeholder" />
-        <button id="btn-paste-contact" class="btn btn-teal btn-sm" data-i18n="contacts.paste.btn">Add contact</button>
-      </div>
+      <details class="paste-contact-details">
+        <summary class="muted" data-i18n="contacts.paste.toggle">Paste a share link instead…</summary>
+        <div class="share-url-box paste-contact-box">
+          <input id="paste-contact-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a share link to add a contact…" data-i18n-placeholder="contacts.paste.placeholder" />
+          <button id="btn-paste-contact" class="btn btn-teal btn-sm" data-i18n="contacts.paste.btn">Add contact</button>
+        </div>
+      </details>
       <p id="paste-contact-error" class="paste-contact-error muted hidden"></p>
 
       <div id="saved-links-list" class="cards-list"></div>

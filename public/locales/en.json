@@ -49,6 +49,8 @@
   "contacts.paste.placeholder": "Paste a share link to add a contact…",
   "contacts.paste.btn": "Add contact",
   "contacts.paste.error": "That does not look like a full share link — paste the entire URL including the #key part.",
+  "contacts.paste.toggle": "Paste a share link instead…",
+  "contacts.share.error": "The shared content did not contain a valid card link — it must include the #key part.",
 
   "adv.btn.open": "⚙️ Advanced",
   "adv.btn.open.title": "Sync, backup, restore, and other advanced options",

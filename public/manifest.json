@@ -5,6 +5,13 @@
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
+  "launch_handler": { "client_mode": "navigate-existing" },
+  "handle_links": "preferred",
+  "share_target": {
+    "action": "/index.html",
+    "method": "GET",
+    "params": { "url": "shared-url", "text": "shared-text", "title": "shared-title" }
+  },
   "background_color": "#f5f5f5",
   "theme_color": "#2563eb",
   "icons": [

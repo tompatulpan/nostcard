@@ -413,8 +413,15 @@ textarea { resize: vertical; }
 
 /* ── Contacts paste box ──────────────────────────────────────────────────── */
 
+.paste-contact-details {
+  margin: 0 0 8px;
+}
+.paste-contact-details summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
 .paste-contact-box {
-  margin: 0 0 4px;
+  margin: 6px 0 4px;
 }
 .paste-contact-error {
   font-size: 0.85rem;
