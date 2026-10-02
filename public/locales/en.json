@@ -347,7 +347,7 @@
   "help.share.4": "**In-person pairing** — exchange cards with someone standing next to you (see below).",
   "help.share.5": "**Paste a link** — under Contacts, paste any share link to add it as a contact. The card is fetched inside the app, so the link is never opened as a page and never lands in the browser's history.",
   "help.install.heading": "Use as an app on your phone",
-  "help.install.ios": "**iPhone/iPad (Safari):** tap the Share button and choose **Add to Home Screen**. The icon opens the site in Safari, so the browser's history and address bar still apply. For an app-like window without browser controls, use the Shortcuts app to create a shortcut that opens the site.",
+  "help.install.ios": "**iPhone/iPad (Safari):** tap the Share button and choose **Add to Home Screen**. The icon opens the app full-screen, without browser controls. Links you open from other apps (Messages, Mail) open in Safari as normal — they are separate from the home-screen app.",
   "help.install.android": "**Android (Chrome):** open the menu and choose **Add to Home screen / Install app**. It installs as a standalone app; card links opened inside it do not appear in the browser's address-bar history.",
   "help.install.caveat": "**Privacy note:** the app clears the <code>#key</code> from the address bar and history as soon as a link opens, but it cannot reach what the browser recorded before that (typed URLs, synced history) or the app the link was sent in. For maximum privacy, open links in the installed app or in a private window.",
   "help.tech.heading": "The technology — Nostr",

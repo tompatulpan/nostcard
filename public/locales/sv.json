@@ -347,7 +347,7 @@
   "help.share.4": "**Koppling i person** — byt kort med någon som står bredvid dig (se nedan).",
   "help.share.5": "**Klistra in en länk** — under Kontakter kan du klistra in en delningslänk för att lägga till den som kontakt. Kortet hämtas inuti appen, så länken öppnas aldrig som en sida och hamnar aldrig i webbläsarens historik.",
   "help.install.heading": "Använd som app på mobilen",
-  "help.install.ios": "**iPhone/iPad (Safari):** tryck på dela-knappen och välj **Lägg till på hemskärmen**. Ikonen öppnar sajten i Safari, så webbläsarens historik och adressfält gäller fortfarande. För ett app-liknande fönster utan webbläsarkontroller, använd appen Genvägar (Shortcuts) för att skapa en genväg som öppnar sajten.",
+  "help.install.ios": "**iPhone/iPad (Safari):** tryck på dela-knappen och välj **Lägg till på hemskärmen**. Ikonen öppnar appen i helskärm, utan webbläsarkontroller. Länkar du öppnar från andra appar (Meddelanden, Mail) öppnas i Safari som vanligt — de är separerade från hemskärmsappen.",
   "help.install.android": "**Android (Chrome):** öppna menyn och välj **Lägg till på startskärmen / Installera app**. Den installeras som en fristående app; kortlänkar som öppnas inuti den syns inte i webbläsarens adressfälts-historik.",
   "help.install.caveat": "**Integritetsnotis:** appen tar bort <code>#nyckeln</code> från adressfältet och historiken så snart en länk öppnats, men den kan inte påverka vad webbläsaren sparat dessförinnan (skrivna URL:er, synkad historik) eller appen länken skickades i. Öppna länkar i den installerade appen eller i ett privat fönster för maximal integritet.",
   "help.tech.heading": "Tekniken — Nostr",
