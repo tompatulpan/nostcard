@@ -107,6 +107,15 @@
           <p class="update-hint-body muted" style="margin-top:0.4rem" data-i18n-html="cv.bookmark.warning">
             ⚠️ <strong>Do not bookmark on shared or public computers.</strong>
           </p>
+          <!-- Full-link copy box — trusted devices only (unhidden by card.js).
+               Lets the user move the link from a browser into the installed app. -->
+          <div id="copy-link-box" class="hidden" style="margin-top:0.75rem">
+            <p class="update-hint-body muted" style="margin:0.25rem 0" data-i18n="cv.copylink.label">📋 Full link — copy it and paste it under Contacts in the NostCard app:</p>
+            <div class="share-url-box">
+              <input id="card-full-url" type="text" readonly />
+              <button id="btn-copy-full-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+            </div>
+          </div>
           <p class="update-hint-body muted public-warning hidden" data-i18n-html="cv.public.warning">
             ⚠️ <strong>This link is not saved on this device. Do not bookmark it on a shared or public computer.</strong>
           </p>

@@ -401,6 +401,15 @@
           <p class="update-hint-body muted" style="margin-top:0.4rem" data-i18n-html="cv.bookmark.warning">
             ⚠️ <strong>Do not bookmark on shared or public computers.</strong>
           </p>
+          <!-- Full-link copy box — shown for saved contacts on trusted devices
+               (unhidden by app.js); lets the user re-share the card link. -->
+          <div id="cv-copy-link-box" class="hidden" style="margin-top:0.75rem">
+            <p class="update-hint-body muted" style="margin:0.25rem 0" data-i18n="cv.copylink.inline.label">📋 Full link — copy to re-share or send this card to someone else:</p>
+            <div class="share-url-box">
+              <input id="cv-card-full-url" type="text" readonly />
+              <button id="cv-btn-copy-full-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+            </div>
+          </div>
           <p class="update-hint-body muted public-warning hidden" data-i18n-html="cv.public.warning">
             ⚠️ <strong>This link is not saved on this device. Do not bookmark it on a shared or public computer.</strong>
           </p>
@@ -504,9 +513,9 @@
 
         <h3 data-i18n="help.install.heading">Use as an app on your phone</h3>
         <ul class="help-list">
-          <li data-i18n-html="help.install.ios">**iPhone/iPad (Safari):** tap the Share button and choose **Add to Home Screen**. The icon opens the app full-screen, without browser controls. Links you open from other apps (Messages, Mail) open in Safari as normal — they are separate from the home-screen app.</li>
+          <li data-i18n-html="help.install.ios">**iPhone/iPad (Safari):** tap the Share button and choose **Add to Home Screen**. The icon opens the app full-screen, without browser controls. Links you open from other apps (Messages, Mail) open in Safari as normal — they are separate from the home-screen app. To move a card you opened in Safari into the app, use the **Full link** box on the card and paste it under Contacts.</li>
           <li data-i18n-html="help.install.android">**Android (Chrome):** open the menu and choose **Add to Home screen / Install app**. It installs as a standalone app; card links opened inside it do not appear in the browser's address-bar history.</li>
-          <li data-i18n-html="help.install.caveat">**Privacy note:** the app clears the <code>#key</code> from the address bar and history as soon as a link opens, but it cannot reach what the browser recorded before that (typed URLs, synced history) or the app the link was sent in. For maximum privacy, open links in the installed app or in a private window.</li>
+          <li data-i18n-html="help.install.caveat">**Privacy note:** on a public computer the app clears the <code>#key</code> from the address bar and history immediately and saves nothing. On your own device the key stays in the address bar so the card can be bookmarked. The app can never reach what the browser recorded before it opened (typed URLs, synced history) or the app the link was sent in — for maximum privacy, open links in the installed app or in a private window.</li>
         </ul>
 
         <h3 data-i18n="help.tech.heading">The technology — Nostr</h3>

@@ -1217,6 +1217,25 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
     saveLinkBtn.disabled    = true;
   }
 
+  // Copyable full link — saved contacts on trusted devices. The contact's URL
+  // otherwise lives only in localStorage; this box lets the user re-share or
+  // re-send it. Owner preview has the Share modal instead; public mode keeps
+  // the box hidden, consistent with "nothing is saved on this device".
+  const copyBox = document.getElementById('cv-copy-link-box');
+  if (copyBox) {
+    copyBox.classList.add('hidden');
+    if (trusted && !ownerPreview && cvLastLoad?.url) {
+      copyBox.classList.remove('hidden');
+      document.getElementById('cv-card-full-url').value = cvLastLoad.url;
+      document.getElementById('cv-btn-copy-full-url').onclick = async () => {
+        const btn = document.getElementById('cv-btn-copy-full-url');
+        try { await navigator.clipboard.writeText(cvLastLoad.url); } catch { /* fallback: select */ }
+        btn.textContent = t('btn.copied');
+        setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+      };
+    }
+  }
+
   if (!trusted) {
     document.getElementById('cv-public-mode-banner').classList.remove('hidden');
     const hint = document.querySelector('.cv-update-hint');

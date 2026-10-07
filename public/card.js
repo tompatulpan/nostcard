@@ -21,6 +21,9 @@ import { parseVCard, buildVCard } from './vcard.js';
 import { naddrDecode, fetchCard, sameCardAddress, isValidRelayUrl, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
 
+/** Full card URL including the #key — captured before any address-bar scrub. */
+let cardFullUrl = null;
+
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
@@ -49,6 +52,11 @@ async function init() {
       t('error.invalidLink.missingParams')
     );
   }
+
+  // Capture the full URL (incl. #key) before anything scrubs the address bar —
+  // the trusted view offers it as a copy box so the link can be moved from a
+  // browser into the installed app (Contacts → paste).
+  cardFullUrl = location.href;
 
   // Decode naddr → relay hints, pubkey, card ID
   let decoded;
@@ -277,6 +285,25 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
     saveLinkHint.style.cssText = 'font-size:0.8rem;margin:0.25rem 0 0;text-align:center';
     saveLinkHint.textContent = t('cv.saved.hint');
     saveLinkBtn.insertAdjacentElement('afterend', saveLinkHint);
+  }
+
+  // Copyable full link — trusted devices only. The #key in the address bar is
+  // awkward to select on mobile; this box hands the link to the installed app
+  // (Contacts → paste) or lets it be re-shared. Public mode keeps it hidden,
+  // consistent with "nothing is saved on this device".
+  if (trusted) {
+    const box = document.getElementById('copy-link-box');
+    if (box) {
+      box.classList.remove('hidden');
+      const fullUrl = cardFullUrl || location.href;
+      document.getElementById('card-full-url').value = fullUrl;
+      document.getElementById('btn-copy-full-url').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-copy-full-url');
+        try { await navigator.clipboard.writeText(fullUrl); } catch { /* fallback: select */ }
+        btn.textContent = t('btn.copied');
+        setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+      });
+    }
   }
 
   // Public mode: banner + bookmark hint swapped for a "not saved here" warning
