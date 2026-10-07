@@ -24,6 +24,21 @@ import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
 /** Full card URL including the #key — captured before any address-bar scrub. */
 let cardFullUrl = null;
 
+// The one storage key a public visit can still write: the language choice
+// (setLang persists it). Captured before anything runs so a public session
+// can restore the browser to its pre-visit state on exit.
+const langBeforeLoad = (() => {
+  try { return localStorage.getItem('e2e:lang'); } catch { return null; }
+})();
+
+/** Public sessions: undo the only writes this session may have made. */
+function restorePublicTraces() {
+  try {
+    if (langBeforeLoad === null) localStorage.removeItem('e2e:lang');
+    else if (localStorage.getItem('e2e:lang') !== langBeforeLoad) localStorage.setItem('e2e:lang', langBeforeLoad);
+  } catch {}
+}
+
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
@@ -318,9 +333,13 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
       const warning = hint.querySelector('.public-warning');
       if (warning) warning.classList.remove('hidden');
     }
-    // Drop the #key from the address bar and history right away — on a shared
-    // device it must not linger for anyone to reopen the card later.
-    history.replaceState(null, '', location.pathname + location.search);
+    // Drop the whole query string and #key from the address bar and history
+    // right away — the key reopens the card, and even the (public) card
+    // address reveals that this visit happened. Nothing of the link remains.
+    history.replaceState(null, '', location.pathname);
+    // The tab can be closed without a kill (user just closes it) — undo any
+    // language-switch write at that point too.
+    window.addEventListener('pagehide', restorePublicTraces);
   }
 
   // Auto-kill: tab hidden — public mode only; disabled in owner-preview
@@ -360,7 +379,8 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
 
     vcardText = ''; // zero plaintext from closure
 
-    history.replaceState(null, '', location.pathname + location.search);
+    history.replaceState(null, '', location.pathname);
+    if (!trusted) restorePublicTraces();
 
     const section = document.getElementById('screen-card');
     if (!section) return;
@@ -450,9 +470,10 @@ function fieldRow(icon, type, text, href) {
 // explicit click before the .vcf is written to disk.
 function showDownloadGate(fn, trustId, cleanUrl, vcardText, relayTs) {
   document.getElementById('screen-loading').classList.add('hidden');
-  // Non-trusted device: drop the #key from the address bar/history immediately.
-  // cleanUrl was already captured, so saving after an explicit "Yes" still works.
-  history.replaceState(null, '', location.pathname + location.search);
+  // Non-trusted device: drop the whole link from the address bar/history
+  // immediately. cleanUrl was already captured, so saving after an explicit
+  // "Yes" still works.
+  history.replaceState(null, '', location.pathname);
 
   const panel = document.createElement('div');
   panel.className = 'card-panel centered';
