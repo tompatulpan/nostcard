@@ -202,7 +202,20 @@ function showScreen(name) {
 function showSetup()     { activeCardId = null; showScreen('screen-setup');     }
 function showCardList()  { activeCardId = null; showScreen('screen-cards');  renderCardList(); }
 function showEditor()    { showScreen('screen-editor'); }
-function showSavedLinks(){ activeCardId = null; showScreen('screen-saved');  renderSavedLinks(); }
+let pendingPasteFocus = false; // set by "Add by link" — expand + focus the paste box on arrival
+
+function showSavedLinks(){
+  activeCardId = null;
+  showScreen('screen-saved');
+  renderSavedLinks();
+  if (pendingPasteFocus) {
+    pendingPasteFocus = false;
+    const details = document.getElementById('paste-contact-details');
+    if (details) details.open = true;
+    const input = document.getElementById('paste-contact-input');
+    if (input) input.focus();
+  }
+}
 function showHelp()      { activeCardId = null; showScreen('screen-help'); }
 
 // ---------------------------------------------------------------------------
@@ -1437,6 +1450,17 @@ document.getElementById('btn-go-saved').addEventListener('click', () => {
 document.getElementById('btn-go-saved-setup').addEventListener('click', () => {
   go('/saved');
 });
+
+// "Add by link" — go to Contacts and put the cursor straight into the paste box.
+// Accepts full links and the compact form (naddr#key) — the web address is
+// never needed; the card is fetched from Nostr via the naddr's relay hints.
+function openPasteContact() {
+  pendingPasteFocus = true;
+  go('/saved');
+}
+
+document.getElementById('btn-paste-link').addEventListener('click', openPasteContact);
+document.getElementById('btn-paste-link-setup').addEventListener('click', openPasteContact);
 
 document.getElementById('btn-clear-all').addEventListener('click', () => {
   if (!confirm(t('dialog.logout.confirm'))) return;

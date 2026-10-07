@@ -40,6 +40,7 @@
           No server can ever read the content — only people you share the link with.</p>
         <button id="btn-create-card" class="btn btn-primary btn-lg" data-i18n="setup.btn.create">Create my card</button>
         <button id="btn-go-saved-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.saved">🔖 Contacts</button>
+        <button id="btn-paste-link-setup" class="btn btn-teal btn-lg" data-i18n="cards.btn.addlink">📋 Add by link</button>
 
         <div class="screen-footer-actions">
           <button id="btn-advanced-setup" class="btn btn-ghost btn-sm" data-i18n="adv.btn.open" data-i18n-title="adv.btn.open.title" title="Sync, backup, restore, and other advanced options">⚙️ Advanced</button>
@@ -53,6 +54,7 @@
         <h2 data-i18n="cards.heading">My Cards</h2>
         <div class="cards-screen-actions">
           <button id="btn-new-card"    class="btn btn-primary" data-i18n="cards.btn.new">+ New Card</button>
+          <button id="btn-paste-link"  class="btn btn-teal" data-i18n="cards.btn.addlink">📋 Add by link</button>
           <button id="btn-go-saved"    class="btn btn-teal" data-i18n="cards.btn.saved">🔖 Contacts</button>
         </div>
       </div>
@@ -73,10 +75,10 @@
       </div>
 
       <!-- Add a contact by pasting a share link (any variant) -->
-      <details class="paste-contact-details">
-        <summary class="muted" data-i18n="contacts.paste.toggle">Paste a share link instead…</summary>
+      <details class="paste-contact-details" id="paste-contact-details">
+        <summary class="muted" data-i18n="contacts.paste.toggle">Add a contact by pasting a link…</summary>
         <div class="share-url-box paste-contact-box">
-          <input id="paste-contact-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a share link to add a contact…" data-i18n-placeholder="contacts.paste.placeholder" />
+          <input id="paste-contact-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a full link or a compact link (naddr#key)…" data-i18n-placeholder="contacts.paste.placeholder" />
           <button id="btn-paste-contact" class="btn btn-teal btn-sm" data-i18n="contacts.paste.btn">Add contact</button>
         </div>
       </details>
@@ -249,7 +251,7 @@
           <button id="btn-copy-url" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
         </div>
 
-        <p class="muted" style="margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.85rem" data-i18n="share.modal.compact.label">📦 Compact link — no web address; paste it under Contacts in this app:</p>
+        <p class="muted" style="margin-top:0.75rem;margin-bottom:0.25rem;font-size:0.85rem" data-i18n="share.modal.compact.label">📦 Compact link — no web address needed; paste it into the app under Contacts:</p>
         <div class="share-url-box">
           <input id="share-compact" type="text" readonly />
           <button id="btn-copy-compact" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
@@ -504,7 +506,7 @@
         <h3 data-i18n="help.share.heading">Ways to share a card</h3>
         <ul class="help-list">
           <li data-i18n-html="help.share.1">**Share link** — the decryption key is in the <code>#fragment</code> of the URL. Anyone with the full link can view the card in any browser — no app, no account.</li>
-          <li data-i18n-html="help.share.compact">**Compact link** — the same card as <code>naddr</code> + key with no web address. It cannot be opened in a browser directly — paste it under Contacts instead. The web part of a link is only a viewer; the card address and key are what matter.</li>
+          <li data-i18n-html="help.share.compact">**Compact link** — the same card as <code>naddr</code> + key with no web address. It cannot be opened in a browser directly — paste it under Contacts instead (or use **Add by link** on the front page). If you also received a web address, you can ignore it — the app never needs it; the card address and key are what matter.</li>
           <li data-i18n-html="help.share.2">**QR code** — the share dialog shows the link as a scannable QR code.</li>
           <li data-i18n-html="help.share.3">**Add-to-contacts link** — opening it downloads the card as a <code>.vcf</code> file straight into the contacts app.</li>
           <li data-i18n-html="help.share.4">**In-person pairing** — exchange cards with someone standing next to you (see below).</li>
