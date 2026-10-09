@@ -34,6 +34,10 @@ import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } f
 import { generateSyncPassphrase, deriveSyncIdentity, isValidSyncPassphrase, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
 
+// Absolute path to card.html relative to this page — lets the app live under a
+// subpath (e.g. GitHub Pages project sites at username.github.io/nostcard/).
+const CARD_PATH = new URL('./card', location.href).pathname;
+
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
@@ -1596,7 +1600,7 @@ function normalizePastedShareLink(raw) {
   // Compact form: naddr#key — resolve on this origin
   const compact = text.match(/^(naddr1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)#([A-Za-z0-9_-]+)$/i);
   if (compact) {
-    return `${location.origin}/card?naddr=${encodeURIComponent(compact[1].toLowerCase())}#${encodeURIComponent(compact[2])}`;
+    return `${location.origin}${CARD_PATH}?naddr=${encodeURIComponent(compact[1].toLowerCase())}#${encodeURIComponent(compact[2])}`;
   }
 
   let urlObj;
@@ -1608,7 +1612,7 @@ function normalizePastedShareLink(raw) {
   let key = fragment;
   try { key = decodeURIComponent(fragment); } catch { /* keep raw — base64url needs no decoding */ }
   // Rebuild on this origin: drops ?dl=1 and any query-string noise.
-  return `${location.origin}/card?naddr=${encodeURIComponent(naddr)}#${encodeURIComponent(key)}`;
+  return `${location.origin}${CARD_PATH}?naddr=${encodeURIComponent(naddr)}#${encodeURIComponent(key)}`;
 }
 
 function addContactFromPaste() {
@@ -1726,7 +1730,7 @@ async function refreshConnections(connections) {
 }
 
 function viewConnection(conn) {
-  const url = `${location.origin}/card?naddr=${encodeURIComponent(conn.peerNaddr)}#${encodeURIComponent(conn.peerKey)}`;
+  const url = `${location.origin}${CARD_PATH}?naddr=${encodeURIComponent(conn.peerNaddr)}#${encodeURIComponent(conn.peerKey)}`;
   cvReturnRoute = '/saved';
   showCardViewScreen(url, 'owner-preview');
 }
@@ -2603,19 +2607,19 @@ function renderQR(container, text) {
 /** Build the full share URL (includes #AES-key fragment) */
 function buildShareUrl(card) {
   const naddr = naddrEncode(card.npub, card.id, card.relays);
-  return `${location.origin}/card?naddr=${naddr}#${card.key}`;
+  return `${location.origin}${CARD_PATH}?naddr=${naddr}#${card.key}`;
 }
 
 /** Build the auto-download URL (?dl=1) — triggers .vcf download on open */
 function buildDownloadUrl(card) {
   const naddr = naddrEncode(card.npub, card.id, card.relays);
-  return `${location.origin}/card?naddr=${naddr}&dl=1#${card.key}`;
+  return `${location.origin}${CARD_PATH}?naddr=${naddr}&dl=1#${card.key}`;
 }
 
 /** Canonical URL for vCard SOURCE field (no fragment, no key) */
 function canonicalUrl(cardId, npub, relays) {
   const naddr = naddrEncode(npub, cardId, relays);
-  return `${location.origin}/card?naddr=${naddr}`;
+  return `${location.origin}${CARD_PATH}?naddr=${naddr}`;
 }
 
 /** True if the stored key fragment decrypts the given encrypted blob */
