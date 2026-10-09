@@ -597,6 +597,9 @@ kbd {
 
 #screen-setup p { margin-bottom: 24px; }
 
+#screen-setup .card-panel > .btn-lg { display: flex; width: 100%; }
+#screen-setup .card-panel > .btn-lg + .btn-lg { margin-top: 10px; }
+
 .setup-divider {
   display: flex;
   align-items: center;
