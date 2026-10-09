@@ -1,9 +1,15 @@
 # NostCard
 
-Decentrilized, Zero-knowledge, client-side encrypted contact card (vCard) sharing via the Nostr protocol.
+Decentralized, zero-knowledge, client-side encrypted contact card (vCard) sharing via the Nostr protocol.
 
 Owners publish AES-256-GCM encrypted contact data as signed Nostr events to public relays.  
 Recipients open a single link in any browser — no app install, no account, no central server.
+
+**Live demo:** <https://tompatulpan.github.io/nostcard>
+
+## Decentralized — any client works
+
+The card data lives on Nostr relays, not on any particular website. NostCard is just one client: the same encrypted events can be read by any deployment of this app (any host, even `localhost`) or by any Nostr client that understands `kind:30402` events. If this app or its hosting domain disappears, your cards survive on the relays — see [Accessing a card without the original domain](#accessing-a-card-without-the-original-domain).
 
 ## How it works
 
@@ -85,11 +91,13 @@ Go to [pages.cloudflare.com](https://pages.cloudflare.com) → Create project �
 
 ### GitHub Pages
 
-1. Push the repo to GitHub.
-2. Go to **Settings → Pages → Source** → select `main` branch, folder `/public`.
-3. GitHub serves the static files at `https://<username>.github.io/<repo>/`.
+The repo ships with a deploy workflow (`.github/workflows/deploy.yml`) that publishes `public/` on every push to `main`.
 
-No build action needed — just point Pages at the `public/` directory.
+1. Push the repo to GitHub.
+2. Go to **Settings → Pages → Build and deployment → Source** → select **GitHub Actions**.
+3. GitHub serves the site at `https://<username>.github.io/<repo>/` and redeploys automatically on every push.
+
+**Working deployment:** <https://tompatulpan.github.io/nostcard>
 
 ---
 
