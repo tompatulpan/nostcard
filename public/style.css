@@ -386,6 +386,7 @@ textarea { resize: vertical; }
   justify-content: center;
   z-index: 200;
   padding: 16px;
+  overflow-y: auto;
 }
 
 .modal {
@@ -395,6 +396,12 @@ textarea { resize: vertical; }
   max-width: 500px;
   width: 100%;
   box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  /* Cap to the viewport (dvh tracks iOS collapsing toolbars) and scroll
+     internally so a tall modal can never push its Close button off-screen. */
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal h3 { font-size: 18px; margin-bottom: 8px; }
@@ -468,10 +475,14 @@ textarea { resize: vertical; }
 }
 
 .modal-actions {
+  position: sticky;
+  bottom: 0;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+  padding: 10px 0 4px;
+  background: var(--surface);
 }
 
 /* ── Contact card (recipient view) ──────────────────────────────────────── */
