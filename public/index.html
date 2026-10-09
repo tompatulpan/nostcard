@@ -102,6 +102,10 @@
             <label><span data-i18n="editor.cardname.label">Card name</span> <span class="req">*</span></label>
             <input id="card-name" type="text" placeholder="Work, Personal, Minimal…" data-i18n-placeholder="editor.cardname.placeholder" />
             <p class="muted" style="font-size:0.8rem;margin-top:0.25rem" data-i18n="editor.cardname.hint">Shown on your My Cards list. Never published to relays — stays on this device.</p>
+            <p class="muted" style="font-size:0.8rem;margin:0.25rem 0 0">
+              <span data-i18n="editor.npub.label">Signing identity (public on the relays):</span>
+              <code id="editor-npub" style="word-break:break-all"></code>
+            </p>
           </div>
 
           <div class="field-group">
@@ -522,7 +526,7 @@
 
         <h3 data-i18n="help.tech.heading">The technology — Nostr</h3>
         <p class="muted" data-i18n-html="help.tech.body">
-          Nostr is a decentralized messaging protocol. Your card is a signed event (kind 30402) published to public relays —
+          Nostr is a decentralized messaging protocol. Your card is a signed event (kind 36350) published to public relays —
           simple servers that anyone can run. This website is just a static interface; the card data lives on the relays.
         </p>
         <ul class="help-list">

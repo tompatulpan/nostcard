@@ -4,8 +4,9 @@
  * Handles keypair generation, event publishing, fetching, and naddr encoding.
  * All relay I/O is done via nostr-tools SimplePool (self-hosted bundle in vendor/).
  *
- * Card events use NIP-33 (addressable replaceable events, kind 30402).
- * Deletion uses NIP-09 (kind 5).
+ * Card events use NIP-33 (addressable replaceable events, kind 36350).
+ * Deletion uses NIP-09 (kind 5) and also requests removal of the old kind
+ * 30402 address used before the kind switch — see LEGACY_CARD_KIND below.
  * Addresses are encoded as NIP-19 naddr bech32 strings.
  *
  * Security:
@@ -23,8 +24,10 @@ import { generateSecretKey, getPublicKey, finalizeEvent, SimplePool, nip19 }
 // ---------------------------------------------------------------------------
 
 /**
- * Default relay set. Chosen for reliability and verified to accept kind 30402
- * writes; relay.nostr.band was removed after its WebSocket endpoint stopped
+ * Default relay set. Chosen for reliability and verified to accept card-event
+ * writes (originally kind 30402; the same relays accept addressable kinds in
+ * general, including the current CARD_KIND);
+ * relay.nostr.band was removed after its WebSocket endpoint stopped
  * responding — every operation touching it wasted the connection timeout.
  * Users can add/remove relays per card in the editor.
  */
@@ -35,8 +38,20 @@ export const DEFAULT_RELAYS = [
   'wss://offchain.pub',
 ];
 
-/** NIP-33 addressable replaceable event kind for vCard blobs */
-export const CARD_KIND = 30402;
+/**
+ * NIP-33 addressable replaceable event kind for vCard blobs. Chosen after
+ * RFC 6350 (the vCard 4.0 spec) and verified unclaimed in the official NIPs
+ * kind table and the nostr-protocol/registry-of-kinds registry.
+ */
+export const CARD_KIND = 36350;
+
+/**
+ * Kind used for card events before the switch to CARD_KIND. 30402 belongs to
+ * NIP-99 (classified listings), which is why cards moved off it. No longer
+ * read or written — only referenced in NIP-09 deletion requests so that
+ * cards published before the switch are actually removed from relays.
+ */
+export const LEGACY_CARD_KIND = 30402;
 
 /** NIP-78 "application-specific data" kind used for the cross-device sync snapshot */
 export const SYNC_KIND = 30078;
@@ -93,8 +108,32 @@ export function derivePublicKey(nsec) {
   return getPublicKey(nsec);
 }
 
+/**
+ * Parse a user-supplied Nostr private key — bech32 (nsec1…) or 64-char hex.
+ * Used by the "sign with your existing identity" option at card creation.
+ * @param {string} input
+ * @returns {Uint8Array} raw 32-byte private key
+ * @throws on malformed input — callers must wrap in try/catch
+ */
+export function parseSecretKey(input) {
+  const trimmed = String(input || '').trim();
+  if (/^[0-9a-fA-F]{64}$/.test(trimmed)) {
+    const bytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) bytes[i] = parseInt(trimmed.slice(i * 2, i * 2 + 2), 16);
+    return bytes;
+  }
+  if (/^nsec1[a-z0-9]+$/i.test(trimmed)) {
+    const decoded = nip19.decode(trimmed.toLowerCase());
+    if (decoded.type !== 'nsec' || !(decoded.data instanceof Uint8Array) || decoded.data.length !== 32) {
+      throw new Error('Invalid nsec');
+    }
+    return decoded.data;
+  }
+  throw new Error('Invalid private key');
+}
+
 // ---------------------------------------------------------------------------
-// Publish card event (NIP-33, kind 30402)
+// Publish card event (NIP-33, kind 36350)
 // ---------------------------------------------------------------------------
 
 /**
@@ -113,14 +152,12 @@ export function derivePublicKey(nsec) {
  * @returns {Promise<Array<{relay: string, ok: boolean}>>}
  */
 export async function publishCard(relays, nsec, cardId, encryptedBlob) {
-  const template = {
+  const event = finalizeEvent({
     kind:       CARD_KIND,
     created_at: Math.floor(Date.now() / 1000),
     tags:       [['d', cardId]],
     content:    encryptedBlob,
-  };
-
-  const event = finalizeEvent(template, nsec);
+  }, nsec);
 
   const publishPromises = relays.map(async relay => {
     try {
@@ -139,7 +176,7 @@ export async function publishCard(relays, nsec, cardId, encryptedBlob) {
 }
 
 // ---------------------------------------------------------------------------
-// Fetch card event (NIP-33, kind 30402)
+// Fetch card event (NIP-33, kind 36350)
 // ---------------------------------------------------------------------------
 
 /**
@@ -193,6 +230,10 @@ async function fetchCardOnce(relays, npub, cardId, timeoutMs) {
  * Deletion is best-effort — well-behaved relays will stop serving the event,
  * but not all relays honour deletion requests.
  *
+ * The request covers both the current address and the old kind-30402 address:
+ * cards published before the kind switch still have a live 30402 event on
+ * the relays, and deleting a card must remove that too.
+ *
  * @param {string[]}   relays  WebSocket relay URLs
  * @param {Uint8Array} nsec    Owner's private key (raw 32 bytes)
  * @param {string}     cardId  Card identifier
@@ -203,7 +244,10 @@ export async function deleteCard(relays, nsec, cardId) {
   const template = {
     kind:       5,
     created_at: Math.floor(Date.now() / 1000),
-    tags:       [['a', `${CARD_KIND}:${npub}:${cardId}`]],
+    tags:       [
+      ['a', `${CARD_KIND}:${npub}:${cardId}`],
+      ['a', `${LEGACY_CARD_KIND}:${npub}:${cardId}`],
+    ],
     content:    'deleted',
   };
 

@@ -9,14 +9,22 @@ Recipients open a single link in any browser — no app install, no account, no 
 
 ## Decentralized — any client works
 
-The card data lives on Nostr relays, not on any particular website. NostCard is just one client: the same encrypted events can be read by any deployment of this app (any host, even `localhost`) or by any Nostr client that understands `kind:30402` events. If this app or its hosting domain disappears, your cards survive on the relays — see [Accessing a card without the original domain](#accessing-a-card-without-the-original-domain).
+The card data lives on Nostr relays, not on any particular website. NostCard is just one client: the same encrypted events can be read by any deployment of this app (any host, even `localhost`) or by any Nostr client that understands `kind:36350` events. If this app or its hosting domain disappears, your cards survive on the relays — see [Accessing a card without the original domain](#accessing-a-card-without-the-original-domain).
 
 ## How it works
 
 - The **AES key** lives exclusively in the URL fragment (`#key`) — browsers never send it to any server.
-- The **encrypted blob** is stored on public Nostr relays as a NIP-33 addressable event (kind 30402).
+- The **encrypted blob** is stored on public Nostr relays as a NIP-33 addressable event (kind 36350).
 - The **relay** only ever sees ciphertext. It cannot read the contact data.
 - Updating a card re-publishes a new event; relays auto-replace it (same `d` tag). No API token needed.
+
+### Event kinds
+
+Cards are published as `kind:36350` (addressable range; the number nods to RFC 6350, the vCard spec). Earlier app versions used `kind:30402`, which belongs to NIP-99 (classified listings) — those events are no longer read, and links carrying the old kind no longer open. Deleting a card sends a deletion request for both addresses, so pre-switch events are removed from relays too.
+
+### Signing identity
+
+Each card is signed by its own Nostr keypair, generated in your browser. At creation you can instead paste an existing private key (`nsec…` or 64-char hex) to sign the card with your real Nostr identity — recipients can then verify the card against your known `npub` on any Nostr client. The public key is visible on the relays either way; using your main identity publicly links the card to it.
 
 ## Using the app
 
@@ -139,7 +147,7 @@ The `#AES-key` must come from the original share URL (the fragment is never stor
 ### Option 2 — Fetch the event with any Nostr client and decrypt locally
 
 1. Decode the `naddr` from the share URL with any NIP-19 decoder (e.g. [nostr.band](https://nostr.band) or `nip19.decode()`).
-2. Query the listed relays for `kind:30402` with the matching `pubkey` and `d` tag.
+2. Query the listed relays for `kind:36350` with the matching `pubkey` and `d` tag.
 3. Take the `content` field (base64 blob), decode the AES key from the URL fragment, and decrypt with AES-256-GCM.
 
 ### Option 3 — Save the card as a .vcf while the link is live

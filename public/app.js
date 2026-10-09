@@ -29,7 +29,7 @@
 
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
-import { generateKeypair, derivePublicKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
+import { generateKeypair, derivePublicKey, parseSecretKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } from './i18n.js';
 import { generateSyncPassphrase, deriveSyncIdentity, isValidSyncPassphrase, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
@@ -372,11 +372,13 @@ async function openEditor(id) {
   // Show cached fields immediately
   restoreFields(id);
 
-  // Populate card name field
+  // Populate card name field and the signing identity shown in the editor
   const cardForName = getCard(id);
   if (cardForName) {
     const nameInput = document.getElementById('card-name');
     if (nameInput) nameInput.value = cardForName.label || '';
+    const npubEl = document.getElementById('editor-npub');
+    if (npubEl) npubEl.textContent = cardForName.npub || '';
   }
 
   // Fetch latest from relay in background and update if newer
@@ -652,10 +654,26 @@ document.getElementById('btn-new-card').addEventListener('click', async () => {
 async function promptCreateCard(btn) {
   const label = prompt(t('dialog.create.prompt'), t('dialog.create.default'));
   if (label === null) return;
+
+  // Optional: sign with the user's existing Nostr identity instead of a fresh
+  // anonymous one. Empty input → fresh keypair; Cancel → abort creation.
+  const nsecInput = prompt(t('dialog.create.identity.prompt'), '');
+  if (nsecInput === null) return;
+
+  let identityNsec = null;
+  if (nsecInput.trim()) {
+    try {
+      identityNsec = parseSecretKey(nsecInput);
+    } catch {
+      alert(t('dialog.create.identity.invalid'));
+      return;
+    }
+  }
+
   btn.disabled    = true;
   btn.textContent = t('status.creating');
   try {
-    await createCard(label.trim() || t('dialog.create.default'));
+    await createCard(label.trim() || t('dialog.create.default'), null, identityNsec);
   } catch (err) {
     alert(t('alert.create.failed', { error: err.message }));
   } finally {
@@ -664,8 +682,10 @@ async function promptCreateCard(btn) {
   }
 }
 
-async function createCard(label, prefillFields = null) {
-  const { nsec, npub } = generateKeypair();
+async function createCard(label, prefillFields = null, identityNsec = null) {
+  const { nsec, npub } = identityNsec
+    ? { nsec: identityNsec, npub: derivePublicKey(identityNsec) }
+    : generateKeypair();
   const aesKey  = await generateKey();
   const keyFrag = await keyToFragment(aesKey);
   const id      = generateRandom(8).toLowerCase();
