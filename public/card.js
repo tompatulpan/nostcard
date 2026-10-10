@@ -332,6 +332,15 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
   for (const noteItem of (Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []))) {
     if (noteItem && noteItem.trim()) container.appendChild(fieldRow('📝', 'note', noteItem.trim(), null));
   }
+  // ADR - address fields
+  for (const adr of (fields.adr || [])) {
+    const parts = [adr.street, adr.city, adr.region, adr.postcode, adr.country].filter(Boolean).join(', ');
+    if (parts) {
+      const label = adr.type && adr.type !== 'home' ? t('field.type.' + adr.type) : '';
+      const displayText = label ? `${label}: ${parts}` : parts;
+      container.appendChild(fieldRow('🏠', 'adr', displayText, null));
+    }
+  }
 
   // Download button — trusted and non-owner-preview only
   const downloadBtn = document.getElementById('btn-download');

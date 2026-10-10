@@ -400,10 +400,20 @@ async function openEditor(id) {
       const aesKey    = await importCardKey(card.key);
       const event     = await fetchCard(card.relays, card.npub, id);
       if (event) {
-        const vcardText = await decryptVCard(event.content, aesKey);
-        const fields    = parseVCard(vcardText);
-        localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fields));
-        restoreFields(id);
+        // Only restore from relay if the event is newer than our cached fields
+        // to avoid overwriting user edits with stale data
+        const cachedRaw = localStorage.getItem(`e2e:fields:${id}`);
+        const cachedData = cachedRaw ? JSON.parse(cachedRaw) : null;
+        const eventTs = event.created_at ? event.created_at * 1000 : 0; // convert to ms
+        const cachedTs = cachedData?.__relayTs ? cachedData.__relayTs : 0;
+        
+        if (!cachedData || eventTs > cachedTs) {
+          const vcardText = await decryptVCard(event.content, aesKey);
+          const fields    = parseVCard(vcardText);
+          fields.__relayTs = eventTs; // Store timestamp for future comparisons
+          localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fields));
+          restoreFields(id);
+        }
       }
     } catch (err) {
       console.warn('[app] Could not refresh from relay:', err.message);
@@ -420,38 +430,41 @@ function restoreFields(id) {
   if (!raw) return;
   let fields;
   try { fields = JSON.parse(raw); } catch { return; }
+  
+  // Strip internal metadata fields
+  const { __relayTs, ...fieldData } = fields;
 
   const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
-  set('fn',        fields.fn);
-  set('firstName', fields.firstName);
-  set('lastName',  fields.lastName);
+  set('fn',        fieldData.fn);
+  set('firstName', fieldData.firstName);
+  set('lastName',  fieldData.lastName);
 
   clearList('tel-list');
-  for (const item of (fields.tel || [])) {
+  for (const item of (fieldData.tel || [])) {
     const val  = typeof item === 'string' ? item : item.value;
     const type = typeof item === 'string' ? 'cell' : (item.type || 'cell');
     if (val) addDynamicField('tel-list', 'tel', t('editor.tel.placeholder'), val, type);
   }
 
   clearList('email-list');
-  for (const item of (fields.email || [])) {
+  for (const item of (fieldData.email || [])) {
     const val  = typeof item === 'string' ? item : item.value;
     const type = typeof item === 'string' ? 'work' : (item.type || 'work');
     if (val) addDynamicField('email-list', 'email', t('editor.email.placeholder'), val, type);
   }
 
   clearList('org-list');
-  for (const val of (Array.isArray(fields.org) ? fields.org : (fields.org ? [fields.org] : []))) {
+  for (const val of (Array.isArray(fieldData.org) ? fieldData.org : (fieldData.org ? [fieldData.org] : []))) {
     if (val) addDynamicField('org-list', 'org', t('editor.org.placeholder'), val);
   }
 
   clearList('title-list');
-  for (const val of (Array.isArray(fields.title) ? fields.title : (fields.title ? [fields.title] : []))) {
+  for (const val of (Array.isArray(fieldData.title) ? fieldData.title : (fieldData.title ? [fieldData.title] : []))) {
     if (val) addDynamicField('title-list', 'title', t('editor.jobtitle.placeholder'), val);
   }
 
   clearList('url-list');
-  const urls = Array.isArray(fields.url) ? fields.url : (fields.url ? [{ value: fields.url, type: 'work' }] : []);
+  const urls = Array.isArray(fieldData.url) ? fieldData.url : (fieldData.url ? [{ value: fieldData.url, type: 'work' }] : []);
   for (const item of urls) {
     const val  = typeof item === 'string' ? item : item.value;
     const type = typeof item === 'string' ? 'work' : (item.type || 'work');
@@ -459,12 +472,12 @@ function restoreFields(id) {
   }
 
   clearList('adr-list');
-  for (const item of (fields.adr || [])) {
+  for (const item of (fieldData.adr || [])) {
     addAdrField(item);
   }
 
   clearList('note-list');
-  for (const val of (Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []))) {
+  for (const val of (Array.isArray(fieldData.note) ? fieldData.note : (fieldData.note ? [fieldData.note] : []))) {
     if (val) addDynamicField('note-list', 'note', t('editor.note.placeholder'), val);
   }
 }
@@ -718,7 +731,9 @@ async function createCard(label, prefillFields = null, identityNsec = null) {
 
   localStorage.setItem(`e2e:relay-status:${id}`, JSON.stringify(results));
   if (prefillFields) {
-    localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fields));
+    // Store fields with timestamp
+    const fieldsWithTs = { ...fields, __relayTs: Date.now() };
+    localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fieldsWithTs));
   }
 
   activeCardId = id;
@@ -770,7 +785,9 @@ document.getElementById('btn-save').addEventListener('click', async () => {
 
     const results = await publishCard(card.relays, nsecBytes, activeCardId, blob);
 
-    localStorage.setItem(`e2e:fields:${activeCardId}`, JSON.stringify(fields));
+    // Store fields with current timestamp so we can compare with relay events
+    const fieldsWithTs = { ...fields, __relayTs: Date.now() };
+    localStorage.setItem(`e2e:fields:${activeCardId}`, JSON.stringify(fieldsWithTs));
     localStorage.setItem(`e2e:relay-status:${activeCardId}`, JSON.stringify(results));
 
     const allOk = results.every(r => r.ok);
@@ -813,8 +830,13 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
 
   const remaining = getCards().filter(c => c.id !== activeCardId);
   saveCards(remaining);
+  
+  // Clean up all localStorage entries related to this card
   localStorage.removeItem(`e2e:fields:${activeCardId}`);
   localStorage.removeItem(`e2e:relay-status:${activeCardId}`);
+  localStorage.removeItem(`e2e:trusted:${activeCardId}`); // legacy format
+  localStorage.removeItem(`e2e:trusted:${card.npub}:${activeCardId}`);
+  localStorage.removeItem(`e2e:connection-fields:${activeCardId}`);
 
   activeCardId = null;
   btn.disabled = false;
@@ -1238,6 +1260,15 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
   }
   for (const n of (Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []))) {
     if (n?.trim()) container.appendChild(cvFieldRow('📝', 'note', n.trim(), null));
+  }
+  // ADR - address fields
+  for (const adr of (fields.adr || [])) {
+    const parts = [adr.street, adr.city, adr.region, adr.postcode, adr.country].filter(Boolean).join(', ');
+    if (parts) {
+      const label = adr.type && adr.type !== 'home' ? t('field.type.' + adr.type) : '';
+      const displayText = label ? `${label}: ${parts}` : parts;
+      container.appendChild(cvFieldRow('🏠', 'adr', displayText, null));
+    }
   }
 
   const dlBtn = document.getElementById('cv-btn-download');
@@ -2323,7 +2354,8 @@ async function importBackup(json, { navigate = true } = {}) {
     existingIds.add(payload.id);
 
     if (fieldsMap[payload.id]) {
-      localStorage.setItem(`e2e:fields:${payload.id}`, JSON.stringify(fieldsMap[payload.id]));
+      const fieldsWithTs = { ...fieldsMap[payload.id], __relayTs: Date.now() };
+      localStorage.setItem(`e2e:fields:${payload.id}`, JSON.stringify(fieldsWithTs));
     }
 
     if (!onNetwork) {
@@ -2394,7 +2426,8 @@ async function importBackup(json, { navigate = true } = {}) {
   // Restore field cache
   for (const [id, fieldData] of Object.entries(fieldsMap)) {
     if (!localStorage.getItem(`e2e:fields:${id}`)) {
-      localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fieldData));
+      const fieldsWithTs = { ...fieldData, __relayTs: Date.now() };
+      localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fieldsWithTs));
     }
   }
 

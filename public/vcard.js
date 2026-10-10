@@ -23,6 +23,7 @@
  * @param {string}   [fields.org]
  * @param {string}   [fields.title]
  * @param {string}   [fields.url]
+ * @param {Object[]} [fields.adr]        Array of address objects ({street, city, region, postcode, country, type})
  * @param {string}   [fields.note]
  * @param {string}   [fields.pgpKey]     Base64-encoded OpenPGP/Autocrypt v2 cert
  * @param {string}   [fields.sourceUrl]  Canonical URL (no fragment) for SOURCE
@@ -31,7 +32,7 @@
 export function buildVCard(fields) {
   const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
 
-  // FN (required by RFC 6350)
+  // FN (required by RFC 6350) - always include, use empty string if not provided
   lines.push(`FN:${escape(fields.fn || '')}`);
 
   // N: Last;First;;;
@@ -85,6 +86,23 @@ export function buildVCard(fields) {
     if (note && note.trim()) lines.push(`NOTE:${escape(note.trim())}`);
   }
 
+  // ADR — supports array of address objects with street, city, region, postcode, country, type
+  for (const adr of (fields.adr || [])) {
+    // vCard 3.0 ADR format: ;po box;extended;street;city;region;postcode;country
+    const street   = adr.street   || '';
+    const city     = adr.city     || '';
+    const region   = adr.region   || '';
+    const postcode = adr.postcode || '';
+    const country  = adr.country  || '';
+    const type     = adr.type     || 'home';
+    
+    // Only add if at least one address component is non-empty
+    if (street.trim() || city.trim() || region.trim() || postcode.trim() || country.trim()) {
+      const adrType = type !== 'other' ? `;TYPE=${type.toUpperCase()}` : '';
+      lines.push(`ADR${adrType}:;;;${escape(street)};${escape(city)};${escape(region)};${escape(postcode)};${escape(country)}`);
+    }
+  }
+
   // KEY (OpenPGP) — vCard 3.0 encoding (data: URI syntax is vCard 4.0 only)
   if (fields.pgpKey && fields.pgpKey.trim()) {
     lines.push(`KEY;TYPE=PGP;ENCODING=b:${fields.pgpKey.trim()}`);
@@ -112,7 +130,7 @@ export function parseVCard(text) {
   const unfolded = text.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
   const lines = unfolded.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-  const fields = { tel: [], email: [], org: [], title: [], url: [], note: [] };
+  const fields = { tel: [], email: [], org: [], title: [], url: [], note: [], adr: [] };
 
   for (const line of lines) {
     const colon = line.indexOf(':');
@@ -165,6 +183,23 @@ export function parseVCard(text) {
       case 'NOTE':
         if (value.trim()) fields.note.push(unescape(value));
         break;
+      case 'ADR': {
+        // vCard 3.0 ADR: ;po box;extended;street;city;region;postcode;country
+        const parts = value.split(';');
+        const street   = unescape(parts[3] || '');
+        const city     = unescape(parts[4] || '');
+        const region   = unescape(parts[5] || '');
+        const postcode = unescape(parts[6] || '');
+        const country  = unescape(parts[7] || '');
+        const adrType = (prop.match(/TYPE=([^;:,]+)/i) || [])[1] || 'home';
+        
+        // Only add if at least one component is non-empty
+        if (street.trim() || city.trim() || region.trim() || postcode.trim() || country.trim()) {
+          if (!fields.adr) fields.adr = [];
+          fields.adr.push({ street, city, region, postcode, country, type: adrType.toLowerCase() });
+        }
+        break;
+      }
       case 'KEY':
         // vCard 3.0: KEY;TYPE=PGP;ENCODING=b:<base64>
         // vCard 4.0: KEY:data:application/pgp-keys;base64,<base64>  (kept for import compat)
