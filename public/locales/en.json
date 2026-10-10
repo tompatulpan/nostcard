@@ -143,6 +143,7 @@
   "sync.join.placeholder": "word-word-word-word-word-word-word-word",
   "sync.btn.join": "Pull with this passphrase",
   "sync.join.error.weak": "That doesn't look like a generated sync passphrase (8 words separated by hyphens). Custom passphrases aren't accepted: the encrypted snapshot is public on the relays, and a guessable passphrase would let someone crack all your card keys offline.",
+  "sync.join.error.locked": "Too many passphrase attempts. Try again in {{minutes}} min.",
   "sync.reveal.warning": "⚠️ Save this passphrase now — it's shown only once. Anyone with it can read and overwrite your synced snapshot.",
   "sync.btn.push": "Push",
   "sync.btn.pull": "Pull",
@@ -158,6 +159,7 @@
   "sync.status.nothingFound": "No synced snapshot found for this passphrase yet.",
 
   "status.creating": "Creating…",
+  "status.deleting": "Deleting…",
   "status.publishing": "Publishing…",
   "status.rotating": "Rotating key…",
   "status.published.all": "Published ✓ ({{ok}}/{{total}} relays)",
@@ -191,6 +193,7 @@
   "alert.links.imported": ", {{n}} saved link{{s}} imported",
   "alert.sync.error": "Sync error: {{error}}",
   "alert.sync.deleted": "Synced snapshot deleted from relays.",
+  "alert.delete.partial": "Deletion request sent, but {{relays}} still serve this card. Those relays ignore deletion requests (NIP-09) — the encrypted data may remain there until it expires.",
 
   "cv.loading": "Decrypting contact…",
   "cv.live.hint": "✨ This is a live card — always shows the owner's latest details.",

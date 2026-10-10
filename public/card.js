@@ -18,18 +18,12 @@
 
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard, buildVCard } from './vcard.js';
-import { naddrDecode, fetchCard, sameCardAddress, isValidRelayUrl, CARD_KIND } from './nostr.js';
+import { naddrDecode, fetchCard, isValidRelayUrl, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
-
-/** Escape HTML special characters to prevent XSS in innerHTML strings */
-function htmlEscape(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
+import {
+  STORAGE_KEYS, htmlEscape, makeInitials, sameSharedCardUrl,
+  getTrust, setTrust, contactFieldRow, appendContactRows, downloadVcf,
+} from './utils.js';
 
 /** Full card URL including the #key — captured before any address-bar scrub. */
 let cardFullUrl = null;
@@ -38,14 +32,14 @@ let cardFullUrl = null;
 // (setLang persists it). Captured before anything runs so a public session
 // can restore the browser to its pre-visit state on exit.
 const langBeforeLoad = (() => {
-  try { return localStorage.getItem('e2e:lang'); } catch { return null; }
+  try { return localStorage.getItem(STORAGE_KEYS.lang); } catch { return null; }
 })();
 
 /** Public sessions: undo the only writes this session may have made. */
 function restorePublicTraces() {
   try {
-    if (langBeforeLoad === null) localStorage.removeItem('e2e:lang');
-    else if (localStorage.getItem('e2e:lang') !== langBeforeLoad) localStorage.setItem('e2e:lang', langBeforeLoad);
+    if (langBeforeLoad === null) localStorage.removeItem(STORAGE_KEYS.lang);
+    else if (localStorage.getItem(STORAGE_KEYS.lang) !== langBeforeLoad) localStorage.setItem(STORAGE_KEYS.lang, langBeforeLoad);
   } catch {}
 }
 
@@ -165,7 +159,7 @@ async function openCard(naddr, fragment) {
     cleanParams.delete('dl');
     const cleanUrl = `${location.origin}${location.pathname}?${cleanParams}${location.hash}`;
     if (getTrust(trustId)) {
-      downloadVcf(vcardText, fields.fn);
+      downloadVcf(vcardText, fields.fn, { stripSource: true });
       showDownloadConfirmation(fields.fn, trustId, cleanUrl, relayTs);
     } else {
       showDownloadGate(fields.fn, trustId, cleanUrl, vcardText, relayTs);
@@ -236,36 +230,8 @@ function showKeyEntry(naddr) {
 // Trust gate
 // ---------------------------------------------------------------------------
 
-const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (30 * 24 * 60 * 60 * 1000)
-
-function getTrust(trustId) {
-  try {
-    const raw = localStorage.getItem(`e2e:trusted:${trustId}`);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (!data || !data.ok || Date.now() > data.expires) {
-      localStorage.removeItem(`e2e:trusted:${trustId}`);
-      return false;
-    }
-    // Sliding TTL — each trusted visit extends the window from now
-    localStorage.setItem(
-      `e2e:trusted:${trustId}`,
-      JSON.stringify({ ok: true, expires: Date.now() + TRUST_TTL_MS })
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function setTrust(trustId) {
-  try {
-    localStorage.setItem(
-      `e2e:trusted:${trustId}`,
-      JSON.stringify({ ok: true, expires: Date.now() + TRUST_TTL_MS })
-    );
-  } catch { /* storage blocked */ }
-}
+// Trust helpers (30-day sliding TTL) live in utils.js — shared with the
+// inline viewer in app.js.
 
 function showTrustGate(trustId, fields, vcardText, relayTs) {
   if (getTrust(trustId)) {
@@ -312,41 +278,13 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
 
   // Fields
   const container = document.getElementById('contact-fields');
-
-  const nameParts = [fields.firstName, fields.lastName].filter(Boolean).join(' ');
-  if (nameParts && nameParts !== fields.fn) {
-    container.appendChild(fieldRow('👤', 'name', nameParts, null));
-  }
-  for (const tel of (fields.tel || [])) {
-    const val = typeof tel === 'string' ? tel : tel.value;
-    if (val && val.trim()) container.appendChild(fieldRow('📞', 'tel', val.trim(), `tel:${val.trim()}`));
-  }
-  for (const email of (fields.email || [])) {
-    const val = typeof email === 'string' ? email : email.value;
-    if (val && val.trim()) container.appendChild(fieldRow('✉️', 'email', val.trim(), `mailto:${val.trim()}`));
-  }
-  for (const urlItem of (Array.isArray(fields.url) ? fields.url : (fields.url ? [{ value: fields.url }] : []))) {
-    const val = typeof urlItem === 'string' ? urlItem : urlItem.value;
-    if (val && val.trim()) container.appendChild(fieldRow('🔗', 'website', val.trim(), val.trim()));
-  }
-  for (const noteItem of (Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []))) {
-    if (noteItem && noteItem.trim()) container.appendChild(fieldRow('📝', 'note', noteItem.trim(), null));
-  }
-  // ADR - address fields
-  for (const adr of (fields.adr || [])) {
-    const parts = [adr.street, adr.city, adr.region, adr.postcode, adr.country].filter(Boolean).join(', ');
-    if (parts) {
-      const label = adr.type && adr.type !== 'home' ? t('field.type.' + adr.type) : '';
-      const displayText = label ? `${label}: ${parts}` : parts;
-      container.appendChild(fieldRow('🏠', 'adr', displayText, null));
-    }
-  }
+  appendContactRows(container, fields, contactFieldRow, { typeLabel: type => t('field.type.' + type) });
 
   // Download button — trusted and non-owner-preview only
   const downloadBtn = document.getElementById('btn-download');
   if (trusted) {
     downloadBtn.addEventListener('click', () => {
-      downloadVcf(vcardText, fields.fn);
+      downloadVcf(vcardText, fields.fn, { stripSource: true });
       if (!ownerPreview) setTimeout(() => triggerKill('download'), 3000);
     });
     const downloadHint = document.createElement('p');
@@ -371,7 +309,7 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
   const saveLinkBtn = document.getElementById('btn-save-link');
   if (trusted && !ownerPreview) {
     saveLinkBtn.classList.remove('hidden');
-    const SAVED_KEY = 'e2e:saved-links';
+    const SAVED_KEY = STORAGE_KEYS.savedLinks;
     const currentUrl = location.href; // includes #key fragment
     let links = [];
     try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
@@ -514,45 +452,6 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
 }
 
 // ---------------------------------------------------------------------------
-// Field row builder
-// ---------------------------------------------------------------------------
-
-function fieldRow(icon, type, text, href) {
-  const row = document.createElement('div');
-  row.className = `field-row contact-field contact-field--${type}`;
-
-  const labelEl = document.createElement('span');
-  labelEl.className   = 'field-icon';
-  labelEl.textContent = icon;
-
-  const valueEl = document.createElement('span');
-  valueEl.className = 'field-value';
-
-  if (href) {
-    // Allowlist safe schemes — reject javascript:, data:, vbscript:, etc.
-    const safeHref = /^(https?:|tel:|mailto:)/i.test(href) ? href : null;
-    if (safeHref) {
-      const a = document.createElement('a');
-      a.href        = safeHref;
-      a.textContent = text;
-      if (safeHref.startsWith('http')) {
-        a.target = '_blank';
-        a.rel    = 'noopener noreferrer';
-      }
-      valueEl.appendChild(a);
-    } else {
-      valueEl.textContent = text;
-    }
-  } else {
-    valueEl.textContent = text;
-  }
-
-  row.appendChild(labelEl);
-  row.appendChild(valueEl);
-  return row;
-}
-
-// ---------------------------------------------------------------------------
 // Auto-download confirmation screen (?dl=1 mode)
 // ---------------------------------------------------------------------------
 
@@ -583,7 +482,7 @@ function showDownloadGate(fn, trustId, cleanUrl, vcardText, relayTs) {
   btn.className = 'btn btn-primary btn-lg';
   btn.textContent = t('dl.confirm.btn');
   btn.addEventListener('click', () => {
-    downloadVcf(vcardText, fn);
+    downloadVcf(vcardText, fn, { stripSource: true });
     showDownloadConfirmation(fn, trustId, cleanUrl, relayTs);
   });
 
@@ -621,7 +520,7 @@ function showDownloadConfirmation(fn, trustId, cleanUrl, relayTs) {
 
   const saveLink = (label) => {
     try {
-      const SAVED_KEY = 'e2e:saved-links';
+      const SAVED_KEY = STORAGE_KEYS.savedLinks;
       let links = [];
       try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
       const idx = links.findIndex(l => sameSharedCardUrl(l.url, cleanUrl));
@@ -704,24 +603,6 @@ function showDownloadConfirmation(fn, trustId, cleanUrl, relayTs) {
 }
 
 // ---------------------------------------------------------------------------
-// .vcf download
-// ---------------------------------------------------------------------------
-
-function downloadVcf(vcardText, fn) {
-  const filename = (fn || 'contact').replace(/[^a-zA-Z0-9_-]/g, '_') + '.vcf';
-  // Strip the SOURCE line — the canonical URL lacks the #key fragment and
-  // cannot be opened by a contacts app without it. Keeping it only confuses.
-  const stripped = vcardText.replace(/^SOURCE:[^\r\n]*\r?\n?/m, '');
-  const blob = new Blob([stripped], { type: 'text/vcard;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ---------------------------------------------------------------------------
 // Error screen
 // ---------------------------------------------------------------------------
 
@@ -742,31 +623,6 @@ function showError(title, detail, retryable = false) {
   }
 
   document.getElementById('screen-error').classList.remove('hidden');
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Extract the naddr= query param from a share URL, or null if missing/malformed */
-function extractNaddrFromUrl(url) {
-  try { return new URL(url).searchParams.get('naddr'); } catch { return null; }
-}
-
-/** Compares two share URLs by card identity (naddr pubkey+d-tag), not exact string */
-function sameSharedCardUrl(urlA, urlB) {
-  const a = extractNaddrFromUrl(urlA), b = extractNaddrFromUrl(urlB);
-  if (!a || !b) return urlA === urlB;
-  return sameCardAddress(a, b);
-}
-
-function makeInitials(name) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(w => w[0].toUpperCase())
-    .join('');
 }
 
 // ---------------------------------------------------------------------------

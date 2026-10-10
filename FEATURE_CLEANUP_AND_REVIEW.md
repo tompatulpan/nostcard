@@ -46,9 +46,10 @@ public/
 │   └── proof.js        # Proof logic
 │
 ├── Protocol Layer
-│   ├── nostr.js        # Nostr protocol operations (524 lines)
+│   ├── nostr.js        # Nostr protocol operations (599 lines)
 │   ├── crypto.js        # AES-256-GCM encryption (243 lines)
-│   └── vcard.js        # vCard 3.0 builder/parser (205 lines)
+│   ├── vcard.js        # vCard 3.0 builder/parser (240 lines)
+│   └── utils.js        # Shared helpers, storage keys, rate limiting (488 lines)
 │
 ├── Features
 │   ├── sync.js         # Cross-device sync (122 lines)
@@ -549,24 +550,50 @@ Performance is generally good, but could be improved with some optimizations, es
 - [x] Add validation to skip empty fields in vCard generation — FN always emitted (RFC-required), ADR fields now built/parsed with per-component skip; FIXED underlying bug: ADR was missing entirely from buildVCard/parseVCard and from all view renderers
 
 ### High (P1)
-- [ ] Create utils.js with shared functions (htmlEscape, etc.)
-- [ ] Define storage keys as constants
-- [ ] Standardize error handling with central handler
-- [ ] Add rate limiting for sync passphrase attempts
-- [ ] Consider encrypted storage for nsec keys
-- [ ] Add deletion verification and retry mechanism
-- [ ] Add debouncing to save operations
-- [ ] Implement virtual scrolling for card lists
-- [ ] Add JSDoc types to all functions
-- [ ] Break large functions (>50 lines) into smaller ones
+- [x] Create utils.js with shared functions (htmlEscape, etc.) — created `public/utils.js`; app.js, card.js and proof.js now import shared htmlEscape, trust helpers, contact-field-row builder, the contact-row loop, share-URL helpers, hex/base64url codecs, makeInitials and downloadVcf; ~150 lines of duplicated definitions removed
+- [x] Define storage keys as constants — `STORAGE_KEYS` in utils.js (including per-entity key builders); every `e2e:` literal in app.js and card.js replaced (i18n.js keeps its own module-local key const)
+- [x] Standardize error handling with central handler — `reportError(err, context)` in utils.js (logs `err.message` only — never raw card objects); all scattered `console.warn('[app] …')` catches in app.js converted; user-facing alert/status patterns unchanged
+- [x] Add rate limiting for sync passphrase attempts — `checkRateLimit`/`recordRateLimitedAttempt` in utils.js; sync join locks for 15 min after 5 misses per 10 min (misses = weak passphrase or well-formed passphrase with no snapshot). Honest scope: this is on-device friction against scripted grinding; offline brute force of the relay-side snapshot remains defended by passphrase entropy (8 BIP39 words ≈ 88 bits) + 600k PBKDF2 iterations
+- [x] Consider encrypted storage for nsec keys — REVIEWED: deferred. Password-encrypting nsec at rest requires an unlock prompt on every page load (static site, no sessions) and does not defend the actual threat: an XSS with code execution steals the decrypted key or the password at runtime regardless. The primary defenses stay CSP + the textContent/htmlEscape discipline; hardware-backed keys via WebAuthn (P3) is the real fix
+- [x] Add deletion verification and retry mechanism — `deleteCardVerified()` in nostr.js: NIP-09 publish → per-relay verification read (checks both current and legacy kind) → one republish retry for relays that still serve the event; the delete handler shows "Deleting…" and alerts the owner with the relay names if any relay verifiably keeps the card. New locale keys `status.deleting` and `alert.delete.partial` (en/sv)
+- [x] Add debouncing to save operations — `debounce()` in utils.js; Save and Sync push now coalesce rapid clicks into a single publish with the latest form state (300 ms trailing debounce — no dropped saves, unlike a leading throttle)
+- [x] Implement virtual scrolling for card lists — REVIEWED: rejected as premature. Card/contact lists are owner-local, realistically tens of entries; a full re-render at that size is sub-millisecond. Virtual scrolling adds row-measurement and scroll/focus complexity with no observable gain. Revisit only if real users report 1000+ entries
+- [x] Add JSDoc types to all functions — PARTIAL: full typed JSDoc on all of utils.js (the new shared surface) and the new nostr.js functions. Remaining backlog: internal functions in app.js (~2700 lines) and card.js — fold into the P2 TypeScript evaluation
+- [x] Break large functions (>50 lines) into smaller ones — PARTIAL: shared field-loop extracted from renderCard/renderCvCard into `appendContactRows` (both now ~60 lines shorter); saveCard/pushSyncNow extracted and debounced; trust helpers deduplicated (this also fixed the known TODO: the inline viewer's trust check now has the same sliding-TTL behaviour as card.js). Remaining: `importBackup` (~170 lines) — deliberately left untouched until the P2 test suite exists (restore logic is the highest-risk code to refactor blind)
+
+### P1 — How to test
+
+Automated (runs headless, no browser needed):
+
+```bash
+# 1. Module-graph + syntax check of every entry point
+#    (catches duplicate declarations, unresolved imports, syntax errors)
+npx esbuild public/app.js   --bundle --format=esm --outfile=/dev/null
+npx esbuild public/card.js  --bundle --format=esm --outfile=/dev/null
+npx esbuild public/proof.js --bundle --format=esm --outfile=/dev/null
+
+# 2. Logic smoke test for utils.js (codecs, escaping, trust TTL,
+#    rate limiter, debounce, safe-URL checks)
+node tools/smoke-utils.mjs
+```
+
+Manual, in the browser (`npm run dev` → http://localhost:8123):
+
+1. **Recipient regression:** create a card, share, open the link in a private window → trust gate → card renders with all fields (exercises the shared `contactFieldRow`/`appendContactRows`). Download the .vcf — the SOURCE line must be gone (stripSource).
+2. **Owner preview:** the editor's View button renders the same card via the shared row code.
+3. **Save debounce:** click Save 5× rapidly → exactly one publish sequence and one "Published ✓" status (watch the relay badges or the Network tab).
+4. **Delete verification:** delete a card → button shows "Deleting…", then either silent success or an alert naming relays that still serve the card. Takes up to ~10 s (publish + verify + retry). Cross-check with proof.html Step 3.
+5. **Sync rate limit:** Advanced → Sync → join with a well-formed but wrong passphrase 5× → the 6th attempt is blocked with "Too many passphrase attempts…". To retest: `localStorage.removeItem('e2e:rl:sync-join')` in DevTools.
+6. **Language switch:** toggle en/sv on every screen — the new keys (`status.deleting`, `alert.delete.partial`, `sync.join.error.locked`) must render translated.
+7. **proof.html** still runs end-to-end (shared htmlEscape import).
 
 ### Medium (P2)
-- [ ] Extract shared card rendering logic
-- [ ] Consolidate trust gate code
-- [ ] Create shared URL/parameter parsing utilities
-- [ ] Add central error handler with logging
+- [x] Extract shared card rendering logic — done as part of P1 (appendContactRows + contactFieldRow in utils.js, used by card.js and the inline viewer)
+- [x] Consolidate trust gate code — done as part of P1 (getTrust/setTrust in utils.js with one consistent 30-day sliding TTL)
+- [x] Create shared URL/parameter parsing utilities — done as part of P1 (extractNaddrFromUrl, sameSharedCardUrl, isSafeLinkUrl in utils.js)
+- [x] Add central error handler with logging — done as part of P1 (reportError in utils.js)
 - [ ] Use IndexedDB for larger data storage
-- [ ] Add unit tests for core functions
+- [ ] Add unit tests for core functions — started: tools/smoke-utils.mjs covers utils.js; crypto/vcard/nostr still need coverage
 - [ ] Add integration tests for critical flows
 - [ ] Add sharing history and audit log
 - [ ] Add key rotation reminders
@@ -1049,18 +1076,21 @@ NostCard is an exceptionally well-designed and implemented application with a st
 
 ### File Statistics
 
+*Updated 2026-10-10 after the P1 refactor (utils.js extraction reduced app.js and card.js).*
+
 | File | Lines | Size | Complexity |
 |------|-------|------|------------|
-| app.js | 850+ | ~32KB | High |
-| card.js | 767 | ~29KB | High |
-| nostr.js | 524 | ~20KB | Medium |
+| app.js | 2722 | ~100KB | High |
+| card.js | 632 | ~24KB | Medium |
+| nostr.js | 599 | ~23KB | Medium |
+| utils.js | 488 | ~19KB | Low |
 | style.css | 902 | ~22KB | Medium |
 | crypto.js | 243 | ~8KB | Low |
-| vcard.js | 205 | ~8KB | Low |
+| vcard.js | 240 | ~8KB | Low |
 | i18n.js | 179 | ~6KB | Low |
 | sync.js | 122 | ~5KB | Low |
 | pairing.js | 102 | ~5KB | Low |
-| proof.js | 336 | ~12KB | Medium |
+| proof.js | 340 | ~12KB | Medium |
 
 ### Storage Usage Analysis
 

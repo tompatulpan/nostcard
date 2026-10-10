@@ -255,6 +255,81 @@ export async function deleteCard(relays, nsec, cardId) {
   await Promise.allSettled(relays.map(relay => sharedPool.publish([relay], event)));
 }
 
+/**
+ * Publish a NIP-09 deletion request for a card, then verify per relay that
+ * the card event is actually no longer served, retrying the request once on
+ * every relay that still serves it.
+ *
+ * Rationale: deletions apply with a delay on many relays and some ignore
+ * NIP-09 entirely; plain deleteCard() gave the owner no signal about either.
+ * Verification is a read: a relay that times out is reported as
+ * `deleted: true, verified: false` (benefit of the doubt) — only a relay
+ * that verifiably still returns the event counts as not deleted.
+ *
+ * @param {string[]}   relays  WebSocket relay URLs
+ * @param {Uint8Array} nsec    Owner's private key (raw 32 bytes)
+ * @param {string}     cardId  Card identifier
+ * @param {{ verifyDelayMs?: number, verifyTimeoutMs?: number }} [opts]
+ *   verifyDelayMs: pause after publishing before the first check (relays
+ *   need a moment to apply the deletion). verifyTimeoutMs: per-relay read
+ *   timeout for each verification round.
+ * @returns {Promise<Array<{relay: string, deleted: boolean, verified: boolean}>>}
+ *   deleted=false only when the relay verifiably still serves the event
+ *   after the retry; verified=false means the check was inconclusive.
+ */
+export async function deleteCardVerified(relays, nsec, cardId, { verifyDelayMs = 1500, verifyTimeoutMs = 3000 } = {}) {
+  const npub = getPublicKey(nsec);
+
+  // Relay still serving the card? True only on a definitive "yes" — a read
+  // that times out or errors counts as gone (verified=false, not deleted=false).
+  const stillServing = async (relay) => {
+    try {
+      const event = await Promise.race([
+        sharedPool.get([relay], {
+          kinds:   [CARD_KIND, LEGACY_CARD_KIND],
+          authors: [npub],
+          '#d':    [cardId],
+        }),
+        new Promise(resolve => setTimeout(() => resolve(null), verifyTimeoutMs)),
+      ]);
+      return event !== null;
+    } catch {
+      return false;
+    }
+  };
+
+  await deleteCard(relays, nsec, cardId);
+  await sleep(verifyDelayMs);
+
+  const firstRound = await Promise.all(relays.map(async relay => ({
+    relay, serving: await stillServing(relay),
+  })));
+  let results = firstRound.map(r => ({ relay: r.relay, deleted: !r.serving, verified: !r.serving }));
+
+  // One retry round for relays that verifiably still serve the card
+  const failedRelays = firstRound.filter(r => r.serving).map(r => r.relay);
+  if (failedRelays.length > 0) {
+    await deleteCard(failedRelays, nsec, cardId);
+    await sleep(verifyDelayMs);
+    const retryRound = await Promise.all(failedRelays.map(async relay => ({
+      relay, serving: await stillServing(relay),
+    })));
+    const retryMap = new Map(retryRound.map(r => [r.relay, !r.serving]));
+    results = results.map(res =>
+      retryMap.has(res.relay)
+        ? { relay: res.relay, deleted: retryMap.get(res.relay), verified: retryMap.get(res.relay) }
+        : res
+    );
+  }
+
+  return results;
+}
+
+/** Promise-based pause. */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // ---------------------------------------------------------------------------
 // Sync snapshot event (NIP-78, kind 30078)
 // ---------------------------------------------------------------------------

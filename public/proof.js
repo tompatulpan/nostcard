@@ -16,6 +16,7 @@ import { naddrDecode, fetchCard } from './nostr.js';
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard } from './vcard.js';
 import { initI18n, t, setLang, getCurrentLang, localeHtml } from './i18n.js';
+import { htmlEscape } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -59,15 +60,6 @@ let parsedCardId = null;
 // ---------------------------------------------------------------------------
 // Utility
 // ---------------------------------------------------------------------------
-
-function htmlEscape(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
 
 function spinnerHtml() {
   return '<div class="spinner" style="margin:24px auto"></div>';

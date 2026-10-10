@@ -29,10 +29,17 @@
 
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
-import { generateKeypair, derivePublicKey, parseSecretKey, publishCard, fetchCard, deleteCard, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
+import { generateKeypair, derivePublicKey, parseSecretKey, publishCard, fetchCard, deleteCardVerified, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } from './i18n.js';
 import { generateSyncPassphrase, deriveSyncIdentity, isValidSyncPassphrase, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
+import {
+  STORAGE_KEYS, readJson, writeJson,
+  htmlEscape, makeInitials, extractNaddrFromUrl, sameSharedCardUrl, isSafeLinkUrl,
+  bytesToHex, hexToBytes, bytesToBase64url, base64urlToBytes,
+  getTrust, setTrust, contactFieldRow, appendContactRows, downloadVcf,
+  reportError, debounce, checkRateLimit, recordRateLimitedAttempt, clearRateLimit,
+} from './utils.js';
 
 // Absolute path to card.html relative to this page — lets the app live under a
 // subpath (e.g. GitHub Pages project sites at username.github.io/nostcard/).
@@ -50,11 +57,11 @@ let cvReturnRoute = '/cards'; // where cv-btn-back navigates to after the inline
 // ---------------------------------------------------------------------------
 
 function getCards() {
-  try { return JSON.parse(localStorage.getItem('e2e:cards') || '[]'); } catch { return []; }
+  return readJson(STORAGE_KEYS.cards, []);
 }
 
 function saveCards(cards) {
-  localStorage.setItem('e2e:cards', JSON.stringify(cards));
+  writeJson(STORAGE_KEYS.cards, cards);
 }
 
 function getCard(id) {
@@ -62,48 +69,48 @@ function getCard(id) {
 }
 
 function getSavedLinks() {
-  try { return JSON.parse(localStorage.getItem('e2e:saved-links') || '[]'); } catch { return []; }
+  return readJson(STORAGE_KEYS.savedLinks, []);
 }
 
 function saveSavedLinks(links) {
-  localStorage.setItem('e2e:saved-links', JSON.stringify(links));
+  writeJson(STORAGE_KEYS.savedLinks, links);
 }
 
 function getSyncIdentity() {
-  try { return JSON.parse(localStorage.getItem('e2e:sync-identity') || 'null'); } catch { return null; }
+  return readJson(STORAGE_KEYS.syncIdentity, null);
 }
 
 function saveSyncIdentity(identity) {
-  localStorage.setItem('e2e:sync-identity', JSON.stringify(identity));
+  writeJson(STORAGE_KEYS.syncIdentity, identity);
 }
 
 function clearSyncIdentity() {
-  localStorage.removeItem('e2e:sync-identity');
-  localStorage.removeItem('e2e:sync-meta');
+  localStorage.removeItem(STORAGE_KEYS.syncIdentity);
+  localStorage.removeItem(STORAGE_KEYS.syncMeta);
 }
 
 function getSyncMeta() {
-  try { return JSON.parse(localStorage.getItem('e2e:sync-meta') || '{}'); } catch { return {}; }
+  return readJson(STORAGE_KEYS.syncMeta, {});
 }
 
 function saveSyncMeta(meta) {
-  localStorage.setItem('e2e:sync-meta', JSON.stringify(meta));
+  writeJson(STORAGE_KEYS.syncMeta, meta);
 }
 
 function getConnections() {
-  try { return JSON.parse(localStorage.getItem('e2e:connections') || '[]'); } catch { return []; }
+  return readJson(STORAGE_KEYS.connections, []);
 }
 
 function saveConnections(connections) {
-  localStorage.setItem('e2e:connections', JSON.stringify(connections));
+  writeJson(STORAGE_KEYS.connections, connections);
 }
 
 function getConnectionFields(id) {
-  try { return JSON.parse(localStorage.getItem(`e2e:connection-fields:${id}`) || 'null'); } catch { return null; }
+  return readJson(STORAGE_KEYS.connectionFields(id), null);
 }
 
 function saveConnectionFields(id, fields) {
-  localStorage.setItem(`e2e:connection-fields:${id}`, JSON.stringify(fields));
+  writeJson(STORAGE_KEYS.connectionFields(id), fields);
 }
 
 // ---------------------------------------------------------------------------
@@ -288,7 +295,7 @@ function renderCardList() {
   for (const card of cards) {
     let fn = '';
     try {
-      const cached = localStorage.getItem(`e2e:fields:${card.id}`);
+      const cached = localStorage.getItem(STORAGE_KEYS.fields(card.id));
       if (cached) { const f = JSON.parse(cached); fn = f.fn || ''; }
     } catch {}
     const subtitle = fn && fn !== card.label ? fn : '';
@@ -299,7 +306,7 @@ function renderCardList() {
     // Relay status badges (pre-saved from last publish, or placeholder)
     let badgesHtml = '';
     const lastStatus = (() => {
-      try { return JSON.parse(localStorage.getItem(`e2e:relay-status:${card.id}`) || 'null'); } catch { return null; }
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.relayStatus(card.id)) || 'null'); } catch { return null; }
     })();
     if (lastStatus) {
       for (const r of lastStatus) {
@@ -397,7 +404,7 @@ async function openEditor(id) {
   const card = getCard(id);
   if (card) {
     try {
-      const cachedRaw = localStorage.getItem(`e2e:fields:${id}`);
+      const cachedRaw = localStorage.getItem(STORAGE_KEYS.fields(id));
       // Only fetch from relay if there are no cached fields
       if (!cachedRaw) {
         const nsecBytes = hexToBytes(card.nsec);
@@ -407,12 +414,12 @@ async function openEditor(id) {
           const vcardText = await decryptVCard(event.content, aesKey);
           const fields    = parseVCard(vcardText);
           fields.__relayTs = event.created_at ? event.created_at * 1000 : Date.now();
-          localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fields));
+          localStorage.setItem(STORAGE_KEYS.fields(id), JSON.stringify(fields));
           restoreFields(id);
         }
       }
     } catch (err) {
-      console.warn('[app] Could not refresh from relay:', err.message);
+      reportError(err, 'app.editor-refresh');
     }
   }
 }
@@ -422,7 +429,7 @@ async function openEditor(id) {
 // ---------------------------------------------------------------------------
 
 function restoreFields(id) {
-  const raw = localStorage.getItem(`e2e:fields:${id}`);
+  const raw = localStorage.getItem(STORAGE_KEYS.fields(id));
   if (!raw) return;
   let fields;
   try { fields = JSON.parse(raw); } catch { return; }
@@ -734,11 +741,11 @@ async function createCard(label, prefillFields = null, identityNsec = null) {
   cards.push({ id, label, nsec: nsecHex, npub, key: keyFrag, relays });
   saveCards(cards);
 
-  localStorage.setItem(`e2e:relay-status:${id}`, JSON.stringify(results));
+  localStorage.setItem(STORAGE_KEYS.relayStatus(id), JSON.stringify(results));
   if (prefillFields) {
     // Store fields with timestamp
     const fieldsWithTs = { ...fields, __relayTs: Date.now() };
-    localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fieldsWithTs));
+    localStorage.setItem(STORAGE_KEYS.fields(id), JSON.stringify(fieldsWithTs));
   }
 
   activeCardId = id;
@@ -751,7 +758,12 @@ async function createCard(label, prefillFields = null, identityNsec = null) {
 // Save (encrypt + publish)
 // ---------------------------------------------------------------------------
 
-document.getElementById('btn-save').addEventListener('click', async () => {
+// Debounced: rapid clicks coalesce into one relay publish with the latest
+// form state (the disabled flag alone only prevented concurrent publishes,
+// not click-mashing straight after a completed save).
+document.getElementById('btn-save').addEventListener('click', debounce(saveCard, 300));
+
+async function saveCard() {
   const btn    = document.getElementById('btn-save');
   const status = document.getElementById('save-status');
 
@@ -792,8 +804,8 @@ document.getElementById('btn-save').addEventListener('click', async () => {
 
     // Store fields with current timestamp so we can compare with relay events
     const fieldsWithTs = { ...fields, __relayTs: Date.now() };
-    localStorage.setItem(`e2e:fields:${activeCardId}`, JSON.stringify(fieldsWithTs));
-    localStorage.setItem(`e2e:relay-status:${activeCardId}`, JSON.stringify(results));
+    localStorage.setItem(STORAGE_KEYS.fields(activeCardId), JSON.stringify(fieldsWithTs));
+    localStorage.setItem(STORAGE_KEYS.relayStatus(activeCardId), JSON.stringify(results));
 
     const allOk = results.every(r => r.ok);
     const okCount = results.filter(r => r.ok).length;
@@ -810,7 +822,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   } finally {
     btn.disabled = false;
   }
-});
+}
 
 // ---------------------------------------------------------------------------
 // Delete card
@@ -824,27 +836,39 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
   if (!confirm(t('dialog.delete.confirm', { label: card.label }))) return;
 
   const btn = document.getElementById('btn-delete-card');
-  btn.disabled = true;
+  btn.disabled  = true;
+  btn.textContent = t('status.deleting');
 
+  // Publish NIP-09 deletion requests and verify per relay that the card is
+  // really no longer served (one retry per relay that still has it). Deletion
+  // on Nostr is a request, not a guarantee — relays that verifiably keep
+  // serving the event are reported to the user instead of failing silently.
+  let undeletedRelays = [];
   try {
     const nsecBytes = hexToBytes(card.nsec);
-    await deleteCard(card.relays, nsecBytes, activeCardId);
+    const results   = await deleteCardVerified(card.relays, nsecBytes, activeCardId);
+    undeletedRelays = results.filter(r => !r.deleted).map(r => r.relay);
   } catch (err) {
-    console.warn('[app] deleteCard error (non-fatal):', err.message);
+    reportError(err, 'app.delete-card');
   }
 
   const remaining = getCards().filter(c => c.id !== activeCardId);
   saveCards(remaining);
-  
+
   // Clean up all localStorage entries related to this card
-  localStorage.removeItem(`e2e:fields:${activeCardId}`);
-  localStorage.removeItem(`e2e:relay-status:${activeCardId}`);
-  localStorage.removeItem(`e2e:trusted:${activeCardId}`); // legacy format
-  localStorage.removeItem(`e2e:trusted:${card.npub}:${activeCardId}`);
-  localStorage.removeItem(`e2e:connection-fields:${activeCardId}`);
+  localStorage.removeItem(STORAGE_KEYS.fields(activeCardId));
+  localStorage.removeItem(STORAGE_KEYS.relayStatus(activeCardId));
+  localStorage.removeItem(STORAGE_KEYS.trust(activeCardId)); // legacy format
+  localStorage.removeItem(STORAGE_KEYS.trust(`${card.npub}:${activeCardId}`));
+  localStorage.removeItem(STORAGE_KEYS.connectionFields(activeCardId));
 
   activeCardId = null;
-  btn.disabled = false;
+  btn.disabled    = false;
+  btn.textContent = t('editor.btn.delete');
+
+  if (undeletedRelays.length > 0) {
+    alert(t('alert.delete.partial', { relays: undeletedRelays.join(', ') }));
+  }
 
   go(remaining.length === 0 ? '/setup' : '/cards');
 });
@@ -881,7 +905,7 @@ document.getElementById('btn-rotate-key').addEventListener('click', async () => 
     // Re-encrypt the current cached fields with the new key
     const nsecBytes  = hexToBytes(card.nsec);
     const fields     = (() => {
-      try { return JSON.parse(localStorage.getItem(`e2e:fields:${activeCardId}`) || 'null'); } catch { return null; }
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.fields(activeCardId)) || 'null'); } catch { return null; }
     })();
 
     if (!fields) {
@@ -896,14 +920,14 @@ document.getElementById('btn-rotate-key').addEventListener('click', async () => 
 
     // Re-publish with the same d-tag (NIP-33 replaces the old event on relays)
     const results = await publishCard(card.relays, nsecBytes, activeCardId, blob);
-    localStorage.setItem(`e2e:relay-status:${activeCardId}`, JSON.stringify(results));
+    localStorage.setItem(STORAGE_KEYS.relayStatus(activeCardId), JSON.stringify(results));
 
     // Persist the new key; invalidate any stored recipient trust (stale sessions)
     const cards = getCards();
     const idx   = cards.findIndex(c => c.id === activeCardId);
     if (idx >= 0) { cards[idx].key = newKeyFrag; saveCards(cards); }
-    localStorage.removeItem(`e2e:trusted:${activeCardId}`); // legacy key format
-    localStorage.removeItem(`e2e:trusted:${card.npub}:${activeCardId}`);
+    localStorage.removeItem(STORAGE_KEYS.trust(activeCardId)); // legacy key format
+    localStorage.removeItem(STORAGE_KEYS.trust(`${card.npub}:${activeCardId}`));
 
     const allOk   = results.every(r => r.ok);
     const okCount = results.filter(r => r.ok).length;
@@ -1160,30 +1184,9 @@ function showCvError(title, detail, retryable = false) {
 /** Last inline-viewer load attempt — lets the error screen offer a retry. */
 let cvLastLoad = null;
 
-const TRUST_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (30 * 24 * 60 * 60 * 1000)
-
-function getCvTrust(trustId) {
-  // TODO: duplicate of card.js getTrust() and missing the sliding-TTL bump —
-  // expiry is not extended on each trusted open here. Keep in sync with
-  // card.js, or extract both into a shared module.
-  try {
-    const raw = localStorage.getItem(`e2e:trusted:${trustId}`);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (!data?.ok || Date.now() > data.expires) { localStorage.removeItem(`e2e:trusted:${trustId}`); return false; }
-    return true;
-  } catch { return false; }
-}
-
-function setCvTrust(trustId) {
-  try {
-    localStorage.setItem(`e2e:trusted:${trustId}`, JSON.stringify({ ok: true, expires: Date.now() + TRUST_TTL_MS }));
-  } catch {}
-}
-
 function showCvTrustGate(trustId, fields, vcardText, shareUrl, eventCreatedAt) {
   const relayTs = eventCreatedAt ? new Date(eventCreatedAt * 1000).toISOString() : new Date().toISOString();
-  if (getCvTrust(trustId)) {
+  if (getTrust(trustId)) {
     autoSaveLink(shareUrl, fields.fn, relayTs);
     renderCvCard(fields, vcardText, true, false);
     return;
@@ -1192,7 +1195,7 @@ function showCvTrustGate(trustId, fields, vcardText, shareUrl, eventCreatedAt) {
   document.getElementById('cv-screen-trust').classList.remove('hidden');
 
   document.getElementById('cv-btn-trusted').onclick = () => {
-    setCvTrust(trustId);
+    setTrust(trustId);
     autoSaveLink(shareUrl, fields.fn, relayTs);
     document.getElementById('cv-screen-trust').classList.add('hidden');
     renderCvCard(fields, vcardText, true, false);
@@ -1203,20 +1206,8 @@ function showCvTrustGate(trustId, fields, vcardText, shareUrl, eventCreatedAt) {
   };
 }
 
-/** Extract the naddr= query param from a share URL, or null if missing/malformed */
-function extractNaddrFromUrl(url) {
-  try { return new URL(url).searchParams.get('naddr'); } catch { return null; }
-}
-
-/** Compares two share URLs by card identity (naddr pubkey+d-tag), not exact string */
-function sameSharedCardUrl(urlA, urlB) {
-  const a = extractNaddrFromUrl(urlA), b = extractNaddrFromUrl(urlB);
-  if (!a || !b) return urlA === urlB;
-  return sameCardAddress(a, b);
-}
-
 function autoSaveLink(url, label, relayTs) {
-  const SAVED_KEY = 'e2e:saved-links';
+  const SAVED_KEY = STORAGE_KEYS.savedLinks;
   let links = [];
   try { links = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch {}
   const idx = links.findIndex(l => sameSharedCardUrl(l.url, url));
@@ -1249,32 +1240,7 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
   }
 
   const container = document.getElementById('cv-contact-fields');
-  const nameParts = [fields.firstName, fields.lastName].filter(Boolean).join(' ');
-  if (nameParts && nameParts !== fields.fn) container.appendChild(cvFieldRow('👤', 'name', nameParts, null));
-  for (const t of (fields.tel || [])) {
-    const v = typeof t === 'string' ? t : t.value;
-    if (v?.trim()) container.appendChild(cvFieldRow('📞', 'tel', v.trim(), `tel:${v.trim()}`));
-  }
-  for (const e of (fields.email || [])) {
-    const v = typeof e === 'string' ? e : e.value;
-    if (v?.trim()) container.appendChild(cvFieldRow('✉️', 'email', v.trim(), `mailto:${v.trim()}`));
-  }
-  for (const u of (Array.isArray(fields.url) ? fields.url : (fields.url ? [{ value: fields.url }] : []))) {
-    const v = typeof u === 'string' ? u : u.value;
-    if (v?.trim()) container.appendChild(cvFieldRow('🔗', 'website', v.trim(), v.trim()));
-  }
-  for (const n of (Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []))) {
-    if (n?.trim()) container.appendChild(cvFieldRow('📝', 'note', n.trim(), null));
-  }
-  // ADR - address fields
-  for (const adr of (fields.adr || [])) {
-    const parts = [adr.street, adr.city, adr.region, adr.postcode, adr.country].filter(Boolean).join(', ');
-    if (parts) {
-      const label = adr.type && adr.type !== 'home' ? t('field.type.' + adr.type) : '';
-      const displayText = label ? `${label}: ${parts}` : parts;
-      container.appendChild(cvFieldRow('🏠', 'adr', displayText, null));
-    }
-  }
+  appendContactRows(container, fields, contactFieldRow, { typeLabel: type => t('field.type.' + type) });
 
   const dlBtn = document.getElementById('cv-btn-download');
   if (trusted) {
@@ -1374,26 +1340,6 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
   document.getElementById('cv-screen-card').classList.remove('hidden');
 }
 
-function cvFieldRow(icon, type, text, href) {
-  const row = document.createElement('div');
-  row.className = `field-row contact-field contact-field--${type}`;
-  const iconEl = document.createElement('span');
-  iconEl.className = 'field-icon'; iconEl.textContent = icon;
-  const valEl = document.createElement('span');
-  valEl.className = 'field-value';
-  if (href) {
-    const safe = /^(https?:|tel:|mailto:)/i.test(href) ? href : null;
-    if (safe) {
-      const a = document.createElement('a');
-      a.href = safe; a.textContent = text;
-      if (safe.startsWith('http')) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-      valEl.appendChild(a);
-    } else { valEl.textContent = text; }
-  } else { valEl.textContent = text; }
-  row.appendChild(iconEl); row.appendChild(valEl);
-  return row;
-}
-
 // ---------------------------------------------------------------------------
 // Relay manager (editor sidebar)
 // ---------------------------------------------------------------------------
@@ -1441,7 +1387,7 @@ function renderRelayManager() {
 
   const relays     = card.relays || [];
   const lastStatus = (() => {
-    try { return JSON.parse(localStorage.getItem(`e2e:relay-status:${activeCardId}`) || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.relayStatus(activeCardId)) || '[]'); } catch { return []; }
   })();
   const statusMap  = Object.fromEntries(lastStatus.map(r => [r.relay, r.ok]));
 
@@ -1537,15 +1483,15 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
   if (!confirm(t('dialog.logout.confirm'))) return;
   const cards = getCards();
   for (const c of cards) {
-    localStorage.removeItem(`e2e:fields:${c.id}`);
-    localStorage.removeItem(`e2e:relay-status:${c.id}`);
+    localStorage.removeItem(STORAGE_KEYS.fields(c.id));
+    localStorage.removeItem(STORAGE_KEYS.relayStatus(c.id));
   }
   for (const c of getConnections()) {
-    localStorage.removeItem(`e2e:connection-fields:${c.id}`);
+    localStorage.removeItem(STORAGE_KEYS.connectionFields(c.id));
   }
-  localStorage.removeItem('e2e:cards');
-  localStorage.removeItem('e2e:saved-links');
-  localStorage.removeItem('e2e:connections');
+  localStorage.removeItem(STORAGE_KEYS.cards);
+  localStorage.removeItem(STORAGE_KEYS.savedLinks);
+  localStorage.removeItem(STORAGE_KEYS.connections);
   clearSyncIdentity();
   activeCardId = null;
   location.reload();
@@ -1829,7 +1775,7 @@ async function refreshConnections(connections) {
         if (dateEl) dateEl.textContent = formatDate(conn.updatedAt || conn.pairedAt);
       }
     } catch (err) {
-      console.warn('[app] connection refresh failed (non-fatal):', err.message);
+      reportError(err, 'app.connection-refresh');
     }
   }
   if (updated) saveConnections(connections);
@@ -1844,7 +1790,7 @@ function viewConnection(conn) {
 function removeConnection(id) {
   if (!confirm(t('dialog.connection.remove.confirm'))) return;
   saveConnections(getConnections().filter(c => c.id !== id));
-  localStorage.removeItem(`e2e:connection-fields:${id}`);
+  localStorage.removeItem(STORAGE_KEYS.connectionFields(id));
   renderSavedLinks();
 }
 
@@ -1929,7 +1875,7 @@ async function ensureCardPublished(card) {
     if (event) return true;
   } catch { /* fall through to republish attempt */ }
 
-  const cachedRaw = localStorage.getItem(`e2e:fields:${card.id}`);
+  const cachedRaw = localStorage.getItem(STORAGE_KEYS.fields(card.id));
   if (!cachedRaw) return false;
 
   try {
@@ -1940,7 +1886,7 @@ async function ensureCardPublished(card) {
     const vcardText = buildVCard(fields);
     const blob      = await encryptVCard(vcardText, aesKey);
     const results   = await publishCard(card.relays, nsecBytes, card.id, blob);
-    localStorage.setItem(`e2e:relay-status:${card.id}`, JSON.stringify(results));
+    localStorage.setItem(STORAGE_KEYS.relayStatus(card.id), JSON.stringify(results));
     return results.some(r => r.ok);
   } catch {
     return false;
@@ -2040,7 +1986,7 @@ async function beginPairStart(card) {
       const found = await fetchPairingPayload(DEFAULT_RELAYS, pairNpub, pairKeyRaw, 'b');
       if (found && pairStartState === myState && !myState.completing) {
         if (!isValidPeerPayload(found.payload)) {
-          console.warn('[app] rejected malformed pairing response');
+          console.warn('[app.pairing-poll] rejected malformed pairing response');
           return;
         }
         myState.completing = true;
@@ -2056,7 +2002,7 @@ async function beginPairStart(card) {
         }
       }
     } catch (err) {
-      console.warn('[app] pairing poll error (non-fatal):', err.message);
+      reportError(err, 'app.pairing-poll');
     } finally {
       myState.fetching = false;
     }
@@ -2189,7 +2135,7 @@ function exportBackup() {
   const connections = getConnections();
   const fields      = {};
   for (const card of cards) {
-    const cached = localStorage.getItem(`e2e:fields:${card.id}`);
+    const cached = localStorage.getItem(STORAGE_KEYS.fields(card.id));
     if (cached) { try { fields[card.id] = JSON.parse(cached); } catch {} }
   }
   const backup = {
@@ -2201,7 +2147,7 @@ function exportBackup() {
     fields,
   };
   downloadJson(backup, `nostcard-backup-${backup.exported.slice(0, 10)}.json`);
-  for (const card of cards) localStorage.setItem(`e2e:exported:${card.id}`, '1');
+  for (const card of cards) localStorage.setItem(STORAGE_KEYS.exported(card.id), '1');
 }
 
 function downloadJson(data, filename) {
@@ -2320,8 +2266,8 @@ async function importBackup(json, { navigate = true } = {}) {
         if (changed) {
           saveCards(cards);
           // Old share links may have relied on the previous key — drop any cached trust for them
-          localStorage.removeItem(`e2e:trusted:${payload.id}`);
-          localStorage.removeItem(`e2e:trusted:${cards[idx].npub}:${payload.id}`);
+          localStorage.removeItem(STORAGE_KEYS.trust(payload.id));
+          localStorage.removeItem(STORAGE_KEYS.trust(`${cards[idx].npub}:${payload.id}`));
         }
       }
       skipped++;
@@ -2360,7 +2306,7 @@ async function importBackup(json, { navigate = true } = {}) {
 
     if (fieldsMap[payload.id]) {
       const fieldsWithTs = { ...fieldsMap[payload.id], __relayTs: Date.now() };
-      localStorage.setItem(`e2e:fields:${payload.id}`, JSON.stringify(fieldsWithTs));
+      localStorage.setItem(STORAGE_KEYS.fields(payload.id), JSON.stringify(fieldsWithTs));
     }
 
     if (!onNetwork) {
@@ -2376,7 +2322,7 @@ async function importBackup(json, { navigate = true } = {}) {
           const vcardText = buildVCard(fields);
           const blob      = await encryptVCard(vcardText, aesKey);
           const results   = await publishCard(relayList, nsecBytes, payload.id, blob);
-          localStorage.setItem(`e2e:relay-status:${payload.id}`, JSON.stringify(results));
+          localStorage.setItem(STORAGE_KEYS.relayStatus(payload.id), JSON.stringify(results));
           if (results.some(r => r.ok)) republished++;
         } catch {}
       } else {
@@ -2430,9 +2376,9 @@ async function importBackup(json, { navigate = true } = {}) {
 
   // Restore field cache
   for (const [id, fieldData] of Object.entries(fieldsMap)) {
-    if (!localStorage.getItem(`e2e:fields:${id}`)) {
+    if (!localStorage.getItem(STORAGE_KEYS.fields(id))) {
       const fieldsWithTs = { ...fieldData, __relayTs: Date.now() };
-      localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fieldsWithTs));
+      localStorage.setItem(STORAGE_KEYS.fields(id), JSON.stringify(fieldsWithTs));
     }
   }
 
@@ -2459,7 +2405,7 @@ function buildSyncPayload() {
   const connections = getConnections();
   const fields      = {};
   for (const card of cards) {
-    const cached = localStorage.getItem(`e2e:fields:${card.id}`);
+    const cached = localStorage.getItem(STORAGE_KEYS.fields(card.id));
     if (cached) { try { fields[card.id] = JSON.parse(cached); } catch {} }
   }
   return { version: 3, exported: new Date().toISOString(), cards, savedLinks, connections, fields };
@@ -2546,14 +2492,29 @@ document.getElementById('btn-sync-generate').addEventListener('click', async () 
   }
 });
 
+// On-device friction against scripted passphrase grinding: every attempt
+// costs a 600k-iteration PBKDF2 derivation plus relay reads, and too many
+// misses lock the join form for a cooldown. Honest scope: this does not (and
+// cannot) protect the relay-side snapshot against offline brute force — that
+// defence is the passphrase entropy (8 BIP39 words ≈ 88 bits).
+const SYNC_JOIN_RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000, lockoutMs: 15 * 60 * 1000 };
+
 document.getElementById('btn-sync-join').addEventListener('click', async () => {
   const input = document.getElementById('sync-join-passphrase-input');
   const passphrase = input.value.trim();
   if (!passphrase) return;
+
+  const rl = checkRateLimit('sync-join', SYNC_JOIN_RATE_LIMIT);
+  if (!rl.allowed) {
+    alert(t('sync.join.error.locked', { minutes: Math.ceil(rl.waitMs / 60000) }));
+    return;
+  }
+
   // Only generated passphrases are accepted — see isValidSyncPassphrase in sync.js.
   // Check before deriving anything: a rejected passphrase must never become a
   // persisted (and therefore pushable) identity on this device.
   if (!isValidSyncPassphrase(passphrase)) {
+    recordRateLimitedAttempt('sync-join', SYNC_JOIN_RATE_LIMIT);
     alert(t('sync.join.error.weak'));
     return;
   }
@@ -2565,8 +2526,11 @@ document.getElementById('btn-sync-join').addEventListener('click', async () => {
 
     const pulled = await pullSyncData(DEFAULT_RELAYS, syncNpub, syncKeyRaw);
     if (!pulled) {
+      // A well-formed passphrase that finds no snapshot is a miss — count it.
+      recordRateLimitedAttempt('sync-join', SYNC_JOIN_RATE_LIMIT);
       setSyncStatus(t('sync.status.nothingFound'), true);
     } else {
+      clearRateLimit('sync-join');
       await importBackup(pulled.payload, { navigate: false });
       refreshVisibleList();
       saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
@@ -2576,6 +2540,7 @@ document.getElementById('btn-sync-join').addEventListener('click', async () => {
     document.getElementById('sync-manage-section').classList.remove('hidden');
     if (pulled) setSyncStatus(t('sync.status.pulled'), false);
   } catch (err) {
+    reportError(err, 'app.sync-join');
     alert(t('alert.sync.error', { error: err.message }));
   } finally {
     btn.disabled = false;
@@ -2590,7 +2555,10 @@ document.getElementById('btn-sync-copy-passphrase').addEventListener('click', as
   setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
 });
 
-document.getElementById('btn-sync-push').addEventListener('click', async () => {
+// Debounced like Save: rapid clicks coalesce into one snapshot publish.
+document.getElementById('btn-sync-push').addEventListener('click', debounce(pushSyncNow, 300));
+
+async function pushSyncNow() {
   const identity = getSyncIdentity();
   if (!identity) return;
   const btn = document.getElementById('btn-sync-push');
@@ -2603,11 +2571,12 @@ document.getElementById('btn-sync-push').addEventListener('click', async () => {
     const allOk = results.every(r => r.ok);
     setSyncStatus(allOk ? t('sync.status.pushed') : t('sync.status.pushed.partial'), !allOk);
   } catch (err) {
+    reportError(err, 'app.sync-push');
     setSyncStatus(t('alert.sync.error', { error: err.message }), true);
   } finally {
     btn.disabled = false;
   }
-});
+}
 
 document.getElementById('btn-sync-pull').addEventListener('click', async () => {
   const identity = getSyncIdentity();
@@ -2744,58 +2713,6 @@ async function importCardKey(keyFragment) {
   // Need extractable=true for the owner so we can re-encrypt on save
   const raw = base64urlToBytes(keyFragment);
   return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-}
-
-/** Escape HTML special characters to prevent XSS in innerHTML strings */
-function htmlEscape(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
-
-function makeInitials(name) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
-}
-
-function bytesToHex(bytes) {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function hexToBytes(hex) {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  return bytes;
-}
-
-function base64urlToBytes(str) {
-  const b64    = str.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
-  return Uint8Array.from(atob(padded), c => c.charCodeAt(0));
-}
-
-function bytesToBase64url(bytes) {
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
-/** https:// always allowed; http:// only on localhost (dev), to reject arbitrary-scheme injection */
-function isSafeLinkUrl(url) {
-  try {
-    const u = new URL(url);
-    if (u.protocol === 'https:') return true;
-    return u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
-  } catch { return false; }
-}
-
-function downloadVcf(vcardText, fn) {
-  const filename = (fn || 'contact').replace(/[^a-zA-Z0-9_-]/g, '_') + '.vcf';
-  const blob = new Blob([vcardText], { type: 'text/vcard;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
 }
 
 // ---------------------------------------------------------------------------
