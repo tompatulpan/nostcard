@@ -54,6 +54,32 @@ body {
 
 .top-bar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
+/* ── Footer (GitHub repo link) ────────────────────────────────────────────── */
+
+.app-footer {
+  padding: 12px 24px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.app-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.app-footer a:hover { color: var(--text); text-decoration: underline; }
+
+.app-footer .app-footer-github-icon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
 .logo { font-weight: 700; font-size: 16px; letter-spacing: -.3px; }
 
 .screen { flex: 1; padding: 32px 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
