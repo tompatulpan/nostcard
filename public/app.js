@@ -161,21 +161,22 @@ function handleShareTargetLaunch() {
   if (!params.has('shared-url') && !params.has('shared-text')) return false;
 
   const candidates = [params.get('shared-url'), params.get('shared-text'), params.get('shared-title')];
-  let url = null;
+  let parsed = null;
+  let token  = '';
   for (const c of candidates) {
     if (!c) continue;
     // The shared text may contain surrounding words — extract the first URL-ish token
-    for (const token of c.split(/\s+/)) {
-      url = normalizePastedShareLink(token);
-      if (url) break;
+    for (token of c.split(/\s+/)) {
+      parsed = parsePastedShareLink(token);
+      if (parsed) break;
     }
-    if (url) break;
+    if (parsed) break;
   }
 
   // Strip the shared data from the address bar either way
   history.replaceState(null, '', location.pathname);
 
-  if (!url) {
+  if (!parsed) {
     go('/saved');
     const errEl = document.getElementById('paste-contact-error');
     errEl.textContent = t('contacts.share.error');
@@ -183,8 +184,18 @@ function handleShareTargetLaunch() {
     return true;
   }
 
+  // Part 1 of a two-part share (no #key) — hand it to the Contacts paste
+  // flow, which asks for part 2 before the card can be opened
+  if (!parsed.key) {
+    go('/saved');
+    document.getElementById('paste-contact-details').open = true;
+    document.getElementById('paste-contact-input').value = token;
+    addContactFromPaste(); // reveals the part-2 field and prompts for the key
+    return true;
+  }
+
   cvReturnRoute = '/saved';
-  showCardViewScreen(url, 'saved-card');
+  showCardViewScreen(buildContactShareUrl(parsed.naddr, parsed.key), 'saved-card');
   return true;
 }
 
@@ -1605,52 +1616,91 @@ document.getElementById('paste-contact-input').addEventListener('keydown', e => 
 document.getElementById('paste-contact-input').addEventListener('input', () => {
   document.getElementById('paste-contact-error').classList.add('hidden');
 });
+document.getElementById('paste-contact-key-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addContactFromPaste();
+});
 
 /**
- * Normalize any share-link variant into a share URL on this origin, or null.
- * Accepts the compact form (naddr#key, no web address) and full links
- * (plain or ?dl=1) from any deployment of the app — only the naddr and the
- * #key matter. Key-only pastes are rejected: without the card address there
- * is nothing to fetch.
+ * Parse any pasted share-link variant into { naddr, key }. The key is null
+ * for part 1 of a two-part share (a base link or a bare card address with no
+ * #key) — the recipient is then asked to paste part 2 separately. Returns
+ * null when the text identifies no card at all. Key-only pastes are still
+ * rejected: without the card address there is nothing to fetch.
  */
-function normalizePastedShareLink(raw) {
+function parsePastedShareLink(raw) {
   const text = (raw || '').trim();
   if (!text) return null;
 
-  // Compact form: naddr#key — resolve on this origin
-  const compact = text.match(/^(naddr1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)#([A-Za-z0-9_-]+)$/i);
+  // Compact form: naddr#key — or a bare naddr (part 1 without the key)
+  const compact = text.match(/^(naddr1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)(?:#([A-Za-z0-9_-]+))?$/i);
   if (compact) {
-    return `${location.origin}${CARD_PATH}?naddr=${encodeURIComponent(compact[1].toLowerCase())}#${encodeURIComponent(compact[2])}`;
+    return { naddr: compact[1].toLowerCase(), key: compact[2] || null };
   }
 
   let urlObj;
   try { urlObj = new URL(text); } catch { return null; }
   if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') return null;
-  const naddr   = urlObj.searchParams.get('naddr');
+  const naddr = urlObj.searchParams.get('naddr');
+  if (!naddr) return null;
+  // Part 1 of a two-part share carries no #key — the key is pasted separately
   const fragment = urlObj.hash.slice(1);
-  if (!naddr || !fragment) return null;
+  if (!fragment) return { naddr, key: null };
   let key = fragment;
   try { key = decodeURIComponent(fragment); } catch { /* keep raw — base64url needs no decoding */ }
-  // Rebuild on this origin: drops ?dl=1 and any query-string noise.
+  return { naddr, key };
+}
+
+/** Rebuild a share URL on this origin from a card address + key. */
+function buildContactShareUrl(naddr, key) {
   return `${location.origin}${CARD_PATH}?naddr=${encodeURIComponent(naddr)}#${encodeURIComponent(key)}`;
 }
 
-function addContactFromPaste() {
-  const input = document.getElementById('paste-contact-input');
-  const errEl = document.getElementById('paste-contact-error');
-  const url   = normalizePastedShareLink(input.value);
-  if (!url) {
+async function addContactFromPaste() {
+  const input    = document.getElementById('paste-contact-input');
+  const keyBox   = document.getElementById('paste-contact-key');
+  const keyInput = document.getElementById('paste-contact-key-input');
+  const errEl    = document.getElementById('paste-contact-error');
+
+  const parsed = parsePastedShareLink(input.value);
+  if (!parsed) {
+    keyBox.classList.add('hidden');
     errEl.textContent = t('contacts.paste.error');
     errEl.classList.remove('hidden');
     return;
   }
+
+  // Two-part share: part 1 pasted without the #key — ask for part 2 here,
+  // then assemble the full link. The key never leaves this page.
+  if (!parsed.key) {
+    keyBox.classList.remove('hidden');
+    const key = keyInput.value.trim().replace(/^#/, '').trim();
+    if (!key) {
+      errEl.textContent = t('keyentry.error.empty');
+      errEl.classList.remove('hidden');
+      keyInput.focus();
+      return;
+    }
+    // Validate the format before anything is opened or saved
+    try {
+      await fragmentToKey(key);
+    } catch {
+      errEl.textContent = t('keyentry.error.invalid');
+      errEl.classList.remove('hidden');
+      return;
+    }
+    parsed.key = key;
+  } else {
+    keyBox.classList.add('hidden');
+  }
+
   errEl.classList.add('hidden');
   input.value = '';
+  keyInput.value = '';
   // Reuse the inline viewer: it validates the naddr, fetches and decrypts the
   // card (with its own error screens and retry), and the trust gate auto-saves
   // the link. No navigation happens, so nothing lands in browser history.
   cvReturnRoute = '/saved';
-  showCardViewScreen(url, 'saved-card');
+  showCardViewScreen(buildContactShareUrl(parsed.naddr, parsed.key), 'saved-card');
 }
 
 // ---------------------------------------------------------------------------

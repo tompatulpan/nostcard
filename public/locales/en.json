@@ -47,10 +47,11 @@
 
   "saved.heading": "Contacts",
   "saved.empty": "No contacts yet. Open a card link and choose \"My personal device\", or tap \"+ Connect\" to pair with someone in person.",
-  "contacts.paste.placeholder": "Paste a full link or a compact link (naddr#key)…",
+  "contacts.paste.placeholder": "Paste a full link, a compact link (naddr#key), or part 1 of a two-part share…",
   "contacts.paste.btn": "Add contact",
   "contacts.paste.error": "That does not look like a card link — paste a full link (with the #key part) or a compact link (naddr#key).",
   "contacts.paste.toggle": "Add a contact by pasting a link…",
+  "contacts.paste.key.body": "This link is part 1 of a two-part share — it finds the card but cannot read it. Paste part 2 (the key) below and press Add contact.",
   "contacts.share.error": "The shared content did not contain a valid card link — it must include the #key part.",
 
   "adv.btn.open": "⚙️ Advanced",

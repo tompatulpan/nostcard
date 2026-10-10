@@ -47,10 +47,11 @@
 
   "saved.heading": "Kontakter",
   "saved.empty": "Inga kontakter ännu. Öppna en kortlänk och välj \"Min personliga enhet\", eller tryck på \"+ Anslut\" för att para ihop dig med någon personligen.",
-  "contacts.paste.placeholder": "Klistra in en fullständig länk eller en kompakt länk (naddr#nyckel)…",
+  "contacts.paste.placeholder": "Klistra in en fullständig länk, en kompakt länk (naddr#nyckel) eller del 1 av en delning i två delar…",
   "contacts.paste.btn": "Lägg till kontakt",
   "contacts.paste.error": "Det ser inte ut som en kortlänk — klistra in en fullständig länk (med #nyckeln) eller en kompakt länk (naddr#nyckel).",
   "contacts.paste.toggle": "Lägg till en kontakt genom att klistra in en länk…",
+  "contacts.paste.key.body": "Den här länken är del 1 av en delning i två delar — den hittar kortet men kan inte läsa det. Klistra in del 2 (nyckeln) nedan och tryck på Lägg till kontakt.",
   "contacts.share.error": "Det delade innehållet innehöll ingen giltig kortlänk — den måste inkludera #nyckel-delen.",
 
   "adv.btn.open": "⚙️ Avancerat",

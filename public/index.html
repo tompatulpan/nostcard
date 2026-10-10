@@ -81,6 +81,16 @@
           <input id="paste-contact-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste a full link or a compact link (naddr#key)…" data-i18n-placeholder="contacts.paste.placeholder" />
           <button id="btn-paste-contact" class="btn btn-teal btn-sm" data-i18n="contacts.paste.btn">Add contact</button>
         </div>
+        <!-- Two-part share: revealed when the pasted link is part 1 (no #key) -->
+        <div id="paste-contact-key" class="hidden" style="margin-top:10px">
+          <p class="muted" style="font-size:0.85rem;margin:0 0 0.25rem" data-i18n-html="contacts.paste.key.body">
+            This link is part 1 of a two-part share — it finds the card but
+            cannot read it. Paste part 2 (the key) below and press Add contact.
+          </p>
+          <div class="share-url-box paste-contact-box">
+            <input id="paste-contact-key-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Paste the code from the second message" data-i18n-placeholder="keyentry.placeholder" />
+          </div>
+        </div>
       </details>
       <p id="paste-contact-error" class="paste-contact-error muted hidden"></p>
 
