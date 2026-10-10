@@ -139,9 +139,41 @@ async function _loadLocale(lang) {
 
 /**
  * Converts **bold** markdown to <strong> tags.
- * Other HTML in locale strings is passed through as-is.
+ * Other HTML in locale strings is limited to the localeHtml allowlist.
  * SECURITY: locale strings are developer-controlled — never pass user data through this path.
  */
 function _processLocaleHtml(str) {
-  return str.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  return localeHtml(str).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+/**
+ * Escape a locale string, then restore a fixed allowlist of formatting tags
+ * (<code>, <kbd>, <strong>, <em>, <br>, the hint-mac <span>). Anything outside
+ * the allowlist stays escaped, so a tampered locale file cannot inject
+ * arbitrary markup into the page.
+ * @param {string} str  Raw locale string (developer-controlled)
+ * @returns {string}    HTML safe for innerHTML
+ */
+export function localeHtml(str) {
+  let out = _escapeHtml(str);
+  const TAGS = [
+    ['&lt;code&gt;', '<code>'],   ['&lt;/code&gt;', '</code>'],
+    ['&lt;kbd&gt;', '<kbd>'],     ['&lt;/kbd&gt;', '</kbd>'],
+    ['&lt;strong&gt;', '<strong>'],['&lt;/strong&gt;', '</strong>'],
+    ['&lt;em&gt;', '<em>'],       ['&lt;/em&gt;', '</em>'],
+    ['&lt;br&gt;', '<br>'],
+    ['&lt;span class=&quot;hint-mac&quot;&gt;', '<span class="hint-mac">'],
+    ['&lt;/span&gt;', '</span>'],
+  ];
+  for (const [from, to] of TAGS) out = out.replaceAll(from, to);
+  return out;
+}
+
+function _escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }

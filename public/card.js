@@ -21,6 +21,16 @@ import { parseVCard, buildVCard } from './vcard.js';
 import { naddrDecode, fetchCard, sameCardAddress, isValidRelayUrl, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
 
+/** Escape HTML special characters to prevent XSS in innerHTML strings */
+function htmlEscape(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 /** Full card URL including the #key — captured before any address-bar scrub. */
 let cardFullUrl = null;
 
@@ -394,9 +404,9 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
     section.innerHTML = `
       <div class="card-panel centered">
         <div style="font-size:3rem">🔒</div>
-        <h2>${messages[reason] || t('cv.kill.manual')}</h2>
+        <h2>${htmlEscape(messages[reason] || t('cv.kill.manual'))}</h2>
         <p class="muted">
-          ${t('cv.kill.detail')}<br>
+          ${htmlEscape(t('cv.kill.detail'))}<br>
           Safe to close this tab.
         </p>
       </div>
@@ -557,11 +567,11 @@ function showDownloadConfirmation(fn, trustId, cleanUrl, relayTs) {
 
     const yesBtn = document.createElement('button');
     yesBtn.className = 'btn btn-trust-yes';
-    yesBtn.innerHTML = `<span class="trust-choice-icon">✅</span><span class="trust-choice-label">${t('dl.yes.label')}</span><span class="trust-choice-hint">${t('dl.yes.hint')}</span>`;
+    yesBtn.innerHTML = `<span class="trust-choice-icon">✅</span><span class="trust-choice-label">${htmlEscape(t('dl.yes.label'))}</span><span class="trust-choice-hint">${htmlEscape(t('dl.yes.hint'))}</span>`;
 
     const noBtn = document.createElement('button');
     noBtn.className = 'btn btn-trust-no';
-    noBtn.innerHTML = `<span class="trust-choice-icon">🏛️</span><span class="trust-choice-label">${t('dl.no.label')}</span><span class="trust-choice-hint">${t('dl.no.hint')}</span>`;
+    noBtn.innerHTML = `<span class="trust-choice-icon">🏛️</span><span class="trust-choice-label">${htmlEscape(t('dl.no.label'))}</span><span class="trust-choice-hint">${htmlEscape(t('dl.no.hint'))}</span>`;
 
     const replaceChoices = (msg, hint) => {
       choices.innerHTML = '';

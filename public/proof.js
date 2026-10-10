@@ -15,7 +15,7 @@
 import { naddrDecode, fetchCard } from './nostr.js';
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard } from './vcard.js';
-import { initI18n, t, setLang, getCurrentLang } from './i18n.js';
+import { initI18n, t, setLang, getCurrentLang, localeHtml } from './i18n.js';
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -96,8 +96,8 @@ async function runStep1(relays, pubkey, cardId) {
       <div class="proof-status-box proof-status-warn">
         <span class="proof-status-icon">⚠️</span>
         <div>
-          <strong>${t('proof.step1.notFound.title')}</strong>
-          <p>${t('proof.step1.notFound.detail')}</p>
+          <strong>${htmlEscape(t('proof.step1.notFound.title'))}</strong>
+          <p>${htmlEscape(t('proof.step1.notFound.detail'))}</p>
         </div>
       </div>`;
     return null;
@@ -117,26 +117,26 @@ async function runStep1(relays, pubkey, cardId) {
   const metaRows = [
     cardName ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
       <span class="proof-field-icon">🏷️</span>
-      <span><strong>${t('proof.step1.meta.name')}</strong> ${htmlEscape(cardName)} <em style="font-size:11px;color:#92400e">${t('proof.step1.meta.plaintext')}</em></span>
+      <span><strong>${htmlEscape(t('proof.step1.meta.name'))}</strong> ${htmlEscape(cardName)} <em style="font-size:11px;color:#92400e">${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
     </div>` : '',
     tagCardId ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
       <span class="proof-field-icon">🔑</span>
-      <span><strong>${t('proof.step1.meta.id')}</strong> <code>${htmlEscape(tagCardId)}</code> <em style="font-size:11px;color:#92400e">${t('proof.step1.meta.plaintext')}</em></span>
+      <span><strong>${htmlEscape(t('proof.step1.meta.id'))}</strong> <code>${htmlEscape(tagCardId)}</code> <em style="font-size:11px;color:#92400e">${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
     </div>` : '',
     `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
       <span class="proof-field-icon">🕐</span>
-      <span><strong>${t('proof.step1.meta.updated')}</strong> ${htmlEscape(date)} <em style="font-size:11px;color:#92400e">${t('proof.step1.meta.plaintext')}</em></span>
+      <span><strong>${htmlEscape(t('proof.step1.meta.updated'))}</strong> ${htmlEscape(date)} <em style="font-size:11px;color:#92400e">${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
     </div>`,
   ].join('');
 
   relayResult.innerHTML = `
-    <div class="proof-blob-label" style="margin-bottom:8px">${t('proof.step1.label.plaintext')}</div>
+    <div class="proof-blob-label" style="margin-bottom:8px">${htmlEscape(t('proof.step1.label.plaintext'))}</div>
     <div class="proof-fields" style="margin-bottom:16px">${metaRows}</div>
-    <div class="proof-blob-label">${t('proof.step1.label.blob')}</div>
+    <div class="proof-blob-label">${htmlEscape(t('proof.step1.label.blob'))}</div>
     <div class="proof-blob-box">
       <code>${truncated}${clipped ? '<span class="proof-ellipsis"> … (truncated)</span>' : ''}</code>
     </div>
-    <p class="proof-caption">${t('proof.step1.caption')}</p>`;
+    <p class="proof-caption">${localeHtml(t('proof.step1.caption'))}</p>`;
 
   return event;
 }
@@ -156,8 +156,8 @@ async function runStep2(event, key) {
       <div class="proof-status-box proof-status-error">
         <span class="proof-status-icon">❌</span>
         <div>
-          <strong>${t('proof.step2.decrypt.failed.title')}</strong>
-          <p>${t('proof.step2.decrypt.failed.detail')}</p>
+          <strong>${htmlEscape(t('proof.step2.decrypt.failed.title'))}</strong>
+          <p>${htmlEscape(t('proof.step2.decrypt.failed.detail'))}</p>
         </div>
       </div>`;
     return;
@@ -177,12 +177,12 @@ async function runStep2(event, key) {
   for (const n of (fields.note  || [])) { rows += fieldRow('📝', n); }
 
   if (!rows) {
-    rows = `<p class="proof-caption">${t('proof.step2.no.fields')}</p>`;
+    rows = `<p class="proof-caption">${htmlEscape(t('proof.step2.no.fields'))}</p>`;
   }
 
   decryptResult.innerHTML = `
     <div class="proof-fields">${rows}</div>
-    <p class="proof-caption">${t('proof.step2.caption')}</p>`;
+    <p class="proof-caption">${htmlEscape(t('proof.step2.caption'))}</p>`;
 }
 
 function fieldRow(icon, text) {
@@ -208,8 +208,8 @@ async function runStep3() {
       <div class="proof-status-box proof-status-warn">
         <span class="proof-status-icon">📡</span>
         <div>
-          <strong>${t('proof.step3.still.title')}</strong>
-          <p>${t('proof.step3.still.detail', { link: myCardsLink })}</p>
+          <strong>${htmlEscape(t('proof.step3.still.title'))}</strong>
+          <p>${htmlEscape(t('proof.step3.still.detail.pre'))}${myCardsLink}${htmlEscape(t('proof.step3.still.detail.post'))}</p>
         </div>
       </div>`;
   } else {
@@ -217,8 +217,8 @@ async function runStep3() {
       <div class="proof-status-box proof-status-ok">
         <span class="proof-status-icon">✅</span>
         <div>
-          <strong>${t('proof.step3.removed.title')}</strong>
-          <p>${t('proof.step3.removed.detail')}</p>
+          <strong>${htmlEscape(t('proof.step3.removed.title'))}</strong>
+          <p>${htmlEscape(t('proof.step3.removed.detail'))}</p>
         </div>
       </div>`;
   }
