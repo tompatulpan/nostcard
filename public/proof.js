@@ -170,12 +170,24 @@ async function runStep2(event, key) {
   if (fields.fn) {
     rows += fieldRow('👤', fields.fn);
   }
+  const nameParts = [fields.firstName, fields.lastName].filter(Boolean).join(' ');
+  if (nameParts && nameParts !== fields.fn) {
+    rows += fieldRow('👤', nameParts);
+  }
   for (const t of (fields.tel   || [])) { rows += fieldRow('📞', t.value); }
   for (const e of (fields.email || [])) { rows += fieldRow('✉️', e.value); }
   for (const o of (fields.org   || [])) { rows += fieldRow('🏢', o); }
   for (const ti of (fields.title|| [])) { rows += fieldRow('💼', ti); }
   for (const u of (fields.url   || [])) { rows += fieldRow('🔗', u.value); }
   for (const n of (fields.note  || [])) { rows += fieldRow('📝', n); }
+  // ADR — address fields (same format as card.js / inline viewer)
+  for (const adr of (fields.adr || [])) {
+    const parts = [adr.street, adr.city, adr.region, adr.postcode, adr.country].filter(Boolean).join(', ');
+    if (parts) {
+      const label = adr.type && adr.type !== 'home' ? t('field.type.' + adr.type) : '';
+      rows += fieldRow('🏠', label ? `${label}: ${parts}` : parts);
+    }
+  }
 
   if (!rows) {
     rows = `<p class="proof-caption">${htmlEscape(t('proof.step2.no.fields'))}</p>`;
