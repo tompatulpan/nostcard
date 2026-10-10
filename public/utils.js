@@ -422,7 +422,10 @@ export function debounce(fn, waitMs) {
   let timer = null;
   return (...args) => {
     clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), waitMs);
+    timer = setTimeout(() => {
+      // fn may be async — surface rejections instead of leaving them unhandled
+      Promise.resolve().then(() => fn(...args)).catch(err => reportError(err, 'utils.debounce'));
+    }, waitMs);
   };
 }
 

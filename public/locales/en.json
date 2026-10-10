@@ -193,7 +193,7 @@
   "alert.links.imported": ", {{n}} saved link{{s}} imported",
   "alert.sync.error": "Sync error: {{error}}",
   "alert.sync.deleted": "Synced snapshot deleted from relays.",
-  "alert.delete.partial": "Deletion request sent, but {{relays}} still serve this card. Those relays ignore deletion requests (NIP-09) — the encrypted data may remain there until it expires.",
+  "alert.delete.partial": "Deletion request sent, but {{relays}} still serve this card. Those relays may be slow to apply or may not honour deletion requests (NIP-09) — the encrypted data may remain there.",
 
   "cv.loading": "Decrypting contact…",
   "cv.live.hint": "✨ This is a live card — always shows the owner's latest details.",

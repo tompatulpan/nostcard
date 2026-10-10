@@ -761,7 +761,8 @@ async function createCard(label, prefillFields = null, identityNsec = null) {
 // Debounced: rapid clicks coalesce into one relay publish with the latest
 // form state (the disabled flag alone only prevented concurrent publishes,
 // not click-mashing straight after a completed save).
-document.getElementById('btn-save').addEventListener('click', debounce(saveCard, 300));
+const debouncedSave = debounce(cardId => { if (cardId === activeCardId) return saveCard(); }, 300);
+document.getElementById('btn-save').addEventListener('click', () => debouncedSave(activeCardId));
 
 async function saveCard() {
   const btn    = document.getElementById('btn-save');

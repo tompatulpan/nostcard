@@ -193,7 +193,7 @@
   "alert.links.imported": ", {{n}} sparade länkar importerade",
   "alert.sync.error": "Synkfel: {{error}}",
   "alert.sync.deleted": "Synkad ögonblicksbild raderad från reläer.",
-  "alert.delete.partial": "Raderingsbegäran har skickats, men {{relays}} svarar fortfarande med kortet. De reläerna ignorerar raderingsbegäranden (NIP-09) — den krypterade datan kan ligga kvar där tills den upphör att gälla.",
+  "alert.delete.partial": "Raderingsbegäran har skickats, men {{relays}} svarar fortfarande med kortet. De reläerna kan vara långsamma med att tillämpa eller inte följa raderingsbegäranden (NIP-09) — den krypterade datan kan ligga kvar där.",
 
   "cv.loading": "Dekrypterar kontakt…",
   "cv.live.hint": "✨ Det här är ett levande kort — visar alltid ägarens senaste uppgifter.",

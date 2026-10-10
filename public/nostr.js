@@ -262,9 +262,10 @@ export async function deleteCard(relays, nsec, cardId) {
  *
  * Rationale: deletions apply with a delay on many relays and some ignore
  * NIP-09 entirely; plain deleteCard() gave the owner no signal about either.
- * Verification is a read: a relay that times out is reported as
+ * Verification is a read: a relay that times out or errors is reported as
  * `deleted: true, verified: false` (benefit of the doubt) — only a relay
- * that verifiably still returns the event counts as not deleted.
+ * that verifiably still returns the event counts as not deleted, and only a
+ * clean empty read counts as `verified: true`.
  *
  * @param {string[]}   relays  WebSocket relay URLs
  * @param {Uint8Array} nsec    Owner's private key (raw 32 bytes)
@@ -280,9 +281,10 @@ export async function deleteCard(relays, nsec, cardId) {
 export async function deleteCardVerified(relays, nsec, cardId, { verifyDelayMs = 1500, verifyTimeoutMs = 3000 } = {}) {
   const npub = getPublicKey(nsec);
 
-  // Relay still serving the card? True only on a definitive "yes" — a read
-  // that times out or errors counts as gone (verified=false, not deleted=false).
-  const stillServing = async (relay) => {
+  // Relay still serving the card? 'yes' only on a definitive event; 'no' on a
+  // clean empty read; 'unknown' on timeout or error (inconclusive).
+  const check = async (relay) => {
+    let timer;
     try {
       const event = await Promise.race([
         sharedPool.get([relay], {
@@ -290,36 +292,33 @@ export async function deleteCardVerified(relays, nsec, cardId, { verifyDelayMs =
           authors: [npub],
           '#d':    [cardId],
         }),
-        new Promise(resolve => setTimeout(() => resolve(null), verifyTimeoutMs)),
+        new Promise(resolve => { timer = setTimeout(() => resolve(TIMED_OUT), verifyTimeoutMs); }),
       ]);
-      return event !== null;
+      if (event === TIMED_OUT) return 'unknown';
+      return event ? 'yes' : 'no';
     } catch {
-      return false;
+      return 'unknown';
+    } finally {
+      clearTimeout(timer);
     }
   };
+  const TIMED_OUT = Symbol('timeout');
+  const toResult = (relay, state) => ({ relay, deleted: state !== 'yes', verified: state === 'no' });
 
   await deleteCard(relays, nsec, cardId);
   await sleep(verifyDelayMs);
 
-  const firstRound = await Promise.all(relays.map(async relay => ({
-    relay, serving: await stillServing(relay),
-  })));
-  let results = firstRound.map(r => ({ relay: r.relay, deleted: !r.serving, verified: !r.serving }));
+  const firstRound = await Promise.all(relays.map(async relay => ({ relay, state: await check(relay) })));
+  let results = firstRound.map(r => toResult(r.relay, r.state));
 
   // One retry round for relays that verifiably still serve the card
-  const failedRelays = firstRound.filter(r => r.serving).map(r => r.relay);
+  const failedRelays = firstRound.filter(r => r.state === 'yes').map(r => r.relay);
   if (failedRelays.length > 0) {
     await deleteCard(failedRelays, nsec, cardId);
     await sleep(verifyDelayMs);
-    const retryRound = await Promise.all(failedRelays.map(async relay => ({
-      relay, serving: await stillServing(relay),
-    })));
-    const retryMap = new Map(retryRound.map(r => [r.relay, !r.serving]));
-    results = results.map(res =>
-      retryMap.has(res.relay)
-        ? { relay: res.relay, deleted: retryMap.get(res.relay), verified: retryMap.get(res.relay) }
-        : res
-    );
+    const retryRound = await Promise.all(failedRelays.map(async relay => ({ relay, state: await check(relay) })));
+    const retryMap = new Map(retryRound.map(r => [r.relay, toResult(r.relay, r.state)]));
+    results = results.map(res => retryMap.get(res.relay) ?? res);
   }
 
   return results;
