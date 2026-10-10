@@ -392,25 +392,21 @@ async function openEditor(id) {
     if (npubEl) npubEl.textContent = cardForName.npub || '';
   }
 
-  // Fetch latest from relay in background and update if newer
+  // Fetch latest from relay ONLY if we have no cached fields yet.
+  // This prevents overwriting local edits (e.g., addresses) with potentially stale relay data.
   const card = getCard(id);
   if (card) {
     try {
-      const nsecBytes = hexToBytes(card.nsec);
-      const aesKey    = await importCardKey(card.key);
-      const event     = await fetchCard(card.relays, card.npub, id);
-      if (event) {
-        // Only restore from relay if the event is newer than our cached fields
-        // to avoid overwriting user edits with stale data
-        const cachedRaw = localStorage.getItem(`e2e:fields:${id}`);
-        const cachedData = cachedRaw ? JSON.parse(cachedRaw) : null;
-        const eventTs = event.created_at ? event.created_at * 1000 : 0; // convert to ms
-        const cachedTs = cachedData?.__relayTs ? cachedData.__relayTs : 0;
-        
-        if (!cachedData || eventTs > cachedTs) {
+      const cachedRaw = localStorage.getItem(`e2e:fields:${id}`);
+      // Only fetch from relay if there are no cached fields
+      if (!cachedRaw) {
+        const nsecBytes = hexToBytes(card.nsec);
+        const aesKey    = await importCardKey(card.key);
+        const event     = await fetchCard(card.relays, card.npub, id);
+        if (event) {
           const vcardText = await decryptVCard(event.content, aesKey);
           const fields    = parseVCard(vcardText);
-          fields.__relayTs = eventTs; // Store timestamp for future comparisons
+          fields.__relayTs = event.created_at ? event.created_at * 1000 : Date.now();
           localStorage.setItem(`e2e:fields:${id}`, JSON.stringify(fields));
           restoreFields(id);
         }
@@ -433,6 +429,15 @@ function restoreFields(id) {
   
   // Strip internal metadata fields
   const { __relayTs, ...fieldData } = fields;
+
+  // Ensure all array fields are initialized for older cached data
+  if (!fieldData.tel) fieldData.tel = [];
+  if (!fieldData.email) fieldData.email = [];
+  if (!fieldData.org) fieldData.org = [];
+  if (!fieldData.title) fieldData.title = [];
+  if (!fieldData.url) fieldData.url = [];
+  if (!fieldData.adr) fieldData.adr = [];
+  if (!fieldData.note) fieldData.note = [];
 
   const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
   set('fn',        fieldData.fn);
