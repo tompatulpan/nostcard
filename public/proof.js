@@ -41,6 +41,7 @@ boot();
 // ---------------------------------------------------------------------------
 
 const urlInput       = document.getElementById('proof-url-input');
+const keyInput       = document.getElementById('proof-key-input');
 const btnRun         = document.getElementById('btn-run-proof');
 const proofResults   = document.getElementById('proof-results');
 const relayResult    = document.getElementById('relay-result');
@@ -258,7 +259,10 @@ btnRun.addEventListener('click', async () => {
   }
 
   const naddr    = shareUrl.searchParams.get('naddr');
-  const fragment = shareUrl.hash.slice(1); // strip leading '#'
+  // Two-part sharing: if the pasted link carries no #key, take the key from
+  // the separate key field (the sender may have sent it in another message).
+  const keyField = keyInput.value.trim().replace(/^#/, '').trim();
+  const fragment = shareUrl.hash.slice(1) || keyField; // strip leading '#'
 
   if (!naddr) {
     setError(t('proof.error.missingNaddr'));

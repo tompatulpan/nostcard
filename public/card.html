@@ -68,6 +68,35 @@
       </div>
     </section>
 
+    <!-- Two-part link: base link opened without the key — paste part 2 -->
+    <section id="screen-keyentry" class="screen hidden">
+      <div class="card-panel centered trust-gate">
+        <div class="trust-icon">🔑</div>
+        <h2 data-i18n="keyentry.heading">One last step — enter the key</h2>
+        <p class="muted" data-i18n-html="keyentry.body">
+          This card was shared in two parts for extra security. The link you
+          opened (part 1) finds the card but cannot read it. Part 2 is a short
+          code sent to you in a separate message — paste it below to open the card.
+        </p>
+        <input
+          id="keyentry-input"
+          type="text"
+          style="font-family:monospace;text-align:center;margin:12px 0 4px"
+          placeholder="Paste the code from the second message"
+          data-i18n-placeholder="keyentry.placeholder"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <p id="keyentry-error" class="relay-error hidden" style="text-align:center"></p>
+        <button id="btn-keyentry-open" class="btn btn-primary btn-lg" style="margin-top:8px" data-i18n="keyentry.btn">Open the card</button>
+        <p class="muted" style="font-size:0.8rem;margin-top:1rem" data-i18n="keyentry.hint">
+          The code stays in this page's address — it is never sent to any server.
+        </p>
+      </div>
+    </section>
+
     <!-- Contact card -->
     <section id="screen-card" class="screen hidden">
       <div class="card-panel contact-card">

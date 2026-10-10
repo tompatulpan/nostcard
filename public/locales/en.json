@@ -126,7 +126,7 @@
   "share.modal.relay.note": "Relays store only ciphertext. Update timestamps are visible to relay operators.",
   "share.modal.dl.label": "📱 Add-to-contacts link (auto-downloads .vcf on open):",
   "share.more.toggle": "Send the link in two parts (more secure)",
-  "share.split.note": "The base link is not secret — relays already see the card address. Send it by email or chat, and send the key through a different, end-to-end encrypted channel (e.g. Signal). The card only opens for someone holding both parts.",
+  "share.split.note": "The base link is not secret — relays already see the card address. Send it by email or chat, and send the key through a different, end-to-end encrypted channel (e.g. Signal). When the recipient opens the base link, the page asks them to paste the key — the card only opens once both parts are combined.",
   "share.split.base.label": "Part 1 — base link (not secret):",
   "share.split.key.label": "Part 2 — decryption key (secret — handle like a password):",
 
@@ -253,11 +253,20 @@
   "error.decrypt.title": "Decryption failed",
   "error.decrypt.detail": "Could not decrypt this card. The link may be corrupted.",
 
+  "keyentry.heading": "One last step — enter the key",
+  "keyentry.body": "This card was shared in two parts for extra security. The link you opened (part 1) finds the card but cannot read it. Part 2 is a short code sent to you in a separate message — paste it below to open the card.",
+  "keyentry.placeholder": "Paste the code from the second message",
+  "keyentry.btn": "Open the card",
+  "keyentry.hint": "The code stays in this page's address — it is never sent to any server.",
+  "keyentry.error.empty": "Paste the code you received in the second message.",
+  "keyentry.error.invalid": "That code is not valid. Copy the entire code from the second message and try again.",
+
   "proof.error.empty": "Please paste a share URL first.",
   "proof.error.invalidUrl": "Invalid URL. Please paste the full share link (starting with https://).",
   "proof.error.schemeOnly": "Only https:// and http:// URLs are accepted.",
   "proof.error.missingNaddr": "URL is missing the naddr= parameter. Make sure you copied the complete share link.",
-  "proof.error.missingKey": "URL is missing the encryption key (the part after #). Copy the full share link — including everything after the # symbol.",
+  "proof.error.missingKey": "No encryption key found — neither in the link's # part nor in the key field. Paste the full share link, or paste the base link and the key separately.",
+  "proof.key.placeholder": "Key (part 2) — leave empty if the link above already contains it",
   "proof.error.badNaddr": "Could not decode the card address (naddr). The share link may be corrupted.",
   "proof.error.badKey": "Could not decode the encryption key. The part after # may be corrupted.",
 

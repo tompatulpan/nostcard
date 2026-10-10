@@ -126,7 +126,7 @@
   "share.modal.relay.note": "Reläerna lagrar bara chiffertext. Uppdateringstidstämplar syns för reläoperatörer.",
   "share.modal.dl.label": "📱 Lägg-till-kontakt-länk (laddar automatiskt ned .vcf vid öppning):",
   "share.more.toggle": "Skicka länken i två delar (säkrare)",
-  "share.split.note": "Baslänken är inte hemlig — reläerna ser kortadressen ändå. Skicka den via e-post eller chatt, och skicka nyckeln via en annan, end-to-end-krypterad kanal (t.ex. Signal). Kortet öppnas bara för den som har båda delarna.",
+  "share.split.note": "Baslänken är inte hemlig — reläerna ser kortadressen ändå. Skicka den via e-post eller chatt, och skicka nyckeln via en annan, end-to-end-krypterad kanal (t.ex. Signal). När mottagaren öppnar baslänken frågar sidan efter nyckeln — kortet öppnas först när båda delarna kombineras.",
   "share.split.base.label": "Del 1 — baslänk (inte hemlig):",
   "share.split.key.label": "Del 2 — dekrypteringsnyckel (hemlig — hantera som ett lösenord):",
 
@@ -253,11 +253,20 @@
   "error.decrypt.title": "Dekryptering misslyckades",
   "error.decrypt.detail": "Det gick inte att dekryptera det här kortet. Länken kan vara skadad.",
 
+  "keyentry.heading": "Sista steget — ange nyckeln",
+  "keyentry.body": "Det här kortet har delats i två delar för extra säkerhet. Länken du öppnade (del 1) hittar kortet men kan inte läsa det. Del 2 är en kort kod som skickades till dig i ett separat meddelande — klistra in den nedan för att öppna kortet.",
+  "keyentry.placeholder": "Klistra in koden från det andra meddelandet",
+  "keyentry.btn": "Öppna kortet",
+  "keyentry.hint": "Koden stannar i sidans adress — den skickas aldrig till någon server.",
+  "keyentry.error.empty": "Klistra in koden du fick i det andra meddelandet.",
+  "keyentry.error.invalid": "Koden är inte giltig. Kopiera hela koden från det andra meddelandet och försök igen.",
+
   "proof.error.empty": "Klistra in en delningslänk först.",
   "proof.error.invalidUrl": "Ogiltig URL. Klistra in hela delningslänken (börjar med https://).",
   "proof.error.schemeOnly": "Endast https:// och http:// URL:er accepteras.",
   "proof.error.missingNaddr": "URL saknar parametern naddr=. Se till att du kopierade hela delningslänken.",
-  "proof.error.missingKey": "URL saknar krypteringsnyckeln (delen efter #). Kopiera hela delningslänken — inklusive allt efter #-symbolen.",
+  "proof.error.missingKey": "Ingen krypteringsnyckel hittades — varken i länkens #-del eller i nyckelfältet. Klistra in hela delningslänken, eller baslänken och nyckeln var för sig.",
+  "proof.key.placeholder": "Nyckel (del 2) — lämna tom om länken ovan redan innehåller den",
   "proof.error.badNaddr": "Det gick inte att avkoda kortadressen (naddr). Delningslänken kan vara skadad.",
   "proof.error.badKey": "Det gick inte att avkoda krypteringsnyckeln. Delen efter # kan vara skadad.",
 

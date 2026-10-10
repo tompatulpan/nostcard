@@ -71,12 +71,29 @@ async function init() {
   const naddr    = params.get('naddr');
   const fragment = location.hash.slice(1); // strip leading '#'
 
+  // Two-part sharing: the recipient opened part 1 (base link, no #key) —
+  // ask them to paste part 2 instead of dead-ending with a generic error.
+  if (naddr && !fragment) {
+    return showKeyEntry(naddr);
+  }
+
   if (!naddr || !fragment) {
     return showError(
       t('error.invalidLink.title'),
       t('error.invalidLink.missingParams')
     );
   }
+
+  await openCard(naddr, fragment);
+}
+
+/**
+ * Decode the card address, fetch and decrypt the card, show the trust gate.
+ * Called either directly from init() or after the recipient pastes part 2
+ * on the key-entry screen.
+ */
+async function openCard(naddr, fragment) {
+  const params = new URLSearchParams(location.search);
 
   // Capture the full URL (incl. #key) before anything scrubs the address bar —
   // the trusted view offers it as a copy box so the link can be moved from a
@@ -159,6 +176,60 @@ async function init() {
   // Always show the trust gate — owner preview is handled by the inline viewer
   // in app.js and never navigates to card.html, so no mode param is honoured here.
   showTrustGate(trustId, fields, vcardText, relayTs);
+}
+
+// ---------------------------------------------------------------------------
+// Key entry — two-part sharing (recipient side)
+// ---------------------------------------------------------------------------
+
+/**
+ * The base link (part 1) was opened without the #key. Prompt the recipient
+ * to paste the key (part 2) they received in a separate message. The pasted
+ * key is validated locally, then written into the fragment via
+ * history.replaceState — it never travels to any server, and the assembled
+ * link keeps working on refresh.
+ */
+function showKeyEntry(naddr) {
+  document.getElementById('screen-loading').classList.add('hidden');
+
+  const section = document.getElementById('screen-keyentry');
+  const input   = document.getElementById('keyentry-input');
+  const errEl   = document.getElementById('keyentry-error');
+  const btn     = document.getElementById('btn-keyentry-open');
+
+  section.classList.remove('hidden');
+  input.focus();
+
+  const submit = async () => {
+    // Accept the key with or without a leading '#'
+    const key = input.value.trim().replace(/^#/, '').trim();
+    errEl.classList.add('hidden');
+
+    if (!key) {
+      errEl.textContent = t('keyentry.error.empty');
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    // Validate before touching the address bar — a wrong code stays in the
+    // input; nothing is written anywhere until it decodes.
+    try {
+      await fragmentToKey(key);
+    } catch {
+      errEl.textContent = t('keyentry.error.invalid');
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    history.replaceState(null, '', `${location.pathname}${location.search}#${key}`);
+
+    section.classList.add('hidden');
+    document.getElementById('screen-loading').classList.remove('hidden');
+    await openCard(naddr, key);
+  };
+
+  btn.addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
 }
 
 // ---------------------------------------------------------------------------
