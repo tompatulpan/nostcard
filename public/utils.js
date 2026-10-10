@@ -286,6 +286,9 @@ const isHost = (host, base) => host === base || host.endsWith('.' + base);
  * Ordered: first match wins.
  */
 const URL_PLATFORMS = [
+  // NostCard's own share links: <any host>/<subpath>/card?naddr=… — the path
+  // scheme is fixed by the app, the host is not (cards can be served anywhere).
+  { key: 'nostcard', icon: '🔐', match: (h, p, u) => /\/card\/?$/.test(p) && u.searchParams.has('naddr') },
   { key: 'nostr',     icon: '⚡', schemes: ['nostr:'], match: h =>
       isHost(h, 'snort.social') || isHost(h, 'primal.net') || isHost(h, 'nos.app') ||
       isHost(h, 'coracle.social') || isHost(h, 'njump.me') || isHost(h, 'nostur.app') ||
@@ -330,7 +333,7 @@ export function detectUrlPlatform(raw) {
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
   const host = u.hostname.toLowerCase();
   for (const p of URL_PLATFORMS) {
-    if (p.match(host, u.pathname)) return p;
+    if (p.match(host, u.pathname, u)) return p;
   }
   return null;
 }

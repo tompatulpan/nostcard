@@ -100,6 +100,7 @@
   "field.type.other": "Other",
   "field.adr.type.label": "Address",
   "platform.website": "Website",
+  "platform.nostcard": "NostCard",
   "platform.nostr": "Nostr",
   "platform.github": "GitHub",
   "platform.linkedin": "LinkedIn",

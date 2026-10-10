@@ -91,6 +91,9 @@ clearRateLimit('t');
 assert.strictEqual(checkRateLimit('t', opts).allowed, true);
 
 // --- URL platform detection -------------------------------------------------
+assert.strictEqual(detectUrlPlatform('https://app.example.org/card?naddr=abc#key')?.key, 'nostcard');       // own share link
+assert.strictEqual(detectUrlPlatform('https://user.github.io/nostcard/card?naddr=x&dl=1#k')?.key, 'nostcard'); // subpath + dl variant
+assert.strictEqual(detectUrlPlatform('https://example.com/card')?.key, undefined);             // /card without naddr → plain website
 assert.strictEqual(detectUrlPlatform('https://github.com/alice')?.key, 'github');
 assert.strictEqual(detectUrlPlatform('https://www.instagram.com/alice/')?.key, 'instagram');   // www. prefix
 assert.strictEqual(detectUrlPlatform('https://m.facebook.com/alice')?.key, 'facebook');       // m. subdomain
