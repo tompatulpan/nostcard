@@ -22,7 +22,7 @@ const { default: assert } = await import('node:assert');
 const {
   STORAGE_KEYS, readJson, writeJson,
   htmlEscape, makeInitials, bytesToHex, hexToBytes, bytesToBase64url, base64urlToBytes,
-  sameSharedCardUrl, isSafeLinkUrl, getTrust, setTrust,
+  sameSharedCardUrl, isSafeLinkUrl, getTrust, setTrust, detectUrlPlatform,
   debounce, checkRateLimit, recordRateLimitedAttempt, clearRateLimit,
 } = await import('../public/utils.js');
 
@@ -89,6 +89,26 @@ assert.strictEqual(locked.allowed, false);
 assert.ok(locked.waitMs > 0 && locked.waitMs <= 2000);
 clearRateLimit('t');
 assert.strictEqual(checkRateLimit('t', opts).allowed, true);
+
+// --- URL platform detection -------------------------------------------------
+assert.strictEqual(detectUrlPlatform('https://github.com/alice')?.key, 'github');
+assert.strictEqual(detectUrlPlatform('https://www.instagram.com/alice/')?.key, 'instagram');   // www. prefix
+assert.strictEqual(detectUrlPlatform('https://m.facebook.com/alice')?.key, 'facebook');       // m. subdomain
+assert.strictEqual(detectUrlPlatform('https://mastodon.social/@alice')?.key, 'mastodon');
+assert.strictEqual(detectUrlPlatform('https://fosstodon.org/@alice')?.key, 'mastodon');        // /@handle fediverse convention
+assert.strictEqual(detectUrlPlatform('https://bsky.app/profile/alice.bsky.social')?.key, 'bluesky');
+assert.strictEqual(detectUrlPlatform('nostr:npub1abcdefgh')?.key, 'nostr');                   // nostr: scheme
+assert.strictEqual(detectUrlPlatform('https://primal.net/p/npub1abc')?.key, 'nostr');         // known web client
+assert.strictEqual(detectUrlPlatform('https://signal.me/#p/+46700000000')?.key, 'signal');   // signal.me profile link
+assert.strictEqual(detectUrlPlatform('https://signal.link/#p/eu/')?.key, 'signal');           // signal.link profile link
+assert.strictEqual(detectUrlPlatform('DCACCOUNT:https://chat.example.org/abc')?.key, 'deltachat'); // chatmail invite (case-insensitive)
+assert.strictEqual(detectUrlPlatform('OPENPGP4FPR:abc123#a=alice%40example.org')?.key, 'deltachat'); // verification QR string
+assert.strictEqual(detectUrlPlatform('https://delta.chat/en/')?.key, 'deltachat');             // delta.chat website
+assert.strictEqual(detectUrlPlatform('github.com/alice')?.key, 'github');                     // scheme-less input
+assert.strictEqual(detectUrlPlatform('https://example.se/om')?.key, undefined);               // plain website → null
+assert.strictEqual(detectUrlPlatform(''), null);
+assert.strictEqual(detectUrlPlatform('javascript:alert(1)'), null);                          // non-http scheme → null
+assert.strictEqual(detectUrlPlatform('not a url at all'), null);
 
 // --- debounce ---------------------------------------------------------------
 let calls = 0;

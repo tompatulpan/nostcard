@@ -272,6 +272,69 @@ export function setTrust(trustId) {
 }
 
 // ---------------------------------------------------------------------------
+// URL platform detection (websites vs. social profiles)
+// ---------------------------------------------------------------------------
+
+/** host === base or any subdomain of base (www., m., …) */
+const isHost = (host, base) => host === base || host.endsWith('.' + base);
+
+/**
+ * Known platforms a card's URL field may point at. Detection is purely
+ * presentational — it changes the icon shown to recipients and in the editor,
+ * never the stored vCard data — so no migration is needed for existing cards.
+ * Ordered: first match wins.
+ */
+const URL_PLATFORMS = [
+  { key: 'nostr',     icon: '⚡', schemes: ['nostr:'], match: h =>
+      isHost(h, 'snort.social') || isHost(h, 'primal.net') || isHost(h, 'nos.app') ||
+      isHost(h, 'coracle.social') || isHost(h, 'njump.me') || isHost(h, 'nostur.app') ||
+      isHost(h, 'iris.to') },
+  { key: 'github',    icon: '🐙', match: h => isHost(h, 'github.com') },
+  { key: 'linkedin',  icon: '💼', match: h => isHost(h, 'linkedin.com') || isHost(h, 'lnkd.in') },
+  { key: 'x',         icon: '𝕏',  match: h => isHost(h, 'x.com') || isHost(h, 'twitter.com') },
+  { key: 'instagram', icon: '📸', match: h => isHost(h, 'instagram.com') },
+  { key: 'threads',   icon: '🧵', match: h => isHost(h, 'threads.net') || isHost(h, 'threads.com') },
+  { key: 'bluesky',   icon: '🦋', match: h => isHost(h, 'bsky.app') },
+  { key: 'tiktok',    icon: '🎵', match: h => isHost(h, 'tiktok.com') },
+  { key: 'youtube',   icon: '📺', match: h => isHost(h, 'youtube.com') || isHost(h, 'youtu.be') },
+  { key: 'facebook',  icon: '📘', match: h => isHost(h, 'facebook.com') || isHost(h, 'fb.com') || isHost(h, 'fb.me') },
+  { key: 'telegram',  icon: '✈️', match: h => isHost(h, 't.me') || isHost(h, 'telegram.me') },
+  { key: 'whatsapp',  icon: '💬', match: h => isHost(h, 'wa.me') || isHost(h, 'chat.whatsapp.com') },
+  { key: 'signal',    icon: '🔒', match: h => isHost(h, 'signal.me') || isHost(h, 'signal.link') },
+  { key: 'deltachat', icon: '📨', schemes: ['dcaccount:', 'openpgp4fpr:'], match: h =>
+      isHost(h, 'delta.chat') || isHost(h, 'deltachat.de') },
+  { key: 'twitch',    icon: '🎮', match: h => isHost(h, 'twitch.tv') },
+  { key: 'reddit',    icon: '👽', match: h => isHost(h, 'reddit.com') },
+  // Mastodon has no fixed domain — match known instances plus the /@handle
+  // profile-path convention shared by most fediverse software.
+  { key: 'mastodon',  icon: '🐘', match: (h, p) => /(^|\.)mastodon\./.test(h) || /^\/@/.test(p) },
+];
+
+/**
+ * Detect which known platform a URL points at, for icon display.
+ * Accepts scheme-less input ("github.com/alice") the way a user might type it.
+ * @param {string} raw
+ * @returns {{ key: string, icon: string, scheme?: string } | null}
+ *   the matched platform, or null for plain websites / unparseable input
+ */
+export function detectUrlPlatform(raw) {
+  const val = String(raw || '').trim();
+  if (!val) return null;
+  for (const p of URL_PLATFORMS) {
+    if (p.schemes?.some(s => val.toLowerCase().startsWith(s))) return p;
+  }
+  let u;
+  try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(val) ? val : 'https://' + val.replace(/^\/+/, '')); }
+  catch { return null; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  const host = u.hostname.toLowerCase();
+  for (const p of URL_PLATFORMS) {
+    if (p.match(host, u.pathname)) return p;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Contact rendering (shared by card.js and the inline viewer in app.js)
 // ---------------------------------------------------------------------------
 
@@ -344,7 +407,10 @@ export function appendContactRows(container, fields, row, { typeLabel } = {}) {
   const urls = Array.isArray(fields.url) ? fields.url : (fields.url ? [{ value: fields.url }] : []);
   for (const urlItem of urls) {
     const val = typeof urlItem === 'string' ? urlItem : urlItem.value;
-    if (val && val.trim()) container.appendChild(row('🔗', 'website', val.trim(), val.trim()));
+    if (val && val.trim()) {
+      const platform = detectUrlPlatform(val.trim());
+      container.appendChild(row(platform ? platform.icon : '🔗', platform ? platform.key : 'website', val.trim(), val.trim()));
+    }
   }
   const notes = Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []);
   for (const noteItem of notes) {

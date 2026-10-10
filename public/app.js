@@ -37,7 +37,7 @@ import {
   STORAGE_KEYS, readJson, writeJson,
   htmlEscape, makeInitials, extractNaddrFromUrl, sameSharedCardUrl, isSafeLinkUrl,
   bytesToHex, hexToBytes, bytesToBase64url, base64urlToBytes,
-  getTrust, setTrust, contactFieldRow, appendContactRows, downloadVcf,
+  getTrust, setTrust, contactFieldRow, appendContactRows, downloadVcf, detectUrlPlatform,
   reportError, debounce, checkRateLimit, recordRateLimitedAttempt, clearRateLimit,
 } from './utils.js';
 
@@ -594,6 +594,20 @@ function addDynamicField(listId, type, placeholder, value = '', selectedType = '
   else { input.placeholder = placeholder; input.rows = 3; }
   input.value = value;
 
+  // Website rows: live platform icon (🔗 plain site → 🐙 GitHub, 🐘 Mastodon, …)
+  let urlIcon = null;
+  if (type === 'url') {
+    urlIcon = document.createElement('span');
+    urlIcon.className = 'dynamic-url-icon';
+    const updateIcon = () => {
+      const p = detectUrlPlatform(input.value);
+      urlIcon.textContent = p ? p.icon : '🔗';
+      urlIcon.title = p ? t('platform.' + p.key) : '';
+    };
+    input.addEventListener('input', updateIcon);
+    updateIcon();
+  }
+
   const removeBtn = document.createElement('button');
   removeBtn.type      = 'button';
   removeBtn.className = 'btn btn-danger btn-sm';
@@ -614,6 +628,7 @@ function addDynamicField(listId, type, placeholder, value = '', selectedType = '
   } else {
     row.appendChild(input);
   }
+  if (urlIcon) row.insertBefore(urlIcon, row.firstChild);
   row.appendChild(removeBtn);
   list.appendChild(row);
   input.focus();

@@ -184,6 +184,16 @@ textarea { resize: vertical; }
 
 .dynamic-row .dynamic-input { flex: 1; }
 
+/* Live platform icon on website rows (🔗 plain site, 🐙 GitHub, 🐘 Mastodon, …) */
+.dynamic-url-icon {
+  flex-shrink: 0;
+  width: 1.6em;
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: center;
+  cursor: default;
+}
+
 .dynamic-type-select {
   flex-shrink: 0;
   padding: 8px 10px;

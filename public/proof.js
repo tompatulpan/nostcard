@@ -16,7 +16,7 @@ import { naddrDecode, fetchCard } from './nostr.js';
 import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard } from './vcard.js';
 import { initI18n, t, setLang, getCurrentLang, localeHtml } from './i18n.js';
-import { htmlEscape } from './utils.js';
+import { htmlEscape, detectUrlPlatform } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -170,7 +170,10 @@ async function runStep2(event, key) {
   for (const e of (fields.email || [])) { rows += fieldRow('✉️', e.value); }
   for (const o of (fields.org   || [])) { rows += fieldRow('🏢', o); }
   for (const ti of (fields.title|| [])) { rows += fieldRow('💼', ti); }
-  for (const u of (fields.url   || [])) { rows += fieldRow('🔗', u.value); }
+  for (const u of (fields.url   || [])) {
+    const p = detectUrlPlatform(u.value);
+    rows += fieldRow(p ? p.icon : '🔗', u.value);
+  }
   for (const n of (fields.note  || [])) { rows += fieldRow('📝', n); }
   // ADR — address fields (same format as card.js / inline viewer)
   for (const adr of (fields.adr || [])) {
