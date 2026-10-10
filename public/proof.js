@@ -17,6 +17,7 @@ import { fragmentToKey, decryptVCard } from './crypto.js';
 import { parseVCard } from './vcard.js';
 import { initI18n, t, setLang, getCurrentLang, localeHtml } from './i18n.js';
 import { htmlEscape, detectUrlPlatform } from './utils.js';
+import { brandIconSvg } from './brand-icons.js';
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -172,7 +173,7 @@ async function runStep2(event, key) {
   for (const ti of (fields.title|| [])) { rows += fieldRow('💼', ti); }
   for (const u of (fields.url   || [])) {
     const p = detectUrlPlatform(u.value);
-    rows += fieldRow(p ? p.icon : '🔗', u.value);
+    rows += fieldRow(brandIconSvg(p ? p.key : 'website'), u.value);
   }
   for (const n of (fields.note  || [])) { rows += fieldRow('📝', n); }
   // ADR — address fields (same format as card.js / inline viewer)

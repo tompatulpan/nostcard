@@ -40,6 +40,7 @@ import {
   getTrust, setTrust, contactFieldRow, appendContactRows, downloadVcf, detectUrlPlatform,
   reportError, debounce, checkRateLimit, recordRateLimitedAttempt, clearRateLimit,
 } from './utils.js';
+import { brandIconSvg } from './brand-icons.js';
 
 // Absolute path to card.html relative to this page — lets the app live under a
 // subpath (e.g. GitHub Pages project sites at username.github.io/nostcard/).
@@ -594,15 +595,16 @@ function addDynamicField(listId, type, placeholder, value = '', selectedType = '
   else { input.placeholder = placeholder; input.rows = 3; }
   input.value = value;
 
-  // Website rows: live platform icon (🔗 plain site → 🐙 GitHub, 🐘 Mastodon, …)
+  // Website rows: live platform icon (plain site → GitHub, Mastodon, …)
   let urlIcon = null;
   if (type === 'url') {
     urlIcon = document.createElement('span');
     urlIcon.className = 'dynamic-url-icon';
     const updateIcon = () => {
-      const p = detectUrlPlatform(input.value);
-      urlIcon.textContent = p ? p.icon : '🔗';
-      urlIcon.title = p ? t('platform.' + p.key) : '';
+      const p  = detectUrlPlatform(input.value);
+      const key = p ? p.key : 'website';
+      urlIcon.innerHTML = brandIconSvg(key) || (p ? p.icon : '🔗'); // developer-controlled markup
+      urlIcon.title = t('platform.' + key);
     };
     input.addEventListener('input', updateIcon);
     updateIcon();

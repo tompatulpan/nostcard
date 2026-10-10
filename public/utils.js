@@ -21,6 +21,7 @@
  */
 
 import { sameCardAddress } from './nostr.js';
+import { brandIconSvg } from './brand-icons.js';
 
 // ---------------------------------------------------------------------------
 // Storage keys — every localStorage key in the app, as named constants
@@ -342,7 +343,9 @@ export function detectUrlPlatform(raw) {
  * Build one contact field row as a DOM element. Href values are filtered to
  * safe schemes (http(s):, tel:, mailto:) — anything else (javascript:, data:,
  * …) is rendered as plain text instead of a link.
- * @param {string} icon     emoji label shown in the icon slot
+ * @param {string|{platform: string, emoji?: string}} icon
+ *   emoji label shown in the icon slot, or a platform descriptor rendered as
+ *   the real brand SVG (falls back to the emoji if no icon exists)
  * @param {string} type     CSS modifier for the row (`contact-field--<type>`)
  * @param {string} text     displayed value (already user-controlled — set via textContent)
  * @param {string|null} href link target, or null for non-link rows
@@ -353,8 +356,14 @@ export function contactFieldRow(icon, type, text, href) {
   row.className = `field-row contact-field contact-field--${type}`;
 
   const iconEl = document.createElement('span');
-  iconEl.className   = 'field-icon';
-  iconEl.textContent = icon;
+  iconEl.className = 'field-icon';
+  if (icon && typeof icon === 'object' && icon.platform) {
+    const svg = brandIconSvg(icon.platform);
+    if (svg) iconEl.innerHTML = svg;          // developer-controlled markup only
+    else if (icon.emoji) iconEl.textContent = icon.emoji;
+  } else {
+    iconEl.textContent = icon;
+  }
 
   const valueEl = document.createElement('span');
   valueEl.className = 'field-value';
@@ -409,7 +418,9 @@ export function appendContactRows(container, fields, row, { typeLabel } = {}) {
     const val = typeof urlItem === 'string' ? urlItem : urlItem.value;
     if (val && val.trim()) {
       const platform = detectUrlPlatform(val.trim());
-      container.appendChild(row(platform ? platform.icon : '🔗', platform ? platform.key : 'website', val.trim(), val.trim()));
+      const key = platform ? platform.key : 'website';
+      const emoji = platform ? platform.icon : '🔗';
+      container.appendChild(row({ platform: key, emoji }, key, val.trim(), val.trim()));
     }
   }
   const notes = Array.isArray(fields.note) ? fields.note : (fields.note ? [fields.note] : []);

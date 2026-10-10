@@ -184,7 +184,7 @@ textarea { resize: vertical; }
 
 .dynamic-row .dynamic-input { flex: 1; }
 
-/* Live platform icon on website rows (🔗 plain site, 🐙 GitHub, 🐘 Mastodon, …) */
+/* Live platform icon on website rows (globe for plain sites, brand logos otherwise) */
 .dynamic-url-icon {
   flex-shrink: 0;
   width: 1.6em;
@@ -567,6 +567,16 @@ textarea { resize: vertical; }
 }
 
 .field-icon { font-size: 18px; line-height: 1.4; flex-shrink: 0; }
+
+/* Real brand SVG icons (globe for websites, logos for social platforms) */
+.platform-icon {
+  display: block;
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.field-icon .platform-icon { margin-top: .1em; }
+.dynamic-url-icon .platform-icon { margin: 0 auto; }
 
 .field-value { font-size: 14px; word-break: break-word; }
 
