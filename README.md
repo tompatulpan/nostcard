@@ -18,10 +18,6 @@ The card data lives on Nostr relays, not on any particular website. NostCard is 
 - The **relay** only ever sees ciphertext. It cannot read the contact data.
 - Updating a card re-publishes a new event; relays auto-replace it (same `d` tag). No API token needed.
 
-### Event kinds
-
-Cards are published as `kind:36350` (addressable range; the number nods to RFC 6350, the vCard spec). Earlier app versions used `kind:30402`, which belongs to NIP-99 (classified listings) — those events are no longer read, and links carrying the old kind no longer open. Deleting a card sends a deletion request for both addresses, so pre-switch events are removed from relays too.
-
 ### Signing identity
 
 Each card is signed by its own Nostr keypair, generated in your browser. At creation you can instead paste an existing private key (`nsec…` or 64-char hex) to sign the card with your real Nostr identity — recipients can then verify the card against your known `npub` on any Nostr client. The public key is visible on the relays either way; using your main identity publicly links the card to it.
