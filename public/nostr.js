@@ -516,6 +516,17 @@ export function naddrEncode(npub, cardId, relays) {
 }
 
 /**
+ * Encode a hex public key as an npub bech32 string (NIP-19) for display and
+ * copy-paste into other Nostr clients. Throws on invalid hex — callers wrap.
+ *
+ * @param {string} npub Owner's public key (hex)
+ * @returns {string} e.g. "npub1abc…"
+ */
+export function npubEncode(npub) {
+  return nip19.npubEncode(npub);
+}
+
+/**
  * Decode an naddr bech32 string.
  * Throws if the string is malformed or not an naddr — callers must wrap in try/catch.
  *

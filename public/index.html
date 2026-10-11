@@ -252,6 +252,34 @@
       </div>
     </div>
 
+    <!-- ── Create card wizard modal ─────────────────────────────────────── -->
+    <div id="modal-create" class="modal-overlay hidden">
+      <div class="modal">
+        <!-- Step 1: card name -->
+        <div id="create-step-name">
+          <h3 data-i18n="create.wizard.name.heading">Create a card</h3>
+          <p class="muted" data-i18n="create.wizard.name.body">Give your card a name (e.g. Work, Personal, Minimal).</p>
+          <input id="create-name-input" type="text" data-i18n-placeholder="dialog.create.default" />
+          <div class="modal-actions">
+            <button id="btn-create-cancel" class="btn btn-ghost" data-i18n="btn.cancel">Cancel</button>
+            <button id="btn-create-next" class="btn btn-primary" data-i18n="btn.next">Next</button>
+          </div>
+        </div>
+        <!-- Step 2: optional Nostr identity -->
+        <div id="create-step-nsec" class="hidden">
+          <h3 data-i18n="create.wizard.nsec.heading">Nostr identity — optional</h3>
+          <p class="muted" data-i18n="dialog.create.identity.prompt">Optional, for Nostr users: paste your existing Nostr private key (nsec…) to sign this card with your real Nostr identity. If you don't know what an nsec is, just leave this empty — a fresh anonymous identity is generated automatically, which is what most people want.</p>
+          <input id="create-nsec-input" type="text" autocomplete="off" spellcheck="false" data-i18n-placeholder="create.wizard.nsec.placeholder" />
+          <p id="create-nsec-error" class="create-error hidden"></p>
+          <div class="modal-actions">
+            <button id="btn-create-back" class="btn btn-ghost" data-i18n="btn.back">Back</button>
+            <button id="btn-create-skip" class="btn btn-ghost" data-i18n="create.wizard.btn.skip">Skip — anonymous identity</button>
+            <button id="btn-create-finish" class="btn btn-primary" data-i18n="create.wizard.btn.create">Create card</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Share modal ─────────────────────────────────────────────────── -->
     <div id="modal-share" class="modal-overlay hidden">
       <div class="modal">

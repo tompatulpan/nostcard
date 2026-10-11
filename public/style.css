@@ -828,6 +828,20 @@ kbd {
   box-sizing: border-box;
 }
 
+/* ── Create card wizard modal ────────────────────────────────────────────── */
+
+/* Three buttons can outgrow the modal's content box (buttons are nowrap);
+ * wrapping keeps them inside the padding instead of overflowing to the left. */
+#modal-create .modal-actions {
+  flex-wrap: wrap;
+}
+
+.create-error {
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+  color: var(--danger);
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 720px) {

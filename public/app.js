@@ -29,7 +29,7 @@
 
 import { generateKey, encryptVCard, decryptVCard, keyToFragment, fragmentToKey, generateRandom } from './crypto.js';
 import { buildVCard, parseVCard } from './vcard.js';
-import { generateKeypair, derivePublicKey, parseSecretKey, publishCard, fetchCard, deleteCardVerified, naddrEncode, naddrDecode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
+import { generateKeypair, derivePublicKey, parseSecretKey, publishCard, fetchCard, deleteCardVerified, naddrEncode, naddrDecode, npubEncode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } from './i18n.js';
 import { generateSyncPassphrase, deriveSyncIdentity, isValidSyncPassphrase, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
@@ -397,7 +397,12 @@ async function openEditor(id) {
     const nameInput = document.getElementById('card-name');
     if (nameInput) nameInput.value = cardForName.label || '';
     const npubEl = document.getElementById('editor-npub');
-    if (npubEl) npubEl.textContent = cardForName.npub || '';
+    // Stored as hex; displayed as NIP-19 npub — the format other Nostr
+    // clients accept, and recognisable as a *public* key, not a secret.
+    if (npubEl) {
+      try { npubEl.textContent = cardForName.npub ? npubEncode(cardForName.npub) : ''; }
+      catch { npubEl.textContent = cardForName.npub || ''; }
+    }
   }
 
   // Fetch latest from relay ONLY if we have no cached fields yet.
@@ -704,29 +709,103 @@ document.getElementById('btn-new-card').addEventListener('click', async () => {
   await promptCreateCard(document.getElementById('btn-new-card'));
 });
 
-async function promptCreateCard(btn) {
-  const label = prompt(t('dialog.create.prompt'), t('dialog.create.default'));
-  if (label === null) return;
+// Two-step create wizard (modal-create): card name → optional nsec identity.
+// Replaces the previous native prompt() calls — the browser-rendered "OK"
+// button could not be labelled per step and read as "finished" mid-flow.
+const createModal     = document.getElementById('modal-create');
+const createStepName  = document.getElementById('create-step-name');
+const createStepNsec  = document.getElementById('create-step-nsec');
+const createNameInput = document.getElementById('create-name-input');
+const createNsecInput = document.getElementById('create-nsec-input');
+const createNsecError = document.getElementById('create-nsec-error');
 
-  // Optional: sign with the user's existing Nostr identity instead of a fresh
-  // anonymous one. Empty input → fresh keypair; Cancel → abort creation.
-  const nsecInput = prompt(t('dialog.create.identity.prompt'), '');
-  if (nsecInput === null) return;
+let createWizardResolve = null;
 
+/** Show one wizard step ('name' or 'nsec'); clears any inline error. */
+function setCreateWizardStep(step) {
+  const onName = step === 'name';
+  createStepName.classList.toggle('hidden', !onName);
+  createStepNsec.classList.toggle('hidden', onName);
+  createNsecError.classList.add('hidden');
+}
+
+/**
+ * Open the create-card wizard. Resolves with
+ * { label: string, identityNsec: Uint8Array|null } once the user confirms,
+ * or null if cancelled at any step. A pasted nsec is validated before the
+ * promise resolves, so callers never see an invalid key.
+ * @returns {Promise<{ label: string, identityNsec: Uint8Array|null }|null>}
+ */
+function openCreateCardWizard() {
+  return new Promise(resolve => {
+    createWizardResolve = resolve;
+    createNameInput.value = '';
+    createNsecInput.value = '';
+    setCreateWizardStep('name');
+    createModal.classList.remove('hidden');
+    createNameInput.focus();
+  });
+}
+
+/** Close the wizard and hand the result back to the awaiting creator. */
+function closeCreateCardWizard(result) {
+  createModal.classList.add('hidden');
+  const resolve = createWizardResolve;
+  createWizardResolve = null;
+  if (resolve) resolve(result);
+}
+
+document.getElementById('btn-create-cancel').addEventListener('click', () => closeCreateCardWizard(null));
+
+document.getElementById('btn-create-next').addEventListener('click', () => {
+  setCreateWizardStep('nsec');
+  createNsecInput.focus();
+});
+
+document.getElementById('btn-create-back').addEventListener('click', () => {
+  setCreateWizardStep('name');
+  createNameInput.focus();
+});
+
+document.getElementById('btn-create-skip').addEventListener('click', () => {
+  closeCreateCardWizard({ label: createNameInput.value.trim(), identityNsec: null });
+});
+
+document.getElementById('btn-create-finish').addEventListener('click', () => {
+  const raw = createNsecInput.value.trim();
   let identityNsec = null;
-  if (nsecInput.trim()) {
+  if (raw) {
     try {
-      identityNsec = parseSecretKey(nsecInput);
+      identityNsec = parseSecretKey(raw);
     } catch {
-      alert(t('dialog.create.identity.invalid'));
+      createNsecError.textContent = t('create.wizard.nsec.invalid');
+      createNsecError.classList.remove('hidden');
       return;
     }
   }
+  closeCreateCardWizard({ label: createNameInput.value.trim(), identityNsec });
+});
+
+// Enter advances the current step; Escape cancels without creating anything
+createNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-create-next').click();
+  if (e.key === 'Escape') closeCreateCardWizard(null);
+});
+createNsecInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-create-finish').click();
+  if (e.key === 'Escape') closeCreateCardWizard(null);
+});
+
+async function promptCreateCard(btn) {
+  // Card name, then the optional Nostr identity: Skip (or an empty field) →
+  // fresh anonymous keypair; Cancel at any point → abort creation.
+  const input = await openCreateCardWizard();
+  if (!input) return;
 
   btn.disabled    = true;
   btn.textContent = t('status.creating');
   try {
-    await createCard(label.trim() || t('dialog.create.default'), null, identityNsec);
+    await createCard(input.label || t('dialog.create.default'), null, input.identityNsec);
   } catch (err) {
     alert(t('alert.create.failed', { error: err.message }));
   } finally {
