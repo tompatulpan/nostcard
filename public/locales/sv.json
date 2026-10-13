@@ -169,7 +169,7 @@
   "sync.btn.push": "Skicka",
   "sync.btn.pull": "Hämta",
   "sync.btn.rotate": "Byt lösenfras",
-  "sync.btn.rotate.title": "Generera en ny lösenfras; gammal data blir oåtkomlig",
+  "sync.btn.rotate.title": "Avveckla nuvarande ögonblicksbild och generera en ny lösenfras",
   "sync.btn.delete": "Radera synkad data",
   "sync.btn.delete.title": "Bästa-möjliga-radering av den synkade ögonblicksbilden från reläer",
   "sync.status.lastPushed": "Senast skickad: {{time}}",
@@ -206,7 +206,7 @@
   "dialog.logout.confirm": "Detta kommer att ta bort från den här enheten:\n\n• Alla kortuppgifter (privata nycklar + krypteringsnycklar)\n• All cachad kontaktdata\n• Alla sparade kort (mottagna länkar)\n• Din cachade synk-lösenfras-identitet (om sådan finns)\n\nDina kort finns kvar på reläerna och kan återställas från en säkerhetskopia. Fortsätta?",
   "dialog.v1import.confirm": "Det här är en äldre säkerhetskopia (v1). Vi importerar dina kontaktdata och genererar nya Nostr-identiteter.\n\nObs: gamla delningslänkar (med ?id=...&tok=...) fungerar INTE med den nya appen.",
   "dialog.sync.delete.confirm": "Radera den synkade ögonblicksbilden från reläer?\n\nDetta är bästa möjliga försök — vissa reläer kan fortsätta servera den. Dina lokala kort påverkas inte.",
-  "dialog.sync.rotate.confirm": "Byt synk-lösenfras?\n\nDetta glömmer den nuvarande synk-identiteten på denna enhet. Den gamla synkade datan blir oåtkomlig utan den gamla lösenfrasen. Dina lokala kort påverkas inte.",
+  "dialog.sync.rotate.confirm": "Byt synk-lösenfras?\n\nDetta skriver över den gamla synkade ögonblicksbilden på reläerna med en tom, begär radering och glömmer synk-identiteten på denna enhet. Radering är bästa möjliga försök: ett relä som behållit en äldre kopia kan fortfarande servera den till den som har den gamla lösenfrasen. Om den gamla lösenfrasen kan ha läckt, byt även dina kortnycklar. Dina lokala kort påverkas inte.",
 
   "alert.create.failed": "Det gick inte att skapa kortet: {{error}}",
   "alert.import.v1": "Importerade {{n}} kort. Dela nya länkar från redigeraren.",
@@ -219,6 +219,7 @@
   "alert.links.imported": ", {{n}} sparade länkar importerade",
   "alert.sync.error": "Synkfel: {{error}}",
   "alert.sync.deleted": "Synkad ögonblicksbild raderad från reläer.",
+  "alert.sync.rotate.partial": "Kunde inte skriva över den gamla ögonblicksbilden på något relä. Den kan fortfarande vara läsbar med den gamla lösenfrasen — om den läckt, byt dina kortnycklar.",
   "alert.delete.partial": "Raderingsbegäran har skickats, men {{relays}} svarar fortfarande med kortet. De reläerna kan vara långsamma med att tillämpa eller inte följa raderingsbegäranden (NIP-09) — den krypterade datan kan ligga kvar där.",
 
   "cv.loading": "Dekrypterar kontakt…",

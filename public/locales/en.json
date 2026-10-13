@@ -169,7 +169,7 @@
   "sync.btn.push": "Push",
   "sync.btn.pull": "Pull",
   "sync.btn.rotate": "Rotate passphrase",
-  "sync.btn.rotate.title": "Generate a new passphrase; old data becomes unreachable",
+  "sync.btn.rotate.title": "Retire the current snapshot and generate a new passphrase",
   "sync.btn.delete": "Delete synced data",
   "sync.btn.delete.title": "Best-effort delete of the synced snapshot from relays",
   "sync.status.lastPushed": "Last pushed: {{time}}",
@@ -206,7 +206,7 @@
   "dialog.logout.confirm": "This will remove from this device:\n\n• All card credentials (private keys + encryption keys)\n• All cached contact data\n• All saved cards (received links)\n• Your cached sync passphrase identity (if any)\n\nYour cards remain on the relays and can be restored from a backup. Continue?",
   "dialog.v1import.confirm": "This is a legacy backup (v1). We will import your contact data and generate new Nostr identities.\n\nNote: old share links (with ?id=...&tok=...) will NOT work with the new app.",
   "dialog.sync.delete.confirm": "Delete the synced snapshot from relays?\n\nThis is best-effort — some relays may keep serving it. Your local cards are unaffected.",
-  "dialog.sync.rotate.confirm": "Rotate the sync passphrase?\n\nThis forgets the current sync identity on this device. The old synced snapshot becomes unreachable without the old passphrase. Your local cards are unaffected.",
+  "dialog.sync.rotate.confirm": "Rotate the sync passphrase?\n\nThis overwrites the old synced snapshot on the relays with an empty one, requests its deletion, and forgets the sync identity on this device. Deletion is best-effort: a relay that kept an older copy could still serve it to anyone with the old passphrase. If the old passphrase may have leaked, also rotate your card keys. Your local cards are unaffected.",
 
   "alert.create.failed": "Failed to create card: {{error}}",
   "alert.import.v1": "Imported {{n}} card{{s}}. Share new links from the editor.",
@@ -219,6 +219,7 @@
   "alert.links.imported": ", {{n}} saved link{{s}} imported",
   "alert.sync.error": "Sync error: {{error}}",
   "alert.sync.deleted": "Synced snapshot deleted from relays.",
+  "alert.sync.rotate.partial": "Could not overwrite the old snapshot on any relay. It may still be readable with the old passphrase — if that passphrase leaked, rotate your card keys.",
   "alert.delete.partial": "Deletion request sent, but {{relays}} still serve this card. Those relays may be slow to apply or may not honour deletion requests (NIP-09) — the encrypted data may remain there.",
 
   "cv.loading": "Decrypting contact…",

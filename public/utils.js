@@ -52,6 +52,8 @@ export const STORAGE_KEYS = {
   syncIdentity: 'e2e:sync-identity',
   /** sync push/pull timestamps */
   syncMeta: 'e2e:sync-meta',
+  /** tombstones of deleted cards [{id, deletedAt}] so sync doesn't resurrect them */
+  deletedCards: 'e2e:deleted-cards',
   /** @type {Connection[]} */
   connections: 'e2e:connections',
   /** cached decrypted vCard fields of a paired peer — @param {string} id @returns {string} */

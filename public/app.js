@@ -91,6 +91,18 @@ function clearSyncIdentity() {
   localStorage.removeItem(STORAGE_KEYS.syncMeta);
 }
 
+function getDeletedCards() {
+  const list = readJson(STORAGE_KEYS.deletedCards, []);
+  return Array.isArray(list) ? list.filter(d => typeof d?.id === 'string') : [];
+}
+
+function addDeletedCard(id) {
+  const list = getDeletedCards();
+  if (list.some(d => d.id === id)) return;
+  list.push({ id, deletedAt: new Date().toISOString() });
+  writeJson(STORAGE_KEYS.deletedCards, list);
+}
+
 function getSyncMeta() {
   return readJson(STORAGE_KEYS.syncMeta, {});
 }
@@ -952,6 +964,7 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
 
   const remaining = getCards().filter(c => c.id !== activeCardId);
   saveCards(remaining);
+  addDeletedCard(card.id);
 
   // Clean up all localStorage entries related to this card
   // (connectionFields are keyed by connection id — they are cleaned up by
@@ -1599,6 +1612,7 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
   localStorage.removeItem(STORAGE_KEYS.cards);
   localStorage.removeItem(STORAGE_KEYS.savedLinks);
   localStorage.removeItem(STORAGE_KEYS.connections);
+  localStorage.removeItem(STORAGE_KEYS.deletedCards);
   clearSyncIdentity();
   activeCardId = null;
   location.reload();
@@ -2296,7 +2310,12 @@ document.getElementById('btn-restore-paste-cancel').addEventListener('click', ()
   document.getElementById('modal-restore').classList.add('hidden');
 });
 
-async function importBackup(json, { navigate = true } = {}) {
+async function importBackup(json, { navigate = true, fromSync = false } = {}) {
+  // Deletion tombstones only come from sync snapshots (authenticated by the
+  // passphrase); a manually restored file never deletes local cards.
+  if (fromSync) applyDeletionTombstones(json?.deletedCards);
+  const tombstoned = new Set(getDeletedCards().map(d => d.id));
+
   let cardPayloads = [], linkPayloads = [], fieldsMap = {}, connectionPayloads = [];
 
   if (json?.version === 3 && Array.isArray(json.cards)) {
@@ -2342,6 +2361,9 @@ async function importBackup(json, { navigate = true } = {}) {
 
   for (const payload of cardPayloads) {
     if (!payload?.id || !payload?.nsec || !payload?.key) { failed++; continue; }
+
+    // Deleted on another device — never resurrect it from a stale snapshot
+    if (fromSync && tombstoned.has(payload.id)) { skipped++; continue; }
 
     // Validate nsec looks like 64-char hex
     if (!/^[0-9a-f]{64}$/i.test(payload.nsec)) { failed++; continue; }
@@ -2418,8 +2440,12 @@ async function importBackup(json, { navigate = true } = {}) {
     if (!onNetwork) {
       // Card not on the relays at all — a restore must also re-publish it,
       // otherwise the card exists only locally and every shared link stays
-      // broken until the owner opens the editor and hits Save.
-      if (fieldsMap[payload.id]) {
+      // broken until the owner opens the editor and hits Save. A sync pull
+      // never re-publishes: a card missing from the relays may have been
+      // taken down deliberately, so the owner must Save it explicitly.
+      if (fromSync) {
+        unpublished++;
+      } else if (fieldsMap[payload.id]) {
         try {
           const aesKey    = await importCardKey(payload.key);
           const nsecBytes = hexToBytes(payload.nsec);
@@ -2510,7 +2536,33 @@ function buildSyncPayload() {
     const cached = localStorage.getItem(STORAGE_KEYS.fields(card.id));
     if (cached) { try { fields[card.id] = JSON.parse(cached); } catch {} }
   }
-  return { version: 3, exported: new Date().toISOString(), cards, savedLinks, connections, fields };
+  return { version: 3, exported: new Date().toISOString(), cards, savedLinks, connections, fields, deletedCards: getDeletedCards() };
+}
+
+/** Merge incoming deletion tombstones and drop any local cards they cover (local only — relays were handled by the deleting device) */
+function applyDeletionTombstones(incoming) {
+  if (!Array.isArray(incoming)) return;
+  const known = new Set(getDeletedCards().map(d => d.id));
+  const added = [];
+  for (const d of incoming) {
+    if (typeof d?.id !== 'string' || !/^[a-z0-9]{1,64}$/i.test(d.id) || known.has(d.id)) continue;
+    const deletedAt = typeof d.deletedAt === 'string' ? d.deletedAt : new Date().toISOString();
+    added.push({ id: d.id, deletedAt });
+    known.add(d.id);
+  }
+  if (added.length === 0) return;
+  writeJson(STORAGE_KEYS.deletedCards, [...getDeletedCards(), ...added]);
+  const ids = new Set(added.map(d => d.id));
+  const cards = getCards();
+  const remaining = cards.filter(c => !ids.has(c.id));
+  if (remaining.length === cards.length) return;
+  saveCards(remaining);
+  for (const c of cards.filter(c => ids.has(c.id))) {
+    localStorage.removeItem(STORAGE_KEYS.fields(c.id));
+    localStorage.removeItem(STORAGE_KEYS.relayStatus(c.id));
+    localStorage.removeItem(STORAGE_KEYS.trust(c.id));
+    localStorage.removeItem(STORAGE_KEYS.trust(`${c.npub}:${c.id}`));
+  }
 }
 
 /** Re-render whichever list screen (My Cards / Contacts) is currently visible, without navigating */
@@ -2650,7 +2702,7 @@ document.getElementById('btn-sync-join').addEventListener('click', async () => {
         createdAt:   new Date().toISOString(),
       });
       input.value = '';
-      await importBackup(pulled.payload, { navigate: false });
+      await importBackup(pulled.payload, { navigate: false, fromSync: true });
       refreshVisibleList();
       saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
 
@@ -2720,7 +2772,7 @@ document.getElementById('btn-sync-pull').addEventListener('click', async () => {
     if (!pulled) {
       setSyncStatus(t('sync.status.nothingFound'), true);
     } else {
-      await importBackup(pulled.payload, { navigate: false });
+      await importBackup(pulled.payload, { navigate: false, fromSync: true });
       refreshVisibleList();
       saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
       setSyncStatus(t('sync.status.pulled'), false);
@@ -2739,7 +2791,7 @@ document.getElementById('btn-sync-delete').addEventListener('click', async () =>
   const btn = document.getElementById('btn-sync-delete');
   btn.disabled = true;
   try {
-    await deleteSyncData(DEFAULT_RELAYS, hexToBytes(identity.syncNsecHex));
+    await deleteSyncData(DEFAULT_RELAYS, hexToBytes(identity.syncNsecHex), base64urlToBytes(identity.syncKeyRaw));
     clearSyncIdentity();
     document.getElementById('modal-sync').classList.add('hidden');
     alert(t('alert.sync.deleted'));
@@ -2752,6 +2804,20 @@ document.getElementById('btn-sync-delete').addEventListener('click', async () =>
 
 document.getElementById('btn-sync-rotate').addEventListener('click', async () => {
   if (!confirm(t('dialog.sync.rotate.confirm'))) return;
+  const identity = getSyncIdentity();
+  if (identity) {
+    const btn = document.getElementById('btn-sync-rotate');
+    btn.disabled = true;
+    try {
+      const results = await deleteSyncData(DEFAULT_RELAYS, hexToBytes(identity.syncNsecHex), base64urlToBytes(identity.syncKeyRaw));
+      if (!results.some(r => r.ok)) alert(t('alert.sync.rotate.partial'));
+    } catch (err) {
+      reportError(err, 'app.sync-rotate');
+      alert(t('alert.sync.rotate.partial'));
+    } finally {
+      btn.disabled = false;
+    }
+  }
   clearSyncIdentity();
   document.getElementById('sync-setup-section').classList.remove('hidden');
   document.getElementById('sync-manage-section').classList.add('hidden');

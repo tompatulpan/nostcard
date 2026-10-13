@@ -112,11 +112,18 @@ export async function pullSyncData(relays, syncNpub, syncKeyRaw) {
 }
 
 /**
- * Delete the sync snapshot from relays (best-effort, NIP-09).
+ * Retire the sync snapshot: overwrite it with an empty one (works on every
+ * relay, because replaceable events are always superseded), then publish a
+ * NIP-09 deletion (best-effort — not every relay honours it). The overwrite is
+ * what actually removes the card keys from relays that ignore deletions.
  * @param {string[]}   relays
  * @param {Uint8Array} syncNsec
- * @returns {Promise<void>}
+ * @param {Uint8Array} syncKeyRaw
+ * @returns {Promise<Array<{relay: string, ok: boolean}>>} overwrite results
  */
-export async function deleteSyncData(relays, syncNsec) {
+export async function deleteSyncData(relays, syncNsec, syncKeyRaw) {
+  const empty = { version: 3, exported: new Date().toISOString(), cards: [], savedLinks: [], connections: [], fields: {} };
+  const results = await pushSyncData(relays, syncNsec, syncKeyRaw, empty);
   await deleteSyncEvent(relays, syncNsec);
+  return results;
 }
