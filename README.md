@@ -11,6 +11,16 @@ Recipients open a single link in any browser — no app install, no account, no 
 
 The card data lives on Nostr relays, not on any particular website. NostCard is just one client: the same encrypted events can be read by any deployment of this app (any host, even `localhost`) or by any Nostr client that understands `kind:36350` events. If this app or its hosting domain disappears, your cards survive on the relays — see [Accessing a card without the original domain](#accessing-a-card-without-the-original-domain).
 
+## Why not just upload a `.vcf` to Dropbox?
+
+You could — and a static file is fine for a one-time handoff. NostCard exists for everything after that:
+
+1. **Privacy from the storage itself.** A cloud host sees your unencrypted personal data; a Nostr relay only ever sees AES-256-GCM ciphertext. The decryption key lives in the URL fragment (`#key`), which browsers never send to any server — the relay cannot read the card even if it wants to. (The share link itself is still the password; see [Trust models](README.md#trust-models).)
+2. **Links that keep working.** On a cloud provider, a share link lives only as long as that provider hosts your file — close the account, hit a quota, or move the file and the link is dead. NostCard republishes the card as a NIP-33 addressable event with the same d tag across multiple relays, so the link you shared keeps serving your latest details with no single provider able to switch it off.
+3. **Updateable contacts (roadmap).** Nostr ties a card to a public key (`npub`). If the card is signed with the owner's real identity, a future client could watch relays in the background and refresh the entry in a recipient's address book whenever the owner changes their number — no new link, no re-download. This is a direction, not a feature NostCard ships today.
+4. **A contact relationship** Not a one-off download. Receiving a NostCard link on a personal device saves it locally — the start of an address book of saved contacts that follows their owners' updates. In-person pairing (+ Connect) makes the exchange mutual: both people walk away with each other's card. A static file is download-and-done; there's nothing to build a contact list from.
+
+
 ## How it works
 
 ![Simplified overview of NostCard](docs/how-it-works-simple.svg)
