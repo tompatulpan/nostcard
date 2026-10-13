@@ -851,6 +851,13 @@ kbd {
   margin-top: 10px;
 }
 
+/* Four buttons (Skicka / Hämta / Byt lösenfras / Radera synkad data) can
+ * outgrow the modal's content box (buttons are nowrap); wrapping keeps them
+ * inside the padding instead of overflowing to the left, out of the box. */
+#modal-sync .modal-actions {
+  flex-wrap: wrap;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 720px) {
