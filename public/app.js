@@ -2548,12 +2548,17 @@ document.getElementById('btn-adv-sync').addEventListener('click', () => {
   openSyncModal();
 });
 
-document.getElementById('btn-sync-close').addEventListener('click', () => {
+/** Close the sync modal. The passphrase input is cleared so the one-time
+ *  reveal doesn't linger in the DOM (and in screen-reader/browser memory). */
+function closeSyncModal() {
   document.getElementById('modal-sync').classList.add('hidden');
-});
+  document.getElementById('sync-passphrase-value').value = '';
+}
+
+document.getElementById('btn-sync-close').addEventListener('click', closeSyncModal);
 
 document.getElementById('modal-sync').addEventListener('click', e => {
-  if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+  if (e.target === e.currentTarget) closeSyncModal();
 });
 
 async function setupSyncIdentity(passphrase) {
@@ -2622,24 +2627,37 @@ document.getElementById('btn-sync-join').addEventListener('click', async () => {
   const btn = document.getElementById('btn-sync-join');
   btn.disabled = true;
   try {
-    const { syncNpub, syncKeyRaw } = await setupSyncIdentity(passphrase);
-    input.value = '';
+    // Derive WITHOUT persisting first: a passphrase that finds nothing must
+    // not become a pushable identity on this device. A form-valid typo would
+    // otherwise leave the user holding the wrong identity, and a later Push
+    // would publish their full snapshot (all card nsecs + contact keys)
+    // encrypted under a passphrase no other device knows.
+    const { syncNsec, syncNpub, syncKeyRaw } = await deriveSyncIdentity(passphrase);
 
     const pulled = await pullSyncData(DEFAULT_RELAYS, syncNpub, syncKeyRaw);
     if (!pulled) {
       // A well-formed passphrase that finds no snapshot is a miss — count it.
+      // Stay on the setup form and keep the input so the user can retry.
       recordRateLimitedAttempt('sync-join', SYNC_JOIN_RATE_LIMIT);
       setSyncStatus(t('sync.status.nothingFound'), true);
     } else {
       clearRateLimit('sync-join');
+      // Proven passphrase — only now does it earn a place on this device.
+      saveSyncIdentity({
+        syncNsecHex: bytesToHex(syncNsec),
+        syncNpub,
+        syncKeyRaw:  bytesToBase64url(syncKeyRaw),
+        createdAt:   new Date().toISOString(),
+      });
+      input.value = '';
       await importBackup(pulled.payload, { navigate: false });
       refreshVisibleList();
       saveSyncMeta({ ...getSyncMeta(), lastPulledAt: new Date().toISOString() });
-    }
 
-    document.getElementById('sync-setup-section').classList.add('hidden');
-    document.getElementById('sync-manage-section').classList.remove('hidden');
-    if (pulled) setSyncStatus(t('sync.status.pulled'), false);
+      document.getElementById('sync-setup-section').classList.add('hidden');
+      document.getElementById('sync-manage-section').classList.remove('hidden');
+      setSyncStatus(t('sync.status.pulled'), false);
+    }
   } catch (err) {
     reportError(err, 'app.sync-join');
     alert(t('alert.sync.error', { error: err.message }));
@@ -2738,6 +2756,7 @@ document.getElementById('btn-sync-rotate').addEventListener('click', async () =>
   document.getElementById('sync-setup-section').classList.remove('hidden');
   document.getElementById('sync-manage-section').classList.add('hidden');
   document.getElementById('sync-passphrase-reveal').classList.add('hidden');
+  document.getElementById('sync-passphrase-value').value = '';
 });
 
 // ---------------------------------------------------------------------------

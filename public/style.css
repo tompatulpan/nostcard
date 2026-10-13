@@ -842,6 +842,15 @@ kbd {
   color: var(--danger);
 }
 
+/* ── Sync modal ───────────────────────────────────────────────────────────── */
+
+/* The setup section stacks controls inside .field-group, where labels and
+ * inputs carry no bottom margin — without this the buttons sit flush against
+ * the element above them. */
+#modal-sync .field-group .btn {
+  margin-top: 10px;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 720px) {
