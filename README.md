@@ -179,3 +179,6 @@ public/
   style.css    shared styles
   qrcode.js    QR code library
 ```
+
+## Acknowledgements
+* With the assistance of [Mistral Vibe](https://mistral.ai/).
