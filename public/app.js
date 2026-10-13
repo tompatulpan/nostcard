@@ -38,6 +38,7 @@ import {
   htmlEscape, makeInitials, extractNaddrFromUrl, sameSharedCardUrl, isSafeLinkUrl,
   bytesToHex, hexToBytes, bytesToBase64url, base64urlToBytes,
   getTrust, setTrust, contactFieldRow, appendContactRows, downloadVcf, detectUrlPlatform,
+  mergeFieldCaches,
   reportError, debounce, checkRateLimit, recordRateLimitedAttempt, clearRateLimit,
 } from './utils.js';
 import { brandIconSvg } from './brand-icons.js';
@@ -953,11 +954,12 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
   saveCards(remaining);
 
   // Clean up all localStorage entries related to this card
+  // (connectionFields are keyed by connection id — they are cleaned up by
+  // removeConnection, not here.)
   localStorage.removeItem(STORAGE_KEYS.fields(activeCardId));
   localStorage.removeItem(STORAGE_KEYS.relayStatus(activeCardId));
   localStorage.removeItem(STORAGE_KEYS.trust(activeCardId)); // legacy format
   localStorage.removeItem(STORAGE_KEYS.trust(`${card.npub}:${activeCardId}`));
-  localStorage.removeItem(STORAGE_KEYS.connectionFields(activeCardId));
 
   activeCardId = null;
   btn.disabled    = false;
@@ -965,6 +967,14 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
 
   if (undeletedRelays.length > 0) {
     alert(t('alert.delete.partial', { relays: undeletedRelays.join(', ') }));
+  }
+
+  // Refresh the sync snapshot so another device pulling a stale copy doesn't
+  // re-import (and re-publish) the deleted card. Fire-and-forget: the push
+  // must not block the deletion UI, and a failure only leaves the previous
+  // snapshot in place until the next manual push.
+  if (getSyncIdentity()) {
+    pushSyncSnapshot().catch(err => reportError(err, 'app.sync-push-after-delete'));
   }
 
   go(remaining.length === 0 ? '/setup' : '/cards');
@@ -2401,10 +2411,9 @@ async function importBackup(json, { navigate = true } = {}) {
     saveCards(cards);
     existingIds.add(payload.id);
 
-    if (fieldsMap[payload.id]) {
-      const fieldsWithTs = { ...fieldsMap[payload.id], __relayTs: Date.now() };
-      localStorage.setItem(STORAGE_KEYS.fields(payload.id), JSON.stringify(fieldsWithTs));
-    }
+    // The fields cache for every card (new and already-known) is filled by the
+    // shared mergeFieldCaches pass below, which keeps the snapshot's own
+    // __relayTs instead of stamping it with the import time.
 
     if (!onNetwork) {
       // Card not on the relays at all — a restore must also re-publish it,
@@ -2471,13 +2480,9 @@ async function importBackup(json, { navigate = true } = {}) {
   }
   saveConnections(existingConnections);
 
-  // Restore field cache
-  for (const [id, fieldData] of Object.entries(fieldsMap)) {
-    if (!localStorage.getItem(STORAGE_KEYS.fields(id))) {
-      const fieldsWithTs = { ...fieldData, __relayTs: Date.now() };
-      localStorage.setItem(STORAGE_KEYS.fields(id), JSON.stringify(fieldsWithTs));
-    }
-  }
+  // Merge field caches — newest __relayTs wins, so a sync pull picks up edits
+  // made on another device while a restore never downgrades newer local data.
+  mergeFieldCaches(fieldsMap);
 
   const linksPart = linksAdded > 0 ? t('alert.links.imported', { n: linksAdded, s: linksAdded !== 1 ? 's' : '' }) : '';
   const connsPart = connsAdded > 0 ? t('alert.connections.imported', { n: connsAdded, s: connsAdded !== 1 ? 's' : '' }) : '';
@@ -2567,7 +2572,7 @@ document.getElementById('btn-sync-generate').addEventListener('click', async () 
   btn.disabled = true;
   try {
     const passphrase = generateSyncPassphrase();
-    const { syncNsec, syncKeyRaw } = await setupSyncIdentity(passphrase);
+    await setupSyncIdentity(passphrase);
 
     document.getElementById('sync-passphrase-value').value = passphrase;
     document.getElementById('sync-passphrase-reveal').classList.remove('hidden');
@@ -2575,8 +2580,7 @@ document.getElementById('btn-sync-generate').addEventListener('click', async () 
     qrContainer.innerHTML = '';
     renderQR(qrContainer, passphrase);
 
-    const results = await pushSyncData(DEFAULT_RELAYS, syncNsec, syncKeyRaw, buildSyncPayload());
-    saveSyncMeta({ ...getSyncMeta(), lastPushedAt: new Date().toISOString() });
+    const results = await pushSyncSnapshot();
 
     document.getElementById('sync-setup-section').classList.add('hidden');
     document.getElementById('sync-manage-section').classList.remove('hidden');
@@ -2655,16 +2659,28 @@ document.getElementById('btn-sync-copy-passphrase').addEventListener('click', as
 // Debounced like Save: rapid clicks coalesce into one snapshot publish.
 document.getElementById('btn-sync-push').addEventListener('click', debounce(pushSyncNow, 300));
 
-async function pushSyncNow() {
+/**
+ * Push the current local state as the sync snapshot. Shared by the manual
+ * push button and best-effort background pushes after local changes (e.g.
+ * card deletion) that must not linger in a stale snapshot.
+ * @returns {Promise<Array<{relay: string, ok: boolean}> | null>} per-relay results, or null when no sync identity exists
+ */
+async function pushSyncSnapshot() {
   const identity = getSyncIdentity();
-  if (!identity) return;
+  if (!identity) return null;
+  const syncNsec   = hexToBytes(identity.syncNsecHex);
+  const syncKeyRaw = base64urlToBytes(identity.syncKeyRaw);
+  const results    = await pushSyncData(DEFAULT_RELAYS, syncNsec, syncKeyRaw, buildSyncPayload());
+  saveSyncMeta({ ...getSyncMeta(), lastPushedAt: new Date().toISOString() });
+  return results;
+}
+
+async function pushSyncNow() {
+  if (!getSyncIdentity()) return;
   const btn = document.getElementById('btn-sync-push');
   btn.disabled = true;
   try {
-    const syncNsec   = hexToBytes(identity.syncNsecHex);
-    const syncKeyRaw = base64urlToBytes(identity.syncKeyRaw);
-    const results    = await pushSyncData(DEFAULT_RELAYS, syncNsec, syncKeyRaw, buildSyncPayload());
-    saveSyncMeta({ ...getSyncMeta(), lastPushedAt: new Date().toISOString() });
+    const results = await pushSyncSnapshot();
     const allOk = results.every(r => r.ok);
     setSyncStatus(allOk ? t('sync.status.pushed') : t('sync.status.pushed.partial'), !allOk);
   } catch (err) {

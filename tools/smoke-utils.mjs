@@ -23,6 +23,7 @@ const {
   STORAGE_KEYS, readJson, writeJson,
   htmlEscape, makeInitials, bytesToHex, hexToBytes, bytesToBase64url, base64urlToBytes,
   sameSharedCardUrl, isSafeLinkUrl, getTrust, setTrust, detectUrlPlatform,
+  mergeFieldCaches,
   debounce, checkRateLimit, recordRateLimitedAttempt, clearRateLimit,
 } = await import('../public/utils.js');
 
@@ -112,6 +113,54 @@ assert.strictEqual(detectUrlPlatform('https://example.se/om')?.key, undefined); 
 assert.strictEqual(detectUrlPlatform(''), null);
 assert.strictEqual(detectUrlPlatform('javascript:alert(1)'), null);                          // non-http scheme → null
 assert.strictEqual(detectUrlPlatform('not a url at all'), null);
+
+// --- mergeFieldCaches (sync pull / restore, newest __relayTs wins) ---------
+const cacheOf = id => JSON.parse(store.get(STORAGE_KEYS.fields(id)));
+store.clear();
+
+// Absent local cache → incoming written, its own __relayTs preserved
+mergeFieldCaches({ c1: { fn: 'Alice', tel: ['1'], __relayTs: 1000 } });
+assert.deepStrictEqual(cacheOf('c1'), { fn: 'Alice', tel: ['1'], __relayTs: 1000 });
+
+// Local cache older than incoming → overwritten (edits from another device land)
+mergeFieldCaches({ c1: { fn: 'Alice B', __relayTs: 2000 } });
+assert.strictEqual(cacheOf('c1').fn, 'Alice B');
+assert.strictEqual(cacheOf('c1').__relayTs, 2000);
+
+// Local cache newer than incoming → kept (stale backup never downgrades)
+mergeFieldCaches({ c1: { fn: 'Old', __relayTs: 1500 } });
+assert.strictEqual(cacheOf('c1').fn, 'Alice B');
+assert.strictEqual(cacheOf('c1').__relayTs, 2000);
+
+// Incoming without __relayTs (old backup) → only fills absent caches
+mergeFieldCaches({ c1: { fn: 'NoTs' }, c2: { fn: 'NoTs2' } });
+assert.strictEqual(cacheOf('c1').fn, 'Alice B', 'ts-less incoming must not overwrite existing cache');
+assert.strictEqual(cacheOf('c2').fn, 'NoTs2', 'ts-less incoming must fill an absent cache');
+assert.ok(cacheOf('c2').__relayTs > 0, 'ts-less incoming gets stamped with import time');
+
+// Corrupt local cache → treated as absent, replaced
+store.set(STORAGE_KEYS.fields('c3'), '{not json');
+mergeFieldCaches({ c3: { fn: 'Fresh', __relayTs: 3000 } });
+assert.strictEqual(cacheOf('c3').fn, 'Fresh');
+
+// Bad input shapes → skipped without throwing
+mergeFieldCaches({ '': { fn: 'x' }, c4: null, c5: 'string', c6: { fn: 'ok', __relayTs: 1 } });
+assert.ok(!store.has(STORAGE_KEYS.fields('')), 'empty id skipped');
+assert.ok(!store.has(STORAGE_KEYS.fields('c4')), 'null entry skipped');
+assert.ok(!store.has(STORAGE_KEYS.fields('c5')), 'non-object entry skipped');
+assert.strictEqual(cacheOf('c6').fn, 'ok');
+mergeFieldCaches(null);   // no-op, no throw
+mergeFieldCaches(undefined);   // no-op, no throw
+
+// Blocked storage → silently skipped, no throw
+const realStorage = globalThis.localStorage;
+globalThis.localStorage = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); }, removeItem: () => {} };
+try {
+  mergeFieldCaches({ c9: { fn: 'X', __relayTs: 1 } });
+} catch (err) {
+  assert.fail(`blocked storage must not throw: ${err.message}`);
+}
+globalThis.localStorage = realStorage;
 
 // --- debounce ---------------------------------------------------------------
 let calls = 0;

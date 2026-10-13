@@ -97,6 +97,46 @@ export function writeJson(key, value) {
 }
 
 // ---------------------------------------------------------------------------
+// Field-cache merge (backup restore / sync pull)
+// ---------------------------------------------------------------------------
+
+/**
+ * Merge incoming per-card field caches into localStorage, newest write wins.
+ *
+ * Each cached field set carries `__relayTs` (ms, set when the card was last
+ * saved/published on the device that produced it). Comparing timestamps is
+ * what makes a sync pull propagate edits made on another device: filling
+ * only *absent* caches would leave a device that already holds a stale cache
+ * unchanged forever. The same comparison protects a file restore from
+ * overwriting newer local data with an older backup.
+ *
+ * Entries without `__relayTs` (old backups) have unknown age and only fill
+ * absent caches — the pre-merge behaviour.
+ *
+ * Best-effort: blocked storage (public mode, sandboxed iframe) is skipped.
+ * @param {Record<string, object>} fieldsMap cardId → cached fields (incl. __relayTs)
+ * @returns {void}
+ */
+export function mergeFieldCaches(fieldsMap) {
+  for (const [id, fieldData] of Object.entries(fieldsMap || {})) {
+    if (!id || !fieldData || typeof fieldData !== 'object') continue;
+    const incomingTs = Number(fieldData.__relayTs) || 0;
+    let localPresent = false, localTs = 0;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.fields(id));
+      if (raw !== null) {
+        localPresent = true;
+        localTs = Number(JSON.parse(raw).__relayTs) || 0;
+      }
+    } catch { /* blocked or corrupt local cache — treat as absent */ }
+    if (localPresent && (incomingTs === 0 || incomingTs <= localTs)) continue;
+    try {
+      writeJson(STORAGE_KEYS.fields(id), { ...fieldData, __relayTs: incomingTs || Date.now() });
+    } catch { /* best-effort */ }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // HTML escaping
 // ---------------------------------------------------------------------------
 
