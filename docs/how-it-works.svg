@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 920" font-family="system-ui, 'Segoe UI', sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#334155"/>
+    </marker>
+    <marker id="arAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#d97706"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="920" fill="#fbfbfd"/>
+
+  <text x="700" y="44" text-anchor="middle" font-size="25" font-weight="700" fill="#0f172a">NostCard — how a card travels between two people</text>
+  <text x="700" y="72" text-anchor="middle" font-size="13" fill="#475569">Zero-knowledge contact sharing over Nostr: all cryptography happens in the browser, relays store only ciphertext, and the decryption key rides in the link's #fragment.</text>
+
+  <rect x="40" y="96" width="1320" height="44" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 4"/>
+  <text x="700" y="122" text-anchor="middle" font-size="12" fill="#475569">The app itself is only static files (index.html · app.js · card.js) — any host works: GitHub Pages, Cloudflare Pages, even localhost. No backend, no database, no accounts.</text>
+
+  <!-- ===================== OWNER PANEL ===================== -->
+  <rect x="40" y="160" width="380" height="480" rx="14" fill="#f0f6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="40" y="160" width="380" height="36" rx="14" fill="#2563eb"/>
+  <rect x="40" y="178" width="380" height="18" fill="#2563eb"/>
+  <text x="230" y="183" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">OWNER — BROWSER ONLY</text>
+
+  <circle cx="68" cy="231" r="12" fill="#2563eb"/>
+  <text x="68" y="236" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">1</text>
+  <text x="88" y="236" font-size="13.5" font-weight="700" fill="#1e293b">Create a card</text>
+  <text x="88" y="255" font-size="11.5" fill="#475569">Fresh Nostr keypair + fresh AES-256-GCM key,</text>
+  <text x="88" y="271" font-size="11.5" fill="#475569">both generated inside your browser</text>
+
+  <circle cx="68" cy="313" r="12" fill="#2563eb"/>
+  <text x="68" y="318" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">2</text>
+  <text x="88" y="318" font-size="13.5" font-weight="700" fill="#1e293b">Fill in your details</text>
+  <text x="88" y="337" font-size="11.5" fill="#475569">Name, phone, email, links … built into vCard text.</text>
+  <text x="88" y="353" font-size="11.5" fill="#475569">Optionally sign with your real nsec identity.</text>
+
+  <circle cx="68" cy="395" r="12" fill="#2563eb"/>
+  <text x="68" y="400" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">3</text>
+  <text x="88" y="400" font-size="13.5" font-weight="700" fill="#1e293b">Encrypt locally</text>
+  <text x="88" y="419" font-size="11.5" fill="#475569">AES-256-GCM turns the vCard into base64</text>
+  <text x="88" y="435" font-size="11.5" fill="#475569">ciphertext — the key never leaves the tab.</text>
+
+  <circle cx="68" cy="477" r="12" fill="#2563eb"/>
+  <text x="68" y="482" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">4</text>
+  <text x="88" y="482" font-size="13.5" font-weight="700" fill="#1e293b">Sign and publish</text>
+  <text x="88" y="501" font-size="11.5" fill="#475569">Nostr event, kind 36350 (NIP-33): the d-tag is</text>
+  <text x="88" y="517" font-size="11.5" fill="#475569">the card id; the card's nsec signs the event.</text>
+
+  <circle cx="68" cy="559" r="12" fill="#2563eb"/>
+  <text x="68" y="564" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">5</text>
+  <text x="88" y="564" font-size="13.5" font-weight="700" fill="#1e293b">Keep it live</text>
+  <text x="88" y="583" font-size="11.5" fill="#475569">Save again = replace (same d-tag), so every</text>
+  <text x="88" y="599" font-size="11.5" fill="#475569">shared link always shows your latest card.</text>
+
+  <!-- ===================== RELAY PANEL ===================== -->
+  <rect x="560" y="160" width="280" height="480" rx="14" fill="#f7f4ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <rect x="560" y="160" width="280" height="36" rx="14" fill="#7c3aed"/>
+  <rect x="560" y="178" width="280" height="18" fill="#7c3aed"/>
+  <text x="700" y="183" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">PUBLIC NOSTR RELAYS</text>
+
+  <rect x="578" y="214" width="125" height="26" rx="13" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="640" y="231" text-anchor="middle" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#5b21b6">relay.damus.io</text>
+  <rect x="717" y="214" width="125" height="26" rx="13" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="779" y="231" text-anchor="middle" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#5b21b6">nos.lol</text>
+  <rect x="578" y="246" width="125" height="26" rx="13" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="640" y="263" text-anchor="middle" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#5b21b6">nostr.mom</text>
+  <rect x="717" y="246" width="125" height="26" rx="13" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="779" y="263" text-anchor="middle" font-size="10.5" font-family="ui-monospace, Menlo, monospace" fill="#5b21b6">offchain.pub</text>
+  <text x="700" y="292" text-anchor="middle" font-size="10.5" fill="#6b7280">+ relays you add per card in the editor</text>
+
+  <rect x="585" y="306" width="230" height="112" rx="10" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="700" y="326" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">WHAT A RELAY SEES</text>
+  <text x="700" y="346" text-anchor="middle" font-size="11" fill="#334155">pubkey — who signed the card</text>
+  <text x="700" y="363" text-anchor="middle" font-size="11" fill="#334155">kind 36350 · d-tag — card address</text>
+  <text x="700" y="380" text-anchor="middle" font-size="11" fill="#334155">content — base64 ciphertext</text>
+  <text x="700" y="397" text-anchor="middle" font-size="11" fill="#334155">timestamps, generic event metadata</text>
+
+  <text x="700" y="440" text-anchor="middle" font-size="11" fill="#475569">No secret ever touches the relays: the AES</text>
+  <text x="700" y="456" text-anchor="middle" font-size="11" fill="#475569">key is never published, and ciphertext alone</text>
+  <text x="700" y="472" text-anchor="middle" font-size="11" fill="#475569">reveals nothing about the contact data.</text>
+
+  <text x="700" y="510" text-anchor="middle" font-size="11" fill="#475569">Update → same d-tag replaces the old event.</text>
+  <text x="700" y="526" text-anchor="middle" font-size="11" fill="#475569">Delete → NIP-09 deletion request (best-effort).</text>
+  <text x="700" y="542" text-anchor="middle" font-size="11" fill="#475569">If this host dies, the card survives on the</text>
+  <text x="700" y="558" text-anchor="middle" font-size="11" fill="#475569">relays — the naddr points straight at them.</text>
+
+  <!-- ===================== RECIPIENT PANEL ===================== -->
+  <rect x="1080" y="160" width="280" height="480" rx="14" fill="#f0faf5" stroke="#059669" stroke-width="1.5"/>
+  <rect x="1080" y="160" width="280" height="36" rx="14" fill="#059669"/>
+  <rect x="1080" y="178" width="280" height="18" fill="#059669"/>
+  <text x="1220" y="183" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">RECIPIENT — BROWSER ONLY</text>
+
+  <circle cx="1102" cy="231" r="12" fill="#059669"/>
+  <text x="1102" y="236" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">1</text>
+  <text x="1122" y="236" font-size="13.5" font-weight="700" fill="#1e293b">Open the share link</text>
+  <text x="1100" y="255" font-size="11" fill="#475569">any browser — no app, no account;</text>
+  <text x="1100" y="271" font-size="11" fill="#475569">host serves only static files</text>
+
+  <circle cx="1102" cy="313" r="12" fill="#059669"/>
+  <text x="1102" y="318" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">2</text>
+  <text x="1122" y="318" font-size="13.5" font-weight="700" fill="#1e293b">Fetch from the relays</text>
+  <text x="1100" y="337" font-size="11" fill="#475569">naddr → relays, pubkey, d-tag;</text>
+  <text x="1100" y="353" font-size="11" fill="#475569">REQ pulls the signed ciphertext</text>
+
+  <circle cx="1102" cy="395" r="12" fill="#059669"/>
+  <text x="1102" y="400" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">3</text>
+  <text x="1122" y="400" font-size="13.5" font-weight="700" fill="#1e293b">Decrypt in the tab</text>
+  <text x="1100" y="419" font-size="11" fill="#475569">AES key from the URL #fragment —</text>
+  <text x="1100" y="435" font-size="11" fill="#475569">never sent to any server</text>
+
+  <circle cx="1102" cy="477" r="12" fill="#059669"/>
+  <text x="1102" y="482" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">4</text>
+  <text x="1122" y="482" font-size="13.5" font-weight="700" fill="#1e293b">Verify and view</text>
+  <text x="1100" y="501" font-size="11" fill="#475569">signature checked vs pubkey;</text>
+  <text x="1100" y="517" font-size="11" fill="#475569">read-only card view</text>
+
+  <circle cx="1102" cy="559" r="12" fill="#059669"/>
+  <text x="1102" y="564" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">5</text>
+  <text x="1122" y="564" font-size="13.5" font-weight="700" fill="#1e293b">Trust gate</text>
+  <text x="1100" y="583" font-size="11" fill="#475569">own device → save link, .vcf ok;</text>
+  <text x="1100" y="599" font-size="11" fill="#475569">shared PC → nothing stored</text>
+
+  <!-- ===================== ARROWS ===================== -->
+  <line x1="425" y1="445" x2="553" y2="445" stroke="#334155" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="490" y="430" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">PUBLISH</text>
+  <text x="490" y="466" text-anchor="middle" font-size="10.5" fill="#475569">signed kind-36350 event</text>
+
+  <line x1="1075" y1="355" x2="852" y2="355" stroke="#334155" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="963" y="343" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">REQ — by naddr</text>
+  <text x="963" y="372" text-anchor="middle" font-size="10.5" fill="#475569">kind 36350 · pubkey · d-tag</text>
+
+  <line x1="848" y1="415" x2="1071" y2="415" stroke="#334155" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="963" y="404" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">EVENT</text>
+  <text x="963" y="432" text-anchor="middle" font-size="10.5" fill="#475569">ciphertext only</text>
+
+  <!-- ===================== SHARING BAND ===================== -->
+  <line x1="230" y1="644" x2="230" y2="672" stroke="#d97706" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arAmber)"/>
+  <line x1="1220" y1="672" x2="1220" y2="644" stroke="#d97706" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arAmber)"/>
+
+  <rect x="40" y="680" width="1320" height="180" rx="14" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+  <text x="700" y="712" text-anchor="middle" font-size="14" font-weight="700" fill="#92400e">SHARING — the key travels through the link, never through the relays</text>
+
+  <rect x="250" y="726" width="900" height="36" rx="8" fill="#ffffff" stroke="#d97706"/>
+  <text x="700" y="749" text-anchor="middle" font-size="14" font-family="ui-monospace, Menlo, monospace" fill="#334155">https://any-host.example/card?<tspan fill="#7c3aed" font-weight="700">naddr=…</tspan>#<tspan fill="#d97706" font-weight="700">AES-key</tspan></text>
+
+  <text x="490" y="786" text-anchor="middle" font-size="11" fill="#6d28d9">naddr = bech32 (relays + pubkey + card id) — points at the card</text>
+  <text x="935" y="786" text-anchor="middle" font-size="11" fill="#b45309">#AES-key = the decryption key, kept by the browser, never sent to a server</text>
+
+  <rect x="70" y="798" width="290" height="44" rx="12" fill="#ffffff" stroke="#d97706"/>
+  <text x="215" y="816" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">Share link</text>
+  <text x="215" y="832" text-anchor="middle" font-size="10.5" fill="#475569">decryption key rides in the #fragment</text>
+
+  <rect x="400" y="798" width="290" height="44" rx="12" fill="#ffffff" stroke="#d97706"/>
+  <text x="545" y="816" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">QR code</text>
+  <text x="545" y="832" text-anchor="middle" font-size="10.5" fill="#475569">the same link, scannable in person</text>
+
+  <rect x="730" y="798" width="290" height="44" rx="12" fill="#ffffff" stroke="#d97706"/>
+  <text x="875" y="816" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">?dl=1 download link</text>
+  <text x="875" y="832" text-anchor="middle" font-size="10.5" fill="#475569">saves a .vcf straight into contacts</text>
+
+  <rect x="1060" y="798" width="290" height="44" rx="12" fill="#ffffff" stroke="#d97706"/>
+  <text x="1205" y="816" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">In-person pairing (kind 30403)</text>
+  <text x="1205" y="832" text-anchor="middle" font-size="10.5" fill="#475569">QR handshake · 30-min codes · scrubbed after</text>
+
+  <text x="700" y="892" text-anchor="middle" font-size="11.5" fill="#64748b">Cross-device sync reuses the same model: a passphrase derives a Nostr identity + AES key, and the encrypted snapshot is stored as kind 30078 on the same relays.</text>
+</svg>

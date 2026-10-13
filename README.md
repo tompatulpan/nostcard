@@ -13,10 +13,16 @@ The card data lives on Nostr relays, not on any particular website. NostCard is 
 
 ## How it works
 
+![Simplified overview of NostCard](docs/how-it-works-simple.svg)
+
 - The **AES key** lives exclusively in the URL fragment (`#key`) — browsers never send it to any server.
 - The **encrypted blob** is stored on public Nostr relays as a NIP-33 addressable event (kind 36350).
 - The **relay** only ever sees ciphertext. It cannot read the contact data.
 - Updating a card re-publishes a new event; relays auto-replace it (same `d` tag). No API token needed.
+
+### Detailed flow diagram
+
+![How NostCard works — owner, Nostr relays, recipient, and the share link](docs/how-it-works.svg)
 
 ### Signing identity
 
