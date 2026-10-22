@@ -13,6 +13,8 @@
   "btn.close": "Close",
   "btn.cancel": "Cancel",
   "btn.open": "Open",
+  "btn.copy.link": "Copy link",
+  "btn.copy.link.title": "Copy this contact's share link to the clipboard",
   "btn.remove": "Remove",
   "btn.save.qr": "Save QR as PNG",
   "btn.next": "Next",

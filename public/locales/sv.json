@@ -13,6 +13,8 @@
   "btn.close": "Stäng",
   "btn.cancel": "Avbryt",
   "btn.open": "Öppna",
+  "btn.copy.link": "Kopiera länk",
+  "btn.copy.link.title": "Kopiera kontaktens delningslänk till urklipp",
   "btn.remove": "Ta bort",
   "btn.save.qr": "Spara QR som PNG",
   "btn.next": "Nästa",

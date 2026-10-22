@@ -1688,6 +1688,17 @@ function renderSavedLinks() {
     openBtn.textContent = t('btn.open');
     openBtn.addEventListener('click', () => { cvReturnRoute = '/saved'; showCardViewScreen(link.url, 'saved-card'); });
 
+    // TODO This copy-button might not be a good solution due to potential security concerns with the clipboard and user experience issues.
+    const copyBtn = document.createElement('button');
+    copyBtn.className   = 'btn btn-ghost btn-sm';
+    copyBtn.textContent = t('btn.copy.link');
+    copyBtn.title       = t('btn.copy.link.title');
+    copyBtn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(link.url); } catch { /* best-effort */ }
+      copyBtn.textContent = t('btn.copied');
+      setTimeout(() => { copyBtn.textContent = t('btn.copy.link'); }, 2000);
+    });
+
     const removeBtn = document.createElement('button');
     removeBtn.className   = 'btn btn-danger btn-sm';
     removeBtn.textContent = t('btn.remove');
@@ -1698,6 +1709,7 @@ function renderSavedLinks() {
     });
 
     actions.appendChild(openBtn);
+    actions.appendChild(copyBtn);
     actions.appendChild(removeBtn);
     row.appendChild(info);
     row.appendChild(actions);
@@ -1849,12 +1861,23 @@ function renderConnectionRow(container, conn) {
   openBtn.textContent = t('btn.open');
   openBtn.addEventListener('click', () => viewConnection(conn));
 
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn btn-ghost btn-sm';
+  copyBtn.textContent = t('btn.copy.link');
+  copyBtn.title = t('btn.copy.link.title');
+  copyBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(buildContactShareUrl(conn.peerNaddr, conn.peerKey)); } catch { /* best-effort */ }
+    copyBtn.textContent = t('btn.copied');
+    setTimeout(() => { copyBtn.textContent = t('btn.copy.link'); }, 2000);
+  });
+
   const removeBtn = document.createElement('button');
   removeBtn.className = 'btn btn-danger btn-sm';
   removeBtn.textContent = t('btn.remove');
   removeBtn.addEventListener('click', () => removeConnection(conn.id));
 
   actions.appendChild(openBtn);
+  actions.appendChild(copyBtn);
   actions.appendChild(removeBtn);
   row.appendChild(info);
   row.appendChild(actions);
