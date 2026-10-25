@@ -233,6 +233,21 @@ function showScreen(name) {
   document.getElementById('btn-back-cards').classList.toggle('hidden',  !(name === 'screen-editor' || name === 'screen-pair-start' || name === 'screen-pair-join'));
   document.getElementById('btn-delete-card').classList.toggle('hidden', name !== 'screen-editor');
   document.getElementById('cv-btn-back').classList.toggle('hidden',     name !== 'screen-card-view');
+  
+  // Reset document title based on current screen
+  // Skip setting title for card-view as it will be set by renderCvCard
+  if (name !== 'screen-card-view') {
+    const titles = {
+      'screen-setup': t('page.title.index'),
+      'screen-cards': t('page.title.index'),
+      'screen-editor': t('page.title.index'),
+      'screen-saved': t('saved.heading') + ' — NostCard',
+      'screen-pair-start': t('pair.start.heading') + ' — NostCard',
+      'screen-pair-join': t('pair.join.heading') + ' — NostCard',
+      'screen-help': t('help.heading') + ' — NostCard',
+    };
+    document.title = titles[name] || t('page.title.index');
+  }
 }
 
 function showSetup()     { activeCardId = null; showScreen('screen-setup');     }
