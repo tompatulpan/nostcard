@@ -49,7 +49,7 @@
   "cards.row.btn.share": "Share",
   "cards.row.btn.rename.title": "Rename",
 
-  "saved.heading": "Contacts",
+  "saved.heading": "My contacts",
   "saved.empty": "No contacts yet. Open a card link and choose \"My personal device\", or tap \"+ Connect\" to pair with someone in person.",
   "contacts.paste.placeholder": "Paste a full link, a compact link (naddr#key), or part 1 of a two-part share…",
   "contacts.paste.btn": "Add contact",
