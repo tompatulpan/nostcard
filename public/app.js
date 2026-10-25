@@ -1427,7 +1427,7 @@ function renderCvCard(fields, vcardText, trusted, ownerPreview) {
     const killAt = Date.now() + AUTO_KILL_MS;
     const countdownEl = document.createElement('p');
     countdownEl.className = 'auto-clear-countdown muted';
-    document.querySelector('.cv-card-actions').appendChild(countdownEl);
+    document.querySelector('.cv-card-actions:not(.card-actions-header)').appendChild(countdownEl);
     cvCountdownInterval = setInterval(() => {
       const rem = Math.max(0, killAt - Date.now());
       const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);

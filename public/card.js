@@ -387,7 +387,7 @@ function renderCard(fields, vcardText, trusted, ownerPreview, relayTs) {
 
     const countdownEl = document.createElement('p');
     countdownEl.className = 'auto-clear-countdown muted';
-    document.querySelector('.card-actions').appendChild(countdownEl);
+    document.querySelector('.card-actions:not(.card-actions-header)').appendChild(countdownEl);
 
     countdownInterval = setInterval(() => {
       const remaining = Math.max(0, killAt - Date.now());

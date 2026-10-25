@@ -584,6 +584,7 @@ textarea { resize: vertical; }
 .field-value a:hover { text-decoration: underline; }
 
 .card-actions { text-align: center; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.card-actions-header { margin-bottom: 24px; }
 
 .update-hint {
   margin-top: 24px;
