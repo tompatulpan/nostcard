@@ -1,7 +1,7 @@
 {
   "page.title.index": "My Cards — NostCard",
   "page.title.card": "Contact Card",
-  "page.title.card.loaded": "{{fn}} — Encrypted Card",
+  "page.title.card.loaded": "{{fn}} - Contact Card — NostCard",
   "page.title.proof": "Privacy Proof — NostCard",
 
   "header.logo.index": "🔐 NostCard",

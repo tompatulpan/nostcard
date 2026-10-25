@@ -1345,6 +1345,7 @@ function autoSaveLink(url, label, relayTs) {
 
 function renderCvCard(fields, vcardText, trusted, ownerPreview) {
   document.getElementById('cv-screen-loading').classList.add('hidden');
+  document.title = t('page.title.card.loaded', { fn: fields.fn || t('cv.contact.fallback') });
 
   const initials = makeInitials(fields.fn || '');
   document.getElementById('cv-contact-avatar').textContent = initials;
