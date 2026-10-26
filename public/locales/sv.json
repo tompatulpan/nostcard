@@ -39,7 +39,7 @@
   "sync.btn.open.title": "Synkronisera dina kort mellan enheter/webbläsare",
   "cards.btn.new": "+ Nytt kort",
   "cards.btn.saved": "🔖 Kontakter",
-  "cards.btn.addlink": "📋 Lägg till via länk",
+  "cards.btn.addlink": "Lägg till från länk",
   "cards.btn.logout": "🚪 Logga ut",
   "cards.btn.logout.title": "Ta bort alla lokala nycklar och uppgifter",
   "cards.empty": "Inga kort ännu. Skapa ditt första ovan.",

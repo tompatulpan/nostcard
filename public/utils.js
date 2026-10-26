@@ -18,10 +18,12 @@
  *     (they contain nsec / AES keys)
  *   - trust and rate-limit helpers tolerate blocked storage (public mode,
  *     sandboxed iframes) by failing closed / open respectively
+ *   - secureReadJson/secureWriteJson provide encrypted storage for sensitive data
  */
 
 import { sameCardAddress } from './nostr.js';
 import { brandIconSvg } from './brand-icons.js';
+import { secureStorage } from './secureStorage.js';
 
 // ---------------------------------------------------------------------------
 // Storage keys — every localStorage key in the app, as named constants
@@ -96,6 +98,47 @@ export function readJson(key, fallback) {
  */
 export function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+// ---------------------------------------------------------------------------
+// Secure storage helpers (for sensitive data like sync identities)
+// ---------------------------------------------------------------------------
+
+/**
+ * Read and parse a JSON value from secure storage. 
+ * Uses encrypted storage to protect sensitive data like sync identities.
+ * Falls back to regular readJson if secure storage is unavailable.
+ * @template T
+ * @param {string} key
+ * @param {T} fallback
+ * @returns {Promise<T>}
+ */
+export async function secureReadJson(key, fallback) {
+  try {
+    const raw = await secureStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    // Fall back to regular storage if secure storage fails
+    return readJson(key, fallback);
+  }
+}
+
+/**
+ * Serialize and write a JSON value to secure storage.
+ * Uses encrypted storage to protect sensitive data like sync identities.
+ * Falls back to regular writeJson if secure storage is unavailable.
+ * @param {string} key
+ * @param {unknown} value
+ * @returns {Promise<void>}
+ */
+export async function secureWriteJson(key, value) {
+  try {
+    await secureStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Fall back to regular storage if secure storage fails
+    writeJson(key, value);
+  }
 }
 
 // ---------------------------------------------------------------------------

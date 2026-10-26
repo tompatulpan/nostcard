@@ -34,7 +34,7 @@ import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } f
 import { generateSyncPassphrase, deriveSyncIdentity, isValidSyncPassphrase, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
 import {
-  STORAGE_KEYS, readJson, writeJson,
+  STORAGE_KEYS, readJson, writeJson, secureReadJson, secureWriteJson,
   htmlEscape, makeInitials, extractNaddrFromUrl, sameSharedCardUrl, isSafeLinkUrl,
   bytesToHex, hexToBytes, bytesToBase64url, base64urlToBytes,
   getTrust, setTrust, contactFieldRow, appendContactRows, downloadVcf, detectUrlPlatform,
@@ -78,12 +78,12 @@ function saveSavedLinks(links) {
   writeJson(STORAGE_KEYS.savedLinks, links);
 }
 
-function getSyncIdentity() {
-  return readJson(STORAGE_KEYS.syncIdentity, null);
+async function getSyncIdentity() {
+  return await secureReadJson(STORAGE_KEYS.syncIdentity, null);
 }
 
-function saveSyncIdentity(identity) {
-  writeJson(STORAGE_KEYS.syncIdentity, identity);
+async function saveSyncIdentity(identity) {
+  await secureWriteJson(STORAGE_KEYS.syncIdentity, identity);
 }
 
 function clearSyncIdentity() {
@@ -1001,9 +1001,12 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
   // re-import (and re-publish) the deleted card. Fire-and-forget: the push
   // must not block the deletion UI, and a failure only leaves the previous
   // snapshot in place until the next manual push.
-  if (getSyncIdentity()) {
-    pushSyncSnapshot().catch(err => reportError(err, 'app.sync-push-after-delete'));
-  }
+  (async () => {
+    const identity = await getSyncIdentity();
+    if (identity) {
+      pushSyncSnapshot().catch(err => reportError(err, 'app.sync-push-after-delete'));
+    }
+  })();
 
   go(remaining.length === 0 ? '/setup' : '/cards');
 });
@@ -2618,8 +2621,8 @@ function setSyncStatus(msg, isError) {
   el.className   = isError ? 'status-msg error' : 'status-msg success';
 }
 
-function openSyncModal() {
-  const identity = getSyncIdentity();
+async function openSyncModal() {
+  const identity = await getSyncIdentity();
   document.getElementById('sync-setup-section').classList.toggle('hidden', !!identity);
   document.getElementById('sync-passphrase-reveal').classList.add('hidden');
   document.getElementById('sync-manage-section').classList.toggle('hidden', !identity);
@@ -2634,9 +2637,9 @@ function openSyncModal() {
   document.getElementById('modal-sync').classList.remove('hidden');
 }
 
-document.getElementById('btn-adv-sync').addEventListener('click', () => {
+document.getElementById('btn-adv-sync').addEventListener('click', async () => {
   document.getElementById('modal-advanced').classList.add('hidden');
-  openSyncModal();
+  await openSyncModal();
 });
 
 /** Close the sync modal. The passphrase input is cleared so the one-time
@@ -2654,7 +2657,7 @@ document.getElementById('modal-sync').addEventListener('click', e => {
 
 async function setupSyncIdentity(passphrase) {
   const { syncNsec, syncNpub, syncKeyRaw } = await deriveSyncIdentity(passphrase);
-  saveSyncIdentity({
+  await saveSyncIdentity({
     syncNsecHex: bytesToHex(syncNsec),
     syncNpub,
     syncKeyRaw:  bytesToBase64url(syncKeyRaw),
@@ -2734,7 +2737,7 @@ document.getElementById('btn-sync-join').addEventListener('click', async () => {
     } else {
       clearRateLimit('sync-join');
       // Proven passphrase — only now does it earn a place on this device.
-      saveSyncIdentity({
+      await saveSyncIdentity({
         syncNsecHex: bytesToHex(syncNsec),
         syncNpub,
         syncKeyRaw:  bytesToBase64url(syncKeyRaw),
@@ -2775,7 +2778,7 @@ document.getElementById('btn-sync-push').addEventListener('click', debounce(push
  * @returns {Promise<Array<{relay: string, ok: boolean}> | null>} per-relay results, or null when no sync identity exists
  */
 async function pushSyncSnapshot() {
-  const identity = getSyncIdentity();
+  const identity = await getSyncIdentity();
   if (!identity) return null;
   const syncNsec   = hexToBytes(identity.syncNsecHex);
   const syncKeyRaw = base64urlToBytes(identity.syncKeyRaw);
@@ -2785,7 +2788,8 @@ async function pushSyncSnapshot() {
 }
 
 async function pushSyncNow() {
-  if (!getSyncIdentity()) return;
+  const identity = await getSyncIdentity();
+  if (!identity) return;
   const btn = document.getElementById('btn-sync-push');
   btn.disabled = true;
   try {
@@ -2801,7 +2805,7 @@ async function pushSyncNow() {
 }
 
 document.getElementById('btn-sync-pull').addEventListener('click', async () => {
-  const identity = getSyncIdentity();
+  const identity = await getSyncIdentity();
   if (!identity) return;
   const btn = document.getElementById('btn-sync-pull');
   btn.disabled = true;
@@ -2824,7 +2828,7 @@ document.getElementById('btn-sync-pull').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-sync-delete').addEventListener('click', async () => {
-  const identity = getSyncIdentity();
+  const identity = await getSyncIdentity();
   if (!identity) return;
   if (!confirm(t('dialog.sync.delete.confirm'))) return;
   const btn = document.getElementById('btn-sync-delete');
@@ -2843,7 +2847,7 @@ document.getElementById('btn-sync-delete').addEventListener('click', async () =>
 
 document.getElementById('btn-sync-rotate').addEventListener('click', async () => {
   if (!confirm(t('dialog.sync.rotate.confirm'))) return;
-  const identity = getSyncIdentity();
+  const identity = await getSyncIdentity();
   if (identity) {
     const btn = document.getElementById('btn-sync-rotate');
     btn.disabled = true;
