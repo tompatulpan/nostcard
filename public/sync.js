@@ -138,7 +138,7 @@ const PASSPHRASE_WORD_COUNT = 8;
 
 /**
  * Generate a fresh, memorable sync passphrase (8 random BIP39 English words).
- * @returns {string} e.g. "anchor-jungle-quartz-holly-drift-opal-cedar-forest"
+ * @returns {string} e.g. "abandon-cereal-enrich-identify-noodle-romance-three-wheel"
  */
 export function generateSyncPassphrase() {
   const words = [];

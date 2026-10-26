@@ -106,28 +106,26 @@ async function encryptForStorage(plaintext) {
 
 /**
  * Decrypt data from secure storage.
+ * Throws on decryption failure (wrong device, corrupted data, tampering, or
+ * non-secure origin without crypto.subtle) so callers can fall back to a
+ * plain read for legacy plaintext values. Returns null only when the
+ * underlying localStorage entry is absent.
  * @param {string} ciphertext - base64 encoded IV + ciphertext
- * @returns {Promise<string|null>} - Decrypted plaintext, or null on failure
+ * @returns {Promise<string|null>} - Decrypted plaintext, or null if not found
  */
 async function decryptFromStorage(ciphertext) {
-  try {
-    const combined = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
-    const iv = combined.slice(0, 12);
-    const encrypted = combined.slice(12);
+  const combined = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const encrypted = combined.slice(12);
 
-    const key = await getDeviceKey();
-    const plaintext = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encrypted
-    );
+  const key = await getDeviceKey();
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encrypted
+  );
 
-    return new TextDecoder().decode(plaintext);
-  } catch (e) {
-    // Decryption failed - could be wrong device, corrupted data, or tampering
-    console.warn('SecureStorage decryption failed:', e);
-    return null;
-  }
+  return new TextDecoder().decode(plaintext);
 }
 
 /**
@@ -148,12 +146,15 @@ export const secureStorage = {
 
   /**
    * Retrieve a value securely.
+   * Returns null only when the key is absent; throws when a value exists but
+   * cannot be decrypted (legacy plaintext, tampering, non-secure origin) —
+   * callers fall back to a plain read and migrate.
    * @param {string} key - Storage key
-   * @returns {Promise<string|null>} - Decrypted value, or null if not found or decryption failed
+   * @returns {Promise<string|null>} - Decrypted value, or null if not found
    */
   async getItem(key) {
     const encrypted = localStorage.getItem(key);
-    if (!encrypted) return null;
+    if (encrypted === null) return null;
     return await decryptFromStorage(encrypted);
   },
 

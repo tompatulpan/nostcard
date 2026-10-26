@@ -105,9 +105,11 @@ export function writeJson(key, value) {
 // ---------------------------------------------------------------------------
 
 /**
- * Read and parse a JSON value from secure storage. 
+ * Read and parse a JSON value from secure storage.
  * Uses encrypted storage to protect sensitive data like sync identities.
- * Falls back to regular readJson if secure storage is unavailable.
+ * Falls back to a plain read when the stored value is legacy plaintext (or
+ * the origin is non-secure, e.g. http on a LAN IP, where crypto.subtle is
+ * unavailable) and migrates it to encrypted storage best-effort.
  * @template T
  * @param {string} key
  * @param {T} fallback
@@ -119,8 +121,15 @@ export async function secureReadJson(key, fallback) {
     if (raw === null) return fallback;
     return JSON.parse(raw);
   } catch {
-    // Fall back to regular storage if secure storage fails
-    return readJson(key, fallback);
+    // Decryption failed: either a legacy plaintext value or an environment
+    // without crypto.subtle. Read it plainly and migrate to encrypted
+    // storage (best-effort — the migration write itself falls back to plain
+    // storage where encryption is impossible).
+    const value = readJson(key, fallback);
+    if (value !== null && value !== undefined) {
+      secureWriteJson(key, value).catch(() => {});
+    }
+    return value;
   }
 }
 

@@ -16,7 +16,7 @@
  */
 
 // Self-hosted bundle (nostr-tools 2.23.9) — rebuild with `npm run build:vendor`
-import { generateSecretKey, getPublicKey, finalizeEvent, SimplePool, nip19, verifySignature }
+import { generateSecretKey, getPublicKey, finalizeEvent, SimplePool, nip19, verifyEvent }
   from './vendor/nostr-tools.js';
 
 // ---------------------------------------------------------------------------
@@ -386,13 +386,12 @@ export async function fetchSyncEvent(relays, syncNpub) {
   ]);
 
   if (!event) return null;
-  
-  // Verify the event signature to prevent tampering
-  // The event should already have been verified by nostr-tools' SimplePool,
-  // but we add explicit verification as defense in depth
+
+  // Verify the event signature to prevent tampering.
+  // verifyEvent is nostr-tools 2.x's name (verifySignature does not exist
+  // there) — see vendor-entry.js.
   try {
-    const isValid = verifySignature(event);
-    if (!isValid) {
+    if (!verifyEvent(event)) {
       console.warn('Sync event signature verification failed - possible tampering');
       return null;
     }
@@ -400,7 +399,7 @@ export async function fetchSyncEvent(relays, syncNpub) {
     console.warn('Sync event signature verification error:', e);
     return null;
   }
-  
+
   return { content: event.content, created_at: event.created_at };
 }
 
