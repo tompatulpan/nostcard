@@ -18,3 +18,6 @@ Thumbs.db
 npm-debug.log*
 *.log
 *backup*
+# Local security documentation (kept out of the repo)
+SECURITY_FIXES.md
+CHANGES_SUMMARY.md
