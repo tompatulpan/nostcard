@@ -42,7 +42,7 @@
   "sync.btn.open": "🔄 Sync",
   "sync.btn.open.title": "Sync your cards across devices/browsers",
   "cards.btn.new": "+ New Card",
-  "cards.btn.saved": "🔖 Contacts",
+  "cards.btn.saved": "Saved Contacts",
   "cards.btn.addlink": "Add by link",
   "cards.btn.logout": "🚪 Log out",
   "cards.btn.logout.title": "Remove all local keys and credentials",
