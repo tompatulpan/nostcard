@@ -388,6 +388,7 @@
 
   "help.btn.open": "? Hjälp",
   "help.btn.open.title": "Så använder du appen",
+  "theme.btn.toggle.title": "Växla mellan ljust och mörkt tema",
   "help.heading": "Så fungerar appen",
   "help.intro": "NostCard delar kontaktkort som krypteras i din webbläsare och publiceras på Nostr-nätverket. Det finns inga konton och ingen central server — bara du har nycklarna.",
   "help.gettingstarted.heading": "Kom igång",

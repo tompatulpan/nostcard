@@ -109,17 +109,17 @@ async function runStep1(relays, pubkey, cardId) {
   const tagCardId = dTag     ? dTag[1]     : null;
 
   const metaRows = [
-    cardName ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
+    cardName ? `<div class="proof-field-row proof-field-row--plain">
       <span class="proof-field-icon">🏷️</span>
-      <span><strong>${htmlEscape(t('proof.step1.meta.name'))}</strong> ${htmlEscape(cardName)} <em style="font-size:11px;color:#92400e">${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
+      <span><strong>${htmlEscape(t('proof.step1.meta.name'))}</strong> ${htmlEscape(cardName)} <em>${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
     </div>` : '',
-    tagCardId ? `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
+    tagCardId ? `<div class="proof-field-row proof-field-row--plain">
       <span class="proof-field-icon">🔑</span>
-      <span><strong>${htmlEscape(t('proof.step1.meta.id'))}</strong> <code>${htmlEscape(tagCardId)}</code> <em style="font-size:11px;color:#92400e">${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
+      <span><strong>${htmlEscape(t('proof.step1.meta.id'))}</strong> <code>${htmlEscape(tagCardId)}</code> <em>${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
     </div>` : '',
-    `<div class="proof-field-row" style="background:#fef9c3;border-color:#fde68a">
+    `<div class="proof-field-row proof-field-row--plain">
       <span class="proof-field-icon">🕐</span>
-      <span><strong>${htmlEscape(t('proof.step1.meta.updated'))}</strong> ${htmlEscape(date)} <em style="font-size:11px;color:#92400e">${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
+      <span><strong>${htmlEscape(t('proof.step1.meta.updated'))}</strong> ${htmlEscape(date)} <em>${htmlEscape(t('proof.step1.meta.plaintext'))}</em></span>
     </div>`,
   ].join('');
 

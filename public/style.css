@@ -5,26 +5,103 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { overflow-x: hidden; }
 
+/* "Classic" light + dark palette, adapted from the contact-management-system
+   "classic-refined" theme (themes.css). The dark variant is applied by
+   theme.js as <html class="dark-mode">. */
+
 :root {
-  --bg:          #f5f5f5;
-  --surface:     #ffffff;
-  --border:      #e0e0e0;
-  --text:        #1a1a1a;
-  --text-muted:  #6b7280;
-  --primary:     #2563eb;
-  --primary-h:   #1d4ed8;
-  --danger:      #dc2626;
-  --danger-h:    #b91c1c;
-  --success:     #16a34a;
-  --warning:     #d97706;
-  --teal:        #0891b2;
-  --teal-h:      #0e7490;
-  --radius:      10px;
-  --shadow:      0 1px 4px rgba(0,0,0,.10);
+  --bg:            #f4f6fa;
+  --surface:       #ffffff;
+  --surface-raised:#ffffff;
+  --hover:         #f1f4f9;
+  --border:        #e3e8ef;
+  --border-strong: #cbd3df;
+  --input-bg:      #ffffff;
+  --text:          #0f172a;
+  --text-muted:    #5b6474;
+  --primary:       #2f6fed;
+  --primary-h:     #1f56c7;
+  --primary-light: #e6eeff;
+  --primary-light-h: #d7e3fd;
+  --on-accent:     #ffffff;
+  --danger:        #dc2626;
+  --danger-h:      #b91c1c;
+  --success:       #16a34a;
+  --success-h:     #15803d;
+  --warning:       #ea8a0a;
+  --warning-bg:    #fef3c7;
+  --warning-border:#fbbf24;
+  --warning-text:  #92400e;
+  --teal:          #0891b2;
+  --teal-h:        #0e7490;
+  --ok-bg:         #dcfce7;
+  --ok-border:     #86efac;
+  --ok-text:       #15803d;
+  --fail-bg:       #fee2e2;
+  --fail-border:   #fca5a5;
+  --fail-text:     #dc2626;
+  --wait-bg:       #eef1f6;
+  --wait-text:     #5b6474;
+  --info-bg:       #f0f6ff;
+  --info-border:   #c7dcfa;
+  --secondary-btn: #e5e7eb;
+  --secondary-btn-h: #d1d5db;
+  --focus-ring:    0 0 0 3px rgba(47, 111, 237, 0.22);
+  --radius:        10px;
+  --shadow:        0 4px 12px -2px rgba(15, 23, 42, 0.08);
+}
+
+html.dark-mode {
+  --bg:            #0e1119;
+  --surface:       #161b26;
+  --surface-raised:#1c2231;
+  --hover:         #1f2634;
+  --border:        #252c3b;
+  --border-strong: #343d50;
+  --input-bg:      #0e1119;
+  --text:          #e6eaf2;
+  --text-muted:    #9aa4b6;
+  --primary:       #5b8def;
+  --primary-h:     #7ea5f5;
+  --primary-light: #1b2a4a;
+  --primary-light-h: #22355c;
+  --on-accent:     #0b1220;
+  --danger:        #f87171;
+  --danger-h:      #fca5a5;
+  --success:       #34d399;
+  --success-h:     #6ee7b7;
+  --warning:       #fbbf24;
+  --warning-bg:    #3b2f14;
+  --warning-border:#a16207;
+  --warning-text:  #fbbf24;
+  --teal:          #2dd4bf;
+  --teal-h:        #5eead4;
+  --ok-bg:         #0f2e22;
+  --ok-border:     #146c54;
+  --ok-text:       #34d399;
+  --fail-bg:       #3a1a1a;
+  --fail-border:   #7a2e2e;
+  --fail-text:     #f87171;
+  --wait-bg:       #1f2634;
+  --wait-text:     #9aa4b6;
+  --info-bg:       #16233d;
+  --info-border:   #2a3f6b;
+  --secondary-btn: #1f2634;
+  --secondary-btn-h: #2a3348;
+  --focus-ring:    0 0 0 3px rgba(91, 141, 239, 0.3);
+  --shadow:        0 4px 12px -2px rgba(0, 0, 0, 0.5);
+}
+
+/* Smooth colour change while theme.js toggles the mode */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease !important;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -155,14 +232,14 @@ textarea {
   font-size: 14px;
   font-family: inherit;
   color: var(--text);
-  background: var(--surface);
+  background: var(--input-bg);
   transition: border-color .15s;
   outline: none;
 }
 
 input:focus, textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  box-shadow: var(--focus-ring);
 }
 
 textarea { resize: vertical; }
@@ -209,7 +286,7 @@ textarea { resize: vertical; }
 
 .dynamic-type-select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  box-shadow: var(--focus-ring);
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
@@ -233,27 +310,27 @@ textarea { resize: vertical; }
 
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
-.btn-primary  { background: var(--primary); color: #fff; }
+.btn-primary  { background: var(--primary); color: var(--on-accent); }
 .btn-primary:hover:not(:disabled)  { background: var(--primary-h); }
 
-.btn-danger   { background: var(--danger);  color: #fff; }
+.btn-danger   { background: var(--danger);  color: var(--on-accent); }
 .btn-danger:hover:not(:disabled)   { background: var(--danger-h);  }
 
 .btn-ghost      { background: transparent; color: var(--text); border: 1px solid var(--border); }
-.btn-ghost:hover:not(:disabled)      { background: var(--bg); }
+.btn-ghost:hover:not(:disabled)      { background: var(--hover); }
 
-.btn-secondary  { background: #e5e7eb; color: var(--text); }
-.btn-secondary:hover:not(:disabled)  { background: #d1d5db; }
+.btn-secondary  { background: var(--secondary-btn); color: var(--text); }
+.btn-secondary:hover:not(:disabled)  { background: var(--secondary-btn-h); }
 
-.btn-success    { background: var(--success); color: #fff; }
-.btn-success:hover:not(:disabled)    { background: #15803d; }
+.btn-success    { background: var(--success); color: var(--on-accent); }
+.btn-success:hover:not(:disabled)    { background: var(--success-h); }
 
-.btn-teal       { background: var(--teal); color: #fff; }
+.btn-teal       { background: var(--teal); color: var(--on-accent); }
 .btn-teal:hover:not(:disabled)       { background: var(--teal-h); }
 
 /* Public mode: red Done button */
-.btn-done-public { background: #dc2626; color: #fff; }
-.btn-done-public:hover { background: #b91c1c; }
+.btn-done-public { background: var(--danger); color: var(--on-accent); }
+.btn-done-public:hover { background: var(--danger-h); }
 
 .btn-sm  { padding: 5px 12px; font-size: 13px; }
 .btn-lg  { padding: 12px 28px; font-size: 16px; }
@@ -261,12 +338,12 @@ textarea { resize: vertical; }
 /* ── Trust gate ──────────────────────────────────────────────────────────── */
 
 .public-mode-banner {
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
   border-radius: var(--radius);
   padding: 10px 14px;
   font-size: 13px;
-  color: #92400e;
+  color: var(--warning-text);
   margin-bottom: 4px;
 }
 
@@ -298,18 +375,18 @@ textarea { resize: vertical; }
   width: 100%;
 }
 .btn-trust-yes {
-  background: #eff6ff;
+  background: var(--primary-light);
   border-color: var(--primary);
   color: var(--text);
 }
-.btn-trust-yes:hover { background: #dbeafe; }
+.btn-trust-yes:hover { background: var(--primary-light-h); }
 
 .btn-trust-no {
-  background: #f9fafb;
+  background: var(--bg);
   border-color: var(--border);
   color: var(--text);
 }
-.btn-trust-no:hover { background: #f3f4f6; }
+.btn-trust-no:hover { background: var(--hover); }
 
 .trust-choice-icon  { font-size: 1.4rem; }
 .trust-choice-label { font-size: 1rem; font-weight: 600; margin-top: 2px; }
@@ -393,9 +470,9 @@ textarea { resize: vertical; }
   border-radius: 4px;
 }
 
-.relay-status-badge--ok   { background: #dcfce7; color: #15803d; }
-.relay-status-badge--fail { background: #fee2e2; color: #dc2626; }
-.relay-status-badge--wait { background: #f3f4f6; color: #6b7280; }
+.relay-status-badge--ok   { background: var(--ok-bg);   color: var(--ok-text); }
+.relay-status-badge--fail { background: var(--fail-bg); color: var(--fail-text); }
+.relay-status-badge--wait { background: var(--wait-bg); color: var(--wait-text); }
 
 .relay-add-row {
   display: flex;
@@ -540,7 +617,7 @@ textarea { resize: vertical; }
   height: 72px;
   border-radius: 50%;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 26px;
   font-weight: 700;
   display: flex;
@@ -592,8 +669,8 @@ textarea { resize: vertical; }
 .update-hint {
   margin-top: 24px;
   padding: 14px 16px;
-  background: #f0f6ff;
-  border: 1px solid #c7dcfa;
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
   border-radius: 8px;
   text-align: left;
 }
@@ -616,9 +693,9 @@ kbd {
   font-size: 11px;
   font-family: inherit;
   background: var(--surface);
-  border: 1px solid #bbb;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
-  box-shadow: 0 1px 0 #bbb;
+  box-shadow: 0 1px 0 var(--border-strong);
 }
 
 /* ── Spinner ─────────────────────────────────────────────────────────────── */
@@ -758,8 +835,8 @@ kbd {
   font-family: monospace;
 }
 
-.relay-badge--ok   { background: #dcfce7; color: #15803d; }
-.relay-badge--fail { background: #fee2e2; color: #dc2626; }
+.relay-badge--ok   { background: var(--ok-bg);   color: var(--ok-text); }
+.relay-badge--fail { background: var(--fail-bg); color: var(--fail-text); }
 
 .btn-card-rename {
   padding: 2px 6px;
@@ -932,7 +1009,7 @@ kbd {
 .lang-btn.lang-btn--active {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 @media (max-width: 480px) {

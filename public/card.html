@@ -8,12 +8,13 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#2563eb" />
+  <meta name="theme-color" content="#ffffff" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="NostCard" />
   <link rel="stylesheet" href="style.css" />
+  <script src="theme-boot.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -22,6 +23,7 @@
       <span class="logo" data-i18n="header.logo.card">🔐 Encrypted Contact Card</span>
       <div class="top-bar-actions">
         <a id="btn-back-account" class="btn btn-success btn-sm" href="index.html" data-i18n="cv.btn.back">← Back</a>
+        <button type="button" class="btn btn-ghost btn-sm" data-theme-toggle data-i18n-title="theme.btn.toggle.title" title="Switch between light and dark theme" aria-label="Theme">🌙</button>
         <div class="lang-switcher" id="lang-switcher">
           <button class="lang-btn" data-lang="en">EN</button>
           <button class="lang-btn" data-lang="sv">SV</button>
@@ -165,6 +167,7 @@
   </div><!-- /.app-shell -->
 
   <script src="qrcode.js"></script>
+  <script type="module" src="theme.js"></script>
   <script type="module" src="card.js"></script>
 </body>
 </html>

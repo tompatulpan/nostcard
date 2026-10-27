@@ -388,6 +388,7 @@
 
   "help.btn.open": "? Help",
   "help.btn.open.title": "How to use this app",
+  "theme.btn.toggle.title": "Switch between light and dark theme",
   "help.heading": "How this app works",
   "help.intro": "NostCard shares contact cards that are encrypted in your browser and published to the Nostr network. There are no accounts and no central server — only you hold the keys.",
   "help.gettingstarted.heading": "Getting started",

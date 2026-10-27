@@ -66,6 +66,8 @@ export const STORAGE_KEYS = {
   trust: (trustId) => `e2e:trusted:${trustId}`,
   /** language preference (written by i18n.js setLang) */
   lang: 'e2e:lang',
+  /** light/dark theme preference (written by theme.js, applied pre-paint by each page's head script) */
+  theme: 'e2e:theme',
   /** attempt-counter buckets for the rate limiter — @param {string} bucket @returns {string} */
   rateLimit: (bucket) => `e2e:rl:${bucket}`,
 };

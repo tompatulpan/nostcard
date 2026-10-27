@@ -28,18 +28,27 @@ import {
 /** Full card URL including the #key — captured before any address-bar scrub. */
 let cardFullUrl = null;
 
-// The one storage key a public visit can still write: the language choice
-// (setLang persists it). Captured before anything runs so a public session
-// can restore the browser to its pre-visit state on exit.
-const langBeforeLoad = (() => {
-  try { return localStorage.getItem(STORAGE_KEYS.lang); } catch { return null; }
+// The only storage keys a public visit can still write: the language and
+// theme choices (setLang / theme.js persist them). Captured before anything
+// runs so a public session can restore the browser to its pre-visit state
+// on exit.
+const publicTracesBeforeLoad = (() => {
+  const keys = [STORAGE_KEYS.lang, STORAGE_KEYS.theme];
+  const saved = {};
+  for (const k of keys) {
+    try { saved[k] = localStorage.getItem(k); } catch { saved[k] = null; }
+  }
+  return saved;
 })();
 
 /** Public sessions: undo the only writes this session may have made. */
 function restorePublicTraces() {
   try {
-    if (langBeforeLoad === null) localStorage.removeItem(STORAGE_KEYS.lang);
-    else if (localStorage.getItem(STORAGE_KEYS.lang) !== langBeforeLoad) localStorage.setItem(STORAGE_KEYS.lang, langBeforeLoad);
+    for (const [k, before] of Object.entries(publicTracesBeforeLoad)) {
+      const now = localStorage.getItem(k);
+      if (before === null) { if (now !== null) localStorage.removeItem(k); }
+      else if (now !== before) localStorage.setItem(k, before);
+    }
   } catch {}
 }
 
