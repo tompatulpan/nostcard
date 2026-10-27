@@ -218,7 +218,31 @@ async function fetchCardOnce(relays, npub, cardId, timeoutMs) {
   ]);
 
   if (!event) return null;
+
+  // Defense in depth: a malicious relay could ignore the filter and serve a
+  // forged event. The AES-GCM content tag already prevents tampered payloads
+  // from decrypting, but signature verification also rejects events signed
+  // by a different key before decryption is attempted.
+  if (!isVerifiedEvent(event)) {
+    console.warn('Card event signature verification failed - possible tampering');
+    return null;
+  }
+
   return { content: event.content, created_at: event.created_at, tags: event.tags || [] };
+}
+
+/**
+ * Verify a fetched event's signature; false on forged or malformed events.
+ * Shared by all relay reads (cards, sync, pairing).
+ * @param {object} event
+ * @returns {boolean}
+ */
+function isVerifiedEvent(event) {
+  try {
+    return verifyEvent(event);
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -387,16 +411,9 @@ export async function fetchSyncEvent(relays, syncNpub) {
 
   if (!event) return null;
 
-  // Verify the event signature to prevent tampering.
-  // verifyEvent is nostr-tools 2.x's name (verifySignature does not exist
-  // there) — see vendor-entry.js.
-  try {
-    if (!verifyEvent(event)) {
-      console.warn('Sync event signature verification failed - possible tampering');
-      return null;
-    }
-  } catch (e) {
-    console.warn('Sync event signature verification error:', e);
+  // Defense in depth — see fetchCardOnce.
+  if (!isVerifiedEvent(event)) {
+    console.warn('Sync event signature verification failed - possible tampering');
     return null;
   }
 
@@ -483,6 +500,13 @@ export async function fetchPairingSlot(relays, pairNpub, slot) {
   ]);
 
   if (!event) return null;
+
+  // Defense in depth — see fetchCardOnce.
+  if (!isVerifiedEvent(event)) {
+    console.warn('Pairing event signature verification failed - possible tampering');
+    return null;
+  }
+
   return { content: event.content, created_at: event.created_at };
 }
 

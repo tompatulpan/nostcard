@@ -10,123 +10,15 @@
  * Security:
  *   - The passphrase itself is never persisted; only derived material is cached by callers.
  *   - syncNsec / syncKeyRaw / passphrase must never be logged.
- *   - Rate limiting at derivation level prevents brute force attacks
+ *   - Brute-force resistance comes from the passphrase entropy (8 BIP39 words
+ *     ≈ 88 bits) plus 600k PBKDF2 iterations per attempt — not from client-side
+ *     rate limiting, which an in-page attacker can trivially bypass. The
+ *     UI-level join limiter in app.js is user friction only.
  */
 
 import { deriveSyncSecrets, importSyncKey, encryptVCard, decryptVCard } from './crypto.js';
 import { derivePublicKey, publishSyncEvent, fetchSyncEvent, deleteSyncEvent } from './nostr.js';
 import { BIP39_ENGLISH } from './vendor/bip39-wordlist.js';
-
-// ---------------------------------------------------------------------------
-// Rate limiting for derivation (brute force protection)
-// ---------------------------------------------------------------------------
-
-/**
- * In-memory rate limiter for sync passphrase derivation attempts.
- * Prevents offline brute force attacks even if an attacker can call
- * deriveSyncIdentity directly (e.g., via compromised JavaScript).
- */
-const derivationRateLimiter = {
-  attempts: new Map(), // passphrase -> { count, lastAttempt }
-  maxAttempts: 10,
-  windowMs: 60 * 1000, // 1 minute
-  lockoutMs: 15 * 60 * 1000, // 15 minutes
-  
-  /**
-   * Check if a derivation attempt is allowed.
-   * @param {string} passphrase 
-   * @returns {boolean} true if allowed
-   */
-  check(passphrase) {
-    const now = Date.now();
-    const key = passphrase.slice(0, 20); // Use first 20 chars as key to save memory
-    
-    const record = this.attempts.get(key);
-    if (!record) {
-      this.attempts.set(key, { count: 1, lastAttempt: now });
-      return true;
-    }
-    
-    // Check if lockout period has passed
-    if (now - record.lastAttempt > this.lockoutMs) {
-      this.attempts.delete(key);
-      this.attempts.set(key, { count: 1, lastAttempt: now });
-      return true;
-    }
-    
-    // Check if within rate limit window
-    if (now - record.lastAttempt > this.windowMs) {
-      this.attempts.set(key, { count: 1, lastAttempt: now });
-      return true;
-    }
-    
-    // Check if under limit
-    if (record.count < this.maxAttempts) {
-      this.attempts.set(key, { count: record.count + 1, lastAttempt: now });
-      return true;
-    }
-    
-    return false;
-  },
-  
-  /**
-   * Record a failed attempt.
-   * @param {string} passphrase
-   */
-  recordFailure(passphrase) {
-    const key = passphrase.slice(0, 20);
-    const record = this.attempts.get(key);
-    if (record) {
-      record.count++;
-      record.lastAttempt = Date.now();
-    }
-  },
-  
-  /**
-   * Clear rate limiting for a passphrase (e.g., after successful derivation).
-   * @param {string} passphrase
-   */
-  clear(passphrase) {
-    const key = passphrase.slice(0, 20);
-    this.attempts.delete(key);
-  },
-  
-  /**
-   * Get remaining lockout time for a passphrase.
-   * @param {string} passphrase
-   * @returns {number} milliseconds remaining, or 0 if not locked out
-   */
-  getLockoutTime(passphrase) {
-    const key = passphrase.slice(0, 20);
-    const record = this.attempts.get(key);
-    if (!record) return 0;
-    
-    const now = Date.now();
-    const timeSinceLast = now - record.lastAttempt;
-    
-    if (timeSinceLast > this.lockoutMs) return 0;
-    if (record.count < this.maxAttempts) return 0;
-    
-    return this.lockoutMs - timeSinceLast;
-  }
-};
-
-/**
- * Get remaining lockout time for a passphrase (for UI display).
- * @param {string} passphrase
- * @returns {number} milliseconds remaining, or 0 if not locked out
- */
-export function getDerivationLockoutTime(passphrase) {
-  return derivationRateLimiter.getLockoutTime(passphrase);
-}
-
-/**
- * Clear rate limiting for a passphrase (e.g., after successful operation).
- * @param {string} passphrase
- */
-export function clearDerivationRateLimit(passphrase) {
-  derivationRateLimiter.clear(passphrase);
-}
 
 // ---------------------------------------------------------------------------
 // Passphrase generation
@@ -210,21 +102,10 @@ export function isValidSyncPassphrase(passphrase) {
  *
  * @param {string} passphrase
  * @returns {Promise<{ syncNsec: Uint8Array, syncNpub: string, syncKeyRaw: Uint8Array }>}
- * @throws {Error} if rate limited
  */
 export async function deriveSyncIdentity(passphrase) {
-  // Check rate limiting
-  if (!derivationRateLimiter.check(passphrase)) {
-    const lockoutTime = derivationRateLimiter.getLockoutTime(passphrase);
-    throw new Error(`Rate limited. Try again in ${Math.ceil(lockoutTime / 60000)} minutes.`);
-  }
-  
   const { syncNsec, syncKeyRaw } = await deriveSyncSecrets(passphrase);
   const syncNpub = derivePublicKey(syncNsec);
-  
-  // Clear rate limiting on successful derivation
-  derivationRateLimiter.clear(passphrase);
-  
   return { syncNsec, syncNpub, syncKeyRaw };
 }
 

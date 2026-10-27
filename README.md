@@ -174,6 +174,13 @@ On a trusted device, the recipient view offers a **Download .vcf** button. This 
 - All user strings are DOM-sanitised (`textContent` / explicit escaping). No `innerHTML` with user data.
 - Trust gate TTL: trusted-device flag expires after 30 days.
 
+### Known residual risks (accepted)
+
+- **Card keys live in plaintext `localStorage`** (`e2e:cards` holds each card's `nsec` + AES key). Any XSS on the page's origin could read them. The primary defence is the strict HTTP CSP (`public/_headers`: `script-src 'self'`, `object-src 'none'`), not encryption — a page-origin script could re-derive any wrapper key anyway. The sync identity is additionally stored encrypted (`secureStorage.js`), which protects against a *passive* leak of a browser-profile dump, not against XSS.
+- **The sync passphrase equals full keyring access.** The sync snapshot on the relays contains every card's private key, encrypted only under the 8-word passphrase (≈88 bits, 600k PBKDF2 iterations). Anyone holding the passphrase can read *and overwrite* the snapshot. Losing it means losing sync (the cards on each device and the share links keep working); leaking it means total compromise — rotate keys if in doubt.
+- **Sync is last-writer-wins** — no conflict resolution or version pinning. Two devices editing concurrently can clobber each other; a malicious passphrase holder can wipe the snapshot (recoverable by pushing again from any device).
+- **Relay deletions are best-effort** (NIP-09). Deleting a card also overwrites the relay event with an empty one, but relays that ignore deletions may retain history — assume anything published is permanently public.
+
 ## File structure
 
 ```

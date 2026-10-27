@@ -1,52 +1,59 @@
 /**
  * secureStorage.js — Encrypted localStorage wrapper
  *
- * Provides a secure way to store sensitive data (like sync identities) in
- * localStorage by encrypting it with a key derived from a device-specific
- * factor. This mitigates XSS attacks that could otherwise steal private keys.
+ * Stores sensitive data (like sync identities) in localStorage encrypted
+ * under an origin-derived AES-256-GCM key.
  *
- * Security notes:
- *   - The encryption key is derived from a combination of factors that are
- *     unique to the device/browser, making it difficult for an XSS attack
- *     to decrypt data even if it steals the ciphertext.
- *   - The key is NOT persisted, so encrypted data can only be read by the
- *     same device that wrote it (same origin, same browser profile).
- *   - This is NOT a substitute for proper XSS prevention (CSP) but adds
- *     defense in depth.
- *   - For maximum security, sensitive operations should still use sessionStorage
- *     for ephemeral data and avoid persisting private keys when possible.
+ * Honest threat model:
+ *   - Protects against a PASSIVE leak of localStorage contents (e.g. a
+ *     synced browser-profile backup or a dump scraped by local malware).
+ *   - Does NOT protect against XSS on this origin — injected script can
+ *     simply re-run the same derivation. The HTTP CSP (public/_headers,
+ *     script-src 'self') is the primary XSS defence.
+ *
+ * Design notes:
+ *   - The key is derived from stable factors only (app salt + origin).
+ *     Deliberately not from navigator.userAgent — it changes with every
+ *     browser update and would silently invalidate all encrypted values.
+ *   - The key is cached in module scope (not a window global) and imported
+ *     non-extractable; it never leaves this module.
+ *   - On non-secure origins (plain http on a LAN IP) crypto.subtle is
+ *     unavailable — callers (utils.js secureReadJson/secureWriteJson) fall
+ *     back to plain localStorage for that case.
  */
 
 /**
- * Derive a device-specific encryption key.
- * Uses a combination of:
- *   - A fixed application salt
- *   - The origin (prevents cross-origin decryption)
- *   - The userAgent (adds entropy, though not perfectly reliable)
- *   - A hardcoded secret (obscures the derivation from external attackers)
- * 
- * The key is cached in memory for the session.
+ * Derive an origin-specific encryption key.
+ *
+ * Honest scope: this protects against a *passive* leak of localStorage data
+ * (e.g. a synced browser-profile dump). It does NOT protect against XSS on
+ * this origin — an injected script can simply re-run this derivation, which
+ * is why the HTTP CSP (public/_headers) is the primary XSS defence.
+ *
+ * Deliberately NOT part of the derivation input:
+ *   - navigator.userAgent — it changes on every browser update, which would
+ *     silently invalidate all encrypted values; origin + app salt are stable.
+ *
+ * The derived key is cached in module scope (not on a window global) for the
+ * session, and imported non-extractable — it is only ever used inside this
+ * module for encrypt/decrypt.
  * @returns {Promise<CryptoKey>} AES-256-GCM key for encryption/decryption
  */
+let cachedDeviceKey = null;
+
 async function getDeviceKey() {
-  // Cache the key in memory for the session
-  if (window.__secureStorageDeviceKey) {
-    return window.__secureStorageDeviceKey;
+  if (cachedDeviceKey) {
+    return cachedDeviceKey;
   }
 
   // Fixed application salt - changing this invalidates all stored data
   const APP_SALT = 'nostcard-secure-storage-v1';
-  
-  // Hardcoded secret to obscure the derivation (not a real secret, just adds obscurity)
-  const OBSCURE_SECRET = 'x7Fk9pLm2QvR4sT8wY';
 
-  // Gather device-specific factors
   const origin = window.location.origin;
-  const userAgent = navigator.userAgent;
-  
-  // Combine all factors
-  const combined = APP_SALT + '|' + origin + '|' + userAgent + '|' + OBSCURE_SECRET;
-  
+
+  // Combine stable factors
+  const combined = APP_SALT + '|' + origin;
+
   // Derive a 256-bit key using PBKDF2
   const baseKey = await crypto.subtle.importKey(
     'raw',
@@ -67,18 +74,15 @@ async function getDeviceKey() {
     256
   );
 
-  const deviceKey = await crypto.subtle.importKey(
+  cachedDeviceKey = await crypto.subtle.importKey(
     'raw',
     keyBits,
     { name: 'AES-GCM', length: 256 },
-    true,
+    false, // non-extractable — only used inside this module
     ['encrypt', 'decrypt']
   );
 
-  // Cache for session
-  window.__secureStorageDeviceKey = deviceKey;
-  
-  return deviceKey;
+  return cachedDeviceKey;
 }
 
 /**
@@ -175,23 +179,4 @@ export const secureStorage = {
   }
 };
 
-/**
- * Check if secure storage is available (i.e., the device key can be derived).
- * @returns {Promise<boolean>}
- */
-export async function isSecureStorageAvailable() {
-  try {
-    await getDeviceKey();
-    return true;
-  } catch {
-    return false;
-  }
-}
 
-/**
- * Clear the cached device key (e.g., on logout).
- * Note: This doesn't clear stored data, just forces re-derivation on next access.
- */
-export function clearDeviceKeyCache() {
-  window.__secureStorageDeviceKey = null;
-}
