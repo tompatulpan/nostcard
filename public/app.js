@@ -53,6 +53,8 @@ const CARD_PATH = new URL('./card', location.href).pathname;
 
 let activeCardId = null; // ID of the card open in the editor
 let cvReturnRoute = '/cards'; // where cv-btn-back navigates to after the inline viewer closes
+let savedReturnRoute = null;   // where btn-back-to-cards on the Contacts screen returns to;
+                               // null (deep link/share target) falls back to cards-or-setup
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -148,7 +150,7 @@ async function init() {
     const screenCards = document.getElementById('screen-cards');
     const screenSaved = document.getElementById('screen-saved');
     if (screenCards && !screenCards.classList.contains('hidden')) renderCardList();
-    if (screenSaved && !screenSaved.classList.contains('hidden')) renderSavedLinks();
+    if (screenSaved && !screenSaved.classList.contains('hidden')) { renderSavedLinks(); updateSavedBackBtn(); }
     if (activeCardId) renderRelayManager();
     // Update type-select option labels and address subfield placeholders without losing user input
     document.querySelectorAll('.dynamic-type-select option').forEach(opt => {
@@ -255,9 +257,25 @@ function showCardList()  { activeCardId = null; showScreen('screen-cards');  ren
 function showEditor()    { showScreen('screen-editor'); }
 let pendingPasteFocus = false; // set by "Add by link" — expand + focus the paste box on arrival
 
+/**
+ * Where the Contacts screen's back button leads: the screen the user came
+ * from, or the sensible home for deep links / share-target entries
+ * (My Cards if any cards exist, else the setup screen).
+ */
+function savedBackTarget() {
+  return savedReturnRoute || (getCards().length > 0 ? '/cards' : '/setup');
+}
+
+/** Label the Contacts back button with where it actually goes. */
+function updateSavedBackBtn() {
+  document.getElementById('btn-back-to-cards').textContent =
+    savedBackTarget() === '/setup' ? t('btn.back.setup') : t('btn.back.cards');
+}
+
 function showSavedLinks(){
   activeCardId = null;
   showScreen('screen-saved');
+  updateSavedBackBtn();
   renderSavedLinks();
   if (pendingPasteFocus) {
     pendingPasteFocus = false;
@@ -1647,14 +1665,16 @@ document.getElementById('btn-help-back').addEventListener('click', () => {
 });
 
 document.getElementById('btn-back-to-cards').addEventListener('click', () => {
-  go('/cards');
+  go(savedBackTarget());
 });
 
 document.getElementById('btn-go-saved').addEventListener('click', () => {
+  savedReturnRoute = '/cards';
   go('/saved');
 });
 
 document.getElementById('btn-go-saved-setup').addEventListener('click', () => {
+  savedReturnRoute = '/setup';
   go('/saved');
 });
 
@@ -1662,7 +1682,8 @@ document.getElementById('btn-go-saved-setup').addEventListener('click', () => {
 // Accepts full links and the compact form (naddr#key) — the web address is
 // never needed; the card is fetched from Nostr via the naddr's relay hints.
 function openPasteContact() {
-  pendingPasteFocus = true;
+  pendingPasteFocus  = true;
+  savedReturnRoute    = getCards().length > 0 ? '/cards' : '/setup';
   go('/saved');
 }
 

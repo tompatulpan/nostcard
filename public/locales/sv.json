@@ -16,6 +16,8 @@
   "btn.copy.link": "Kopiera länk",
   "btn.copy.link.title": "Kopiera kontaktens delningslänk till urklipp",
   "btn.remove": "Ta bort",
+  "btn.back.cards": "← Mina kort",
+  "btn.back.setup": "← Kom igång",
   "btn.accept": "Acceptera",
   "btn.import": "Importera",
   "btn.save.qr": "Spara QR som PNG",

@@ -16,6 +16,8 @@
   "btn.copy.link": "Copy link",
   "btn.copy.link.title": "Copy this contact's share link to the clipboard",
   "btn.remove": "Remove",
+  "btn.back.cards": "← My Cards",
+  "btn.back.setup": "← Get started",
   "btn.accept": "Accept",
   "btn.import": "Import",
   "btn.save.qr": "Save QR as PNG",
