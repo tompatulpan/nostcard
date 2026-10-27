@@ -796,17 +796,18 @@ const confirmModalOkBtn = document.getElementById('btn-modal-confirm-ok');
 let confirmModalResolve = null;
 
 /**
- * Ask the user to confirm a destructive action in a modal.
+ * Ask the user to confirm a consequential action in a modal.
  * Resolves true on confirm, false on cancel (button, overlay, Escape).
- * @param {{ title: string, body: string, confirmLabel: string }} opts
+ * @param {{ title: string, body: string, confirmLabel: string, okClass?: string }} opts
  * @returns {Promise<boolean>}
  */
-function openConfirmModal({ title, body, confirmLabel }) {
+function openConfirmModal({ title, body, confirmLabel, okClass = 'btn btn-danger' }) {
   return new Promise(resolve => {
     confirmModalResolve = resolve;
     confirmModalTitle.textContent = title;
     confirmModalBody.textContent  = body;
     confirmModalOkBtn.textContent = confirmLabel;
+    confirmModalOkBtn.className   = okClass;
     confirmModalEl.classList.remove('hidden');
     confirmModalOkBtn.focus();
   });
@@ -1002,7 +1003,11 @@ document.getElementById('btn-delete-card').addEventListener('click', async () =>
   const card = getCard(activeCardId);
   if (!card) return;
 
-  if (!confirm(t('dialog.delete.confirm', { label: card.label }))) return;
+  if (!(await openConfirmModal({
+    title:        t('dialog.confirm.generic.title'),
+    body:         t('dialog.delete.confirm', { label: card.label }),
+    confirmLabel: t('editor.btn.delete'),
+  }))) return;
 
   const btn = document.getElementById('btn-delete-card');
   btn.disabled  = true;
@@ -1069,9 +1074,11 @@ document.getElementById('btn-rotate-key').addEventListener('click', async () => 
   const card = getCard(activeCardId);
   if (!card) return;
 
-  if (!confirm(
-    t('dialog.rotate.confirm', { label: card.label })
-  )) return;
+  if (!(await openConfirmModal({
+    title:        t('dialog.confirm.generic.title'),
+    body:         t('dialog.rotate.confirm', { label: card.label }),
+    confirmLabel: t('share.btn.rotate'),
+  }))) return;
 
   const btn    = document.getElementById('btn-rotate-key');
   const status = document.getElementById('save-status');
@@ -1662,8 +1669,12 @@ function openPasteContact() {
 document.getElementById('btn-paste-link').addEventListener('click', openPasteContact);
 document.getElementById('btn-paste-link-setup').addEventListener('click', openPasteContact);
 
-document.getElementById('btn-clear-all').addEventListener('click', () => {
-  if (!confirm(t('dialog.logout.confirm'))) return;
+document.getElementById('btn-clear-all').addEventListener('click', async () => {
+  if (!(await openConfirmModal({
+    title:        t('dialog.confirm.generic.title'),
+    body:         t('dialog.logout.confirm'),
+    confirmLabel: t('cards.btn.logout'),
+  }))) return;
   const cards = getCards();
   for (const c of cards) {
     localStorage.removeItem(STORAGE_KEYS.fields(c.id));
@@ -2211,7 +2222,12 @@ async function beginPairStart(card) {
         // Anyone holding the code can write slot b — an explicit accept makes a
         // hijacked handshake visible instead of silently stored.
         const label = String(found.payload.label || 'Connection').slice(0, 100);
-        if (confirm(t('dialog.pair.accept.confirm', { label }))) {
+        if (await openConfirmModal({
+          title:        t('dialog.confirm.generic.title'),
+          body:         t('dialog.pair.accept.confirm', { label }),
+          confirmLabel: t('btn.accept'),
+          okClass:      'btn btn-primary',
+        })) {
           await completePairStart(pairNsec, found.payload, card.id);
         } else {
           stopPairStartPolling();
@@ -2429,7 +2445,12 @@ async function importBackup(json, { navigate = true, fromSync = false } = {}) {
   } else if (json?.version === 1 && Array.isArray(json.cards)) {
     // v1 — legacy Cloudflare app backup; cards have ownerToken, no nsec/npub
     // We import fields + AES keys and generate fresh Nostr keypairs
-    if (confirm(t('dialog.v1import.confirm'))) {
+    if (await openConfirmModal({
+      title:        t('dialog.confirm.generic.title'),
+      body:         t('dialog.v1import.confirm'),
+      confirmLabel: t('btn.import'),
+      okClass:      'btn btn-primary',
+    })) {
       fieldsMap    = (json.fields && typeof json.fields === 'object') ? json.fields : {};
       linkPayloads = Array.isArray(json.savedLinks) ? json.savedLinks : [];
       let imported = 0;
@@ -2885,7 +2906,11 @@ document.getElementById('btn-sync-pull').addEventListener('click', async () => {
 document.getElementById('btn-sync-delete').addEventListener('click', async () => {
   const identity = await getSyncIdentity();
   if (!identity) return;
-  if (!confirm(t('dialog.sync.delete.confirm'))) return;
+  if (!(await openConfirmModal({
+    title:        t('dialog.confirm.generic.title'),
+    body:         t('dialog.sync.delete.confirm'),
+    confirmLabel: t('sync.btn.delete'),
+  }))) return;
   const btn = document.getElementById('btn-sync-delete');
   btn.disabled = true;
   try {
@@ -2901,7 +2926,11 @@ document.getElementById('btn-sync-delete').addEventListener('click', async () =>
 });
 
 document.getElementById('btn-sync-rotate').addEventListener('click', async () => {
-  if (!confirm(t('dialog.sync.rotate.confirm'))) return;
+  if (!(await openConfirmModal({
+    title:        t('dialog.confirm.generic.title'),
+    body:         t('dialog.sync.rotate.confirm'),
+    confirmLabel: t('sync.btn.rotate'),
+  }))) return;
   const identity = await getSyncIdentity();
   if (identity) {
     const btn = document.getElementById('btn-sync-rotate');

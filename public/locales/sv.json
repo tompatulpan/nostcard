@@ -16,6 +16,8 @@
   "btn.copy.link": "Kopiera länk",
   "btn.copy.link.title": "Kopiera kontaktens delningslänk till urklipp",
   "btn.remove": "Ta bort",
+  "btn.accept": "Acceptera",
+  "btn.import": "Importera",
   "btn.save.qr": "Spara QR som PNG",
   "btn.next": "Nästa",
   "btn.back": "Tillbaka",
@@ -375,6 +377,7 @@
   "pair.join.error.detail": "Denna parningskod hittades inte eller har gått ut. Be om en ny QR-kod.",
   "pair.join.error.badCode": "Denna parningslänk verkar felaktig.",
 
+  "dialog.confirm.generic.title": "Är du säker?",
   "dialog.contact.remove.title": "Ta bort kontakten?",
   "dialog.contact.remove.body": "Är du helt säker på att du vill ta bort denna kontakt från den här enheten? Du kan lägga till den igen om du fortfarande har delningslänken.",
   "dialog.connection.remove.confirm": "Ta bort denna kontakt?\n\nDetta tar bara bort den från din enhet — det meddelar inte den andra personen.",

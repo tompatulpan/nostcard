@@ -16,6 +16,8 @@
   "btn.copy.link": "Copy link",
   "btn.copy.link.title": "Copy this contact's share link to the clipboard",
   "btn.remove": "Remove",
+  "btn.accept": "Accept",
+  "btn.import": "Import",
   "btn.save.qr": "Save QR as PNG",
   "btn.next": "Next",
   "btn.back": "Back",
@@ -375,6 +377,7 @@
   "pair.join.error.detail": "This pairing code was not found or has expired. Ask for a new QR code.",
   "pair.join.error.badCode": "This pairing link looks malformed.",
 
+  "dialog.confirm.generic.title": "Are you sure?",
   "dialog.contact.remove.title": "Remove contact?",
   "dialog.contact.remove.body": "Are you really sure you want to remove this contact from this device? You can add it again if you still have its share link.",
   "dialog.connection.remove.confirm": "Remove this connection?\n\nThis only removes it from your device — it does not notify the other person.",

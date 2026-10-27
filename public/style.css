@@ -442,6 +442,9 @@ textarea { resize: vertical; }
 
 .modal h3 { font-size: 18px; margin-bottom: 8px; }
 
+/* Confirm modal body keeps the paragraph breaks used by the dialog texts. */
+#modal-confirm-body { white-space: pre-line; }
+
 .share-url-box {
   display: flex;
   gap: 8px;
