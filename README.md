@@ -192,7 +192,10 @@ public/
   nostr.js     Nostr layer (publish, fetch, naddr encode/decode)
   crypto.js    AES-256-GCM helpers (Web Crypto API)
   vcard.js     vCard 3.0 builder / parser
-  style.css    shared styles (Classic light/dark palette via CSS custom properties)
+  css/         stylesheets, split by concern — load order defines the cascade:
+               theme.css (Classic light/dark tokens) → base.css (reset, layout,
+               forms, buttons) → components.css (screens, modals, lists) →
+               responsive.css (phone/touch media-query overrides, loaded last)
   theme-boot.js  pre-paint light/dark application (no flash, CSP-safe)
   theme.js     light/dark toggle (persists to localStorage, syncs meta theme-color)
   qrcode.js    QR code library

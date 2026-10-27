@@ -7,7 +7,7 @@
  * wrong theme. Runs under the app's CSP (script-src 'self' — no inline
  * scripts allowed), which is why it is a separate small file.
  *
- * The toggle itself lives in theme.js; the palette in style.css.
+ * The toggle itself lives in theme.js; the palette in css/theme.css.
  * Keep the storage key in sync with STORAGE_KEYS.theme (utils.js).
  */
 (function () {

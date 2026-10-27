@@ -2,7 +2,7 @@
  * theme.js — Light/dark mode toggle for NostCard
  *
  * The active palette ("Classic" light + dark, adapted from the
- * contact-management-system "classic-refined" theme) lives in style.css:
+ * contact-management-system "classic-refined" theme) lives in css/theme.css:
  *   light → :root tokens
  *   dark  → html.dark-mode tokens
  *

@@ -1,0 +1,96 @@
+/* NostCard — Theme tokens
+   "Classic" light + dark palette, adapted from the contact-management-system
+   "classic-refined" theme. Dark variant applied by theme-boot.js/theme.js
+   as <html class="dark-mode">.
+   Load order (cascade): theme.css → base.css → components.css → responsive.css */
+
+:root {
+  --bg:            #f4f6fa;
+  --surface:       #ffffff;
+  --surface-raised:#ffffff;
+  --hover:         #f1f4f9;
+  --border:        #e3e8ef;
+  --border-strong: #cbd3df;
+  --input-bg:      #ffffff;
+  --text:          #0f172a;
+  --text-muted:    #5b6474;
+  --primary:       #2f6fed;
+  --primary-h:     #1f56c7;
+  --primary-light: #e6eeff;
+  --primary-light-h: #d7e3fd;
+  --on-accent:     #ffffff;
+  --danger:        #dc2626;
+  --danger-h:      #b91c1c;
+  --success:       #16a34a;
+  --success-h:     #15803d;
+  --warning:       #ea8a0a;
+  --warning-bg:    #fef3c7;
+  --warning-border:#fbbf24;
+  --warning-text:  #92400e;
+  --teal:          #0891b2;
+  --teal-h:        #0e7490;
+  --ok-bg:         #dcfce7;
+  --ok-border:     #86efac;
+  --ok-text:       #15803d;
+  --fail-bg:       #fee2e2;
+  --fail-border:   #fca5a5;
+  --fail-text:     #dc2626;
+  --wait-bg:       #eef1f6;
+  --wait-text:     #5b6474;
+  --info-bg:       #f0f6ff;
+  --info-border:   #c7dcfa;
+  --secondary-btn: #e5e7eb;
+  --secondary-btn-h: #d1d5db;
+  --focus-ring:    0 0 0 3px rgba(47, 111, 237, 0.22);
+  --radius:        10px;
+  --shadow:        0 4px 12px -2px rgba(15, 23, 42, 0.08);
+}
+
+html.dark-mode {
+  --bg:            #0e1119;
+  --surface:       #161b26;
+  --surface-raised:#1c2231;
+  --hover:         #1f2634;
+  --border:        #252c3b;
+  --border-strong: #343d50;
+  --input-bg:      #0e1119;
+  --text:          #e6eaf2;
+  --text-muted:    #9aa4b6;
+  --primary:       #5b8def;
+  --primary-h:     #7ea5f5;
+  --primary-light: #1b2a4a;
+  --primary-light-h: #22355c;
+  --on-accent:     #0b1220;
+  --danger:        #f87171;
+  --danger-h:      #fca5a5;
+  --success:       #34d399;
+  --success-h:     #6ee7b7;
+  --warning:       #fbbf24;
+  --warning-bg:    #3b2f14;
+  --warning-border:#a16207;
+  --warning-text:  #fbbf24;
+  --teal:          #2dd4bf;
+  --teal-h:        #5eead4;
+  --ok-bg:         #0f2e22;
+  --ok-border:     #146c54;
+  --ok-text:       #34d399;
+  --fail-bg:       #3a1a1a;
+  --fail-border:   #7a2e2e;
+  --fail-text:     #f87171;
+  --wait-bg:       #1f2634;
+  --wait-text:     #9aa4b6;
+  --info-bg:       #16233d;
+  --info-border:   #2a3f6b;
+  --secondary-btn: #1f2634;
+  --secondary-btn-h: #2a3348;
+  --focus-ring:    0 0 0 3px rgba(91, 141, 239, 0.3);
+  --shadow:        0 4px 12px -2px rgba(0, 0, 0, 0.5);
+}
+
+/* Smooth colour change while theme.js toggles the mode */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease !important;
+}

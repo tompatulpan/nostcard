@@ -1,0 +1,70 @@
+/* NostCard — Responsive overrides (must load last so media-query rules win
+   the cascade over base.css/components.css at equal specificity).
+   Organisation: one consolidated block per breakpoint/capability, kept in
+   this order so later rules override earlier ones:
+     1. @media (max-width: 720px) — main phone breakpoint
+     2. @media (pointer: coarse)   — touch targets on any pointer-driven screen
+     3. @media (max-width: 480px) — very narrow phones (language switcher)
+   Load order (cascade): theme.css → base.css → components.css → responsive.css */
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .two-col { grid-template-columns: 1fr; }
+  .screen  { padding: 12px; }
+  .panel   { padding: 16px; }
+  .card-panel { padding: 16px; }
+
+  .top-bar { padding: 8px 12px; }
+
+  .cards-screen-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .cards-screen-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  /* Compact card rows on phones: tighter padding/type, smaller action
+     buttons (overrides the 36px coarse-pointer .btn-sm target). */
+  .cards-list { gap: 8px; }
+  .card-list-row {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    gap: 8px 12px;
+  }
+  .card-list-name  { font-size: 15px; }
+  .card-list-meta  { font-size: 12px; }
+  .relay-badges    { margin-top: 2px; }
+  .card-list-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .card-list-actions .btn-sm {
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  .card-list-info .btn-card-rename { min-height: 24px; padding: 1px 5px; font-size: 11px; }
+
+  .editor-actions { flex-wrap: wrap; }
+  .share-url-box { flex-direction: column; }
+
+  .contact-card { margin: 20px auto; }
+  .modal { padding: 20px 16px; }
+}
+
+@media (pointer: coarse) {
+  .hint-mac { display: none; }
+  .btn-sm { min-height: 36px; padding: 6px 14px; }
+}
+
+@media (max-width: 480px) {
+  .lang-switcher { margin-left: 4px; }
+  .lang-btn { font-size: 10px; padding: 2px 5px; }
+}

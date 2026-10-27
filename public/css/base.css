@@ -1,0 +1,272 @@
+/* NostCard — Base: reset, typography, layout shell, panels, forms, buttons,
+   shared utility classes. Desktop-first values; phone overrides live in
+   responsive.css. Load order (cascade): theme.css → base.css → components.css → responsive.css */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overflow-x: hidden; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+
+.top-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+
+.top-bar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ── Footer (GitHub repo link) ────────────────────────────────────────────── */
+
+.app-footer {
+  padding: 12px 24px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.app-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.app-footer a:hover { color: var(--text); text-decoration: underline; }
+
+.app-footer .app-footer-github-icon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.logo { font-weight: 700; font-size: 16px; letter-spacing: -.3px; }
+
+.screen { flex: 1; padding: 32px 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+.hidden { display: none !important; }
+
+/* ── Cards / panels ──────────────────────────────────────────────────────── */
+
+.card-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+
+.card-panel.centered { text-align: center; max-width: 480px; margin: 60px auto; }
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.panel h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Form fields ─────────────────────────────────────────────────────────── */
+
+.field-group { margin-bottom: 14px; }
+
+.field-group label,
+.dynamic-list > label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.field-row .field-group { flex: 1; }
+
+input[type="text"],
+input[type="tel"],
+input[type="email"],
+input[type="url"],
+textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--input-bg);
+  transition: border-color .15s;
+  outline: none;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+textarea { resize: vertical; }
+
+.req { color: var(--danger); }
+
+/* ── Dynamic list rows (tel / email / org / title / url / note) ──────────── */
+
+.field-section { margin-bottom: 14px; }
+
+.dynamic-list { margin-bottom: 6px; }
+
+.dynamic-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+
+.dynamic-row .dynamic-input { flex: 1; }
+
+/* Live platform icon on website rows (globe for plain sites, brand logos otherwise) */
+.dynamic-url-icon {
+  flex-shrink: 0;
+  width: 1.6em;
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: center;
+  cursor: default;
+}
+
+.dynamic-type-select {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  cursor: pointer;
+  outline: none;
+}
+
+.dynamic-type-select:focus {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+  white-space: nowrap;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-primary  { background: var(--primary); color: var(--on-accent); }
+.btn-primary:hover:not(:disabled)  { background: var(--primary-h); }
+
+.btn-danger   { background: var(--danger);  color: var(--on-accent); }
+.btn-danger:hover:not(:disabled)   { background: var(--danger-h);  }
+
+.btn-ghost      { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover:not(:disabled)      { background: var(--hover); }
+
+.btn-secondary  { background: var(--secondary-btn); color: var(--text); }
+.btn-secondary:hover:not(:disabled)  { background: var(--secondary-btn-h); }
+
+.btn-success    { background: var(--success); color: var(--on-accent); }
+.btn-success:hover:not(:disabled)    { background: var(--success-h); }
+
+.btn-teal       { background: var(--teal); color: var(--on-accent); }
+.btn-teal:hover:not(:disabled)       { background: var(--teal-h); }
+
+/* Public mode: red Done button */
+.btn-done-public { background: var(--danger); color: var(--on-accent); }
+.btn-done-public:hover { background: var(--danger-h); }
+
+.btn-sm  { padding: 5px 12px; font-size: 13px; }
+.btn-lg  { padding: 12px 28px; font-size: 16px; }
+
+kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--border-strong);
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Utility ─────────────────────────────────────────────────────────────── */
+
+.muted        { color: var(--text-muted); }
+.error-icon   { font-size: 48px; margin-bottom: 12px; }
+.error        { color: var(--danger); }
