@@ -962,8 +962,28 @@ kbd {
     width: 100%;
   }
 
-  .card-list-row { flex-wrap: wrap; }
-  .card-list-actions { width: 100%; justify-content: flex-end; }
+  /* Compact card rows on phones: tighter padding/type, smaller action
+     buttons (overrides the 36px coarse-pointer .btn-sm target). */
+  .cards-list { gap: 8px; }
+  .card-list-row {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    gap: 8px 12px;
+  }
+  .card-list-name  { font-size: 15px; }
+  .card-list-meta  { font-size: 12px; }
+  .relay-badges    { margin-top: 2px; }
+  .card-list-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .card-list-actions .btn-sm {
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  .card-list-info .btn-card-rename { min-height: 24px; padding: 1px 5px; font-size: 11px; }
 
   .editor-actions { flex-wrap: wrap; }
   .share-url-box { flex-direction: column; }
