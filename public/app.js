@@ -783,6 +783,50 @@ function closeCreateCardWizard(result) {
   if (resolve) resolve(result);
 }
 
+// ---------------------------------------------------------------------------
+// Generic confirm modal — used for destructive actions where the browser's
+// native confirm() reads as an "OK" that users tap without thinking.
+// ---------------------------------------------------------------------------
+
+const confirmModalEl    = document.getElementById('modal-confirm');
+const confirmModalTitle = document.getElementById('modal-confirm-title');
+const confirmModalBody  = document.getElementById('modal-confirm-body');
+const confirmModalOkBtn = document.getElementById('btn-modal-confirm-ok');
+
+let confirmModalResolve = null;
+
+/**
+ * Ask the user to confirm a destructive action in a modal.
+ * Resolves true on confirm, false on cancel (button, overlay, Escape).
+ * @param {{ title: string, body: string, confirmLabel: string }} opts
+ * @returns {Promise<boolean>}
+ */
+function openConfirmModal({ title, body, confirmLabel }) {
+  return new Promise(resolve => {
+    confirmModalResolve = resolve;
+    confirmModalTitle.textContent = title;
+    confirmModalBody.textContent  = body;
+    confirmModalOkBtn.textContent = confirmLabel;
+    confirmModalEl.classList.remove('hidden');
+    confirmModalOkBtn.focus();
+  });
+}
+
+/** Close the confirm modal and hand the answer back to the awaiting caller. */
+function closeConfirmModal(result) {
+  confirmModalEl.classList.add('hidden');
+  const resolve = confirmModalResolve;
+  confirmModalResolve = null;
+  if (resolve) resolve(result);
+}
+
+document.getElementById('btn-modal-confirm-cancel').addEventListener('click', () => closeConfirmModal(false));
+document.getElementById('btn-modal-confirm-ok').addEventListener('click', () => closeConfirmModal(true));
+confirmModalEl.addEventListener('click', e => { if (e.target === confirmModalEl) closeConfirmModal(false); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && confirmModalResolve) closeConfirmModal(false);
+});
+
 document.getElementById('btn-create-cancel').addEventListener('click', () => closeCreateCardWizard(null));
 
 document.getElementById('btn-create-next').addEventListener('click', () => {
@@ -1721,7 +1765,13 @@ function renderSavedLinks() {
     const removeBtn = document.createElement('button');
     removeBtn.className   = 'btn btn-danger btn-sm';
     removeBtn.textContent = t('btn.remove');
-    removeBtn.addEventListener('click', () => {
+    removeBtn.addEventListener('click', async () => {
+      const ok = await openConfirmModal({
+        title:        t('dialog.contact.remove.title'),
+        body:         t('dialog.contact.remove.body'),
+        confirmLabel: t('btn.remove'),
+      });
+      if (!ok) return;
       const updated = getSavedLinks().filter(l => l.url !== link.url);
       saveSavedLinks(updated);
       renderSavedLinks();
@@ -1950,8 +2000,13 @@ function viewConnection(conn) {
   showCardViewScreen(url, 'owner-preview');
 }
 
-function removeConnection(id) {
-  if (!confirm(t('dialog.connection.remove.confirm'))) return;
+async function removeConnection(id) {
+  const ok = await openConfirmModal({
+    title:        t('dialog.contact.remove.title'),
+    body:         t('dialog.connection.remove.confirm'),
+    confirmLabel: t('btn.remove'),
+  });
+  if (!ok) return;
   saveConnections(getConnections().filter(c => c.id !== id));
   localStorage.removeItem(STORAGE_KEYS.connectionFields(id));
   renderSavedLinks();
