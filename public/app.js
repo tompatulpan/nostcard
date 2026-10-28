@@ -914,9 +914,12 @@ async function createCard(label, prefillFields = null, identityNsec = null) {
   const id      = generateRandom(8).toLowerCase();
   const relays  = [...DEFAULT_RELAYS];
 
+  // Do NOT prefill FN with the card label — the label is a local-only
+  // nickname, while FN is the contact's real full name (a separate thing
+  // from First/Last name). The editor enforces FN via save validation.
   const fields    = prefillFields
     ? { ...prefillFields, sourceUrl: canonicalUrl(id, npub, relays) }
-    : { fn: label,        sourceUrl: canonicalUrl(id, npub, relays) };
+    : { fn: '',           sourceUrl: canonicalUrl(id, npub, relays) };
   const vcardText = buildVCard(fields);
   const blob      = await encryptVCard(vcardText, aesKey);
 
