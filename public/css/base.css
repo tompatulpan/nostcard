@@ -68,6 +68,15 @@ body {
 
 .hidden { display: none !important; }
 
+/* Hide the page during boot: theme-boot.js adds .boot-pending before the
+   first paint and i18n.js removes it once the locale is loaded and applied —
+   the HTML ships with English placeholder text, which would otherwise flash
+   before the translated strings arrive. Fallback timeout in theme-boot.js.
+   The background lives on <html> because the (hidden) body's background is
+   not painted to the canvas while boot-pending. */
+html.boot-pending { background: var(--bg); }
+html.boot-pending body { visibility: hidden; }
+
 /* ── Cards / panels ──────────────────────────────────────────────────────── */
 
 .card-panel {

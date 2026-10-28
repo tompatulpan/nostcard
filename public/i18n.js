@@ -38,7 +38,14 @@ let _lang   = 'sv';
 export async function initI18n() {
   _lang = _detectLang();
   await _loadLocale(_lang);
-  applyTranslations();
+  try {
+    applyTranslations();
+  } finally {
+    // Reveal the page: theme-boot.js hides it (html.boot-pending) before the
+    // first paint so untranslated placeholder text never flashes while the
+    // locale file is fetched over the network.
+    document.documentElement.classList.remove('boot-pending');
+  }
 }
 
 /**
