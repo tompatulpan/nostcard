@@ -217,6 +217,10 @@
             <button id="btn-rotate-key" class="btn btn-ghost btn-lg" style="width:100%" data-i18n="share.btn.rotate" data-i18n-title="share.btn.rotate.title" title="Generate a new encryption key — all previous share links will stop working">🔄 Rotate key</button>
           </div>
 
+          <div style="margin-top:12px">
+            <button id="btn-recovery" class="btn btn-ghost btn-lg" style="width:100%" data-i18n="recovery.btn.open" data-i18n-title="recovery.btn.open.title" title="Protect this card against a lost browser — regain ownership with a passphrase">🛟 Recovery passphrase</button>
+          </div>
+
           <p class="muted" style="margin-top:1.5rem;font-size:0.8rem" data-i18n-html="share.warning">
             Relays never see your contact details or the card name — only ciphertext and update timestamps.
           </p>
@@ -237,6 +241,7 @@
             <input id="restore-file-input" type="file" accept=".json,application/json" style="display:none" />
           </label>
           <button id="btn-paste-restore" class="btn btn-ghost adv-menu-item" data-i18n="cards.btn.paste" data-i18n-title="cards.btn.paste.title" title="Paste backup JSON">📋 Paste restore</button>
+          <button id="btn-adv-recover" class="btn btn-ghost adv-menu-item" data-i18n="recovery.adv.btn" data-i18n-title="recovery.adv.btn.title" title="Regain ownership of a card using its share link and recovery passphrase">🔑 Recover card</button>
           <button id="btn-clear-all" class="btn btn-danger adv-menu-item" data-i18n="cards.btn.logout" data-i18n-title="cards.btn.logout.title" title="Remove all local keys and credentials">🚪 Log out</button>
         </div>
         <div class="modal-actions">
@@ -389,6 +394,62 @@
 
         <div class="modal-actions">
           <button id="btn-sync-close" class="btn btn-ghost" data-i18n="btn.close">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Recovery passphrase modal (per card, opened from the editor) ─── -->
+    <div id="modal-recovery" class="modal-overlay hidden">
+      <div class="modal">
+        <h3><span data-i18n="recovery.modal.prefix">Recovery — </span><strong id="recovery-label"></strong></h3>
+        <p class="muted" data-i18n-html="recovery.modal.body">
+          A passphrase-encrypted copy of this card's signing key is published to its relays.
+          If you lose this browser, open the card's share link and enter the passphrase on any device
+          to regain full ownership — edit, rotate key and delete.
+        </p>
+        <p id="recovery-status" class="status-msg"></p>
+
+        <!-- One-time passphrase reveal (mirrors the sync modal) -->
+        <div id="recovery-reveal" class="hidden">
+          <p class="muted" data-i18n-html="recovery.reveal.warning">
+            ⚠️ Save this passphrase now — it's shown only once. Anyone with the card's share link
+            <em>and</em> this passphrase can take over the card. Never share it with card recipients.
+          </p>
+          <div class="share-url-box">
+            <input id="recovery-passphrase-value" type="text" readonly />
+            <button id="btn-recovery-copy" class="btn btn-ghost btn-sm" data-i18n="btn.copy">Copy</button>
+          </div>
+          <div id="recovery-qr-container" class="qr-container"></div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-recovery-generate" class="btn btn-primary btn-sm" data-i18n="recovery.btn.generate">Generate recovery passphrase</button>
+          <button id="btn-recovery-remove" class="btn btn-danger btn-sm hidden" data-i18n="recovery.btn.remove" data-i18n-title="recovery.btn.remove.title" title="Remove the encrypted recovery copy from the relays (best-effort) — the card itself stays live">Remove recovery</button>
+          <button id="btn-recovery-close" class="btn btn-ghost" data-i18n="btn.close">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Recover card modal (restore ownership from link + passphrase) ─ -->
+    <div id="modal-recover" class="modal-overlay hidden">
+      <div class="modal">
+        <h3 data-i18n="recover.modal.heading">Recover a card</h3>
+        <p class="muted" data-i18n-html="recover.modal.body">
+          Lost your keys but still have a card's share link? Paste the link and the card's
+          recovery passphrase to restore full ownership on this device.
+        </p>
+        <div class="field-group">
+          <label data-i18n="recover.modal.link.label">Share link — full link or naddr#key</label>
+          <input id="recover-link-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste the share link…" data-i18n-placeholder="recover.modal.link.placeholder" />
+        </div>
+        <div class="field-group">
+          <label data-i18n="recover.modal.passphrase.label">Recovery passphrase</label>
+          <input id="recover-passphrase-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="word-word-word-word-word-word-word-word" data-i18n-placeholder="sync.join.placeholder" />
+        </div>
+        <p id="recover-status" class="status-msg"></p>
+        <div class="modal-actions">
+          <button id="btn-recover-confirm" class="btn btn-primary" data-i18n="recover.modal.btn.confirm">Recover card</button>
+          <button id="btn-recover-cancel" class="btn btn-ghost" data-i18n="btn.cancel">Cancel</button>
         </div>
       </div>
     </div>
@@ -624,6 +685,7 @@
         <ul class="help-list">
           <li data-i18n-html="help.backup.1">**Backup** exports a JSON file containing everything, including your private keys. Anyone with that file controls your cards — store it securely.</li>
           <li data-i18n-html="help.backup.2">**Sync** publishes an encrypted snapshot of your cards to your relays using a generated passphrase. Enter the same passphrase on another device to pull it in — anyone with the passphrase can read and overwrite the snapshot, so keep it secret.</li>
+          <li data-i18n-html="help.backup.3">**Recovery passphrase** — set per card from the editor's 🛟 button: a passphrase-encrypted copy of the card's signing key is published to its relays. If you lose the device (no backup, no sync), **Advanced → Recover card** with the card's share link and the passphrase restores full ownership — edit, rotate key and delete.</li>
         </ul>
 
         <div class="modal-actions" style="margin-top:1.5rem">

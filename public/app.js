@@ -12,7 +12,10 @@
  *   e2e:connection-fields:<id>  per-connection cached decrypted vCard fields
  *
  * Each card credential object:
- *   { id, label, nsec, npub, key, relays }
+ *   { id, label, nsec, npub, key, relays, recovery? }
+ * `recovery: true` marks that a passphrase-encrypted copy of the nsec is
+ * published to the card's relays (see recovery.js) — a UI hint only; the
+ * relays are the source of truth.
  *
  * Each connection object (mutual in-person pairing — see pairing.js):
  *   { id, peerLabel, peerNaddr, peerKey, myCardId, pairedAt, updatedAt }
@@ -32,6 +35,7 @@ import { buildVCard, parseVCard } from './vcard.js';
 import { generateKeypair, derivePublicKey, parseSecretKey, publishCard, fetchCard, deleteCardVerified, naddrEncode, naddrDecode, npubEncode, sameCardAddress, isValidRelayUrl, DEFAULT_RELAYS, CARD_KIND } from './nostr.js';
 import { initI18n, t, setLang, getCurrentLang, applyTranslations, formatDate } from './i18n.js';
 import { generateSyncPassphrase, deriveSyncIdentity, isValidSyncPassphrase, pushSyncData, pullSyncData, deleteSyncData } from './sync.js';
+import { generateRecoveryPassphrase, isValidRecoveryPassphrase, setRecoveryData, recoverCardSecret, removeRecoveryData } from './recovery.js';
 import { generatePairingCode, derivePairingIdentity, publishPairingPayload, fetchPairingPayload, cleanupPairing, PAIR_TTL_MS } from './pairing.js';
 import {
   STORAGE_KEYS, readJson, writeJson, secureReadJson, secureWriteJson,
@@ -2571,6 +2575,9 @@ async function importBackup(json, { navigate = true, fromSync = false } = {}) {
       npub,
       key:    payload.key,
       relays: relayList,
+      // UI hint that a recovery passphrase protects this card — the relays
+      // remain the source of truth (see recovery.js)
+      ...(payload.recovery ? { recovery: true } : {}),
     });
     saveCards(cards);
     existingIds.add(payload.id);
@@ -2974,6 +2981,286 @@ document.getElementById('btn-sync-rotate').addEventListener('click', async () =>
   document.getElementById('sync-manage-section').classList.add('hidden');
   document.getElementById('sync-passphrase-reveal').classList.add('hidden');
   document.getElementById('sync-passphrase-value').value = '';
+});
+
+// ---------------------------------------------------------------------------
+// Recovery passphrase — per-card ownership recovery (see recovery.js)
+//
+// Manage (editor → 🛟): generate/replace/remove the passphrase-encrypted copy
+// of the card's signing key published to its relays.
+// Recover (Advanced → Recover card): share link + passphrase → full
+// ownership restored on this device.
+// ---------------------------------------------------------------------------
+
+function setRecoveryStatus(msg, isError) {
+  const el = document.getElementById('recovery-status');
+  el.textContent = msg;
+  el.className   = isError ? 'status-msg error' : 'status-msg success';
+}
+
+/** Sync the manage-modal buttons/labels with the current card state. */
+function updateRecoveryModalState() {
+  const card   = getCard(activeCardId);
+  const has    = !!card?.recovery;
+  const status = document.getElementById('recovery-status');
+  if (has) {
+    status.textContent = t('recovery.status.set');
+    status.className   = 'status-msg success';
+  } else {
+    status.textContent = t('recovery.status.none');
+    status.className   = 'status-msg';
+  }
+  document.getElementById('btn-recovery-generate').textContent =
+    has ? t('recovery.btn.regenerate') : t('recovery.btn.generate');
+  document.getElementById('btn-recovery-remove').classList.toggle('hidden', !has);
+}
+
+function openRecoveryModal() {
+  const card = getCard(activeCardId);
+  if (!card) return;
+  document.getElementById('recovery-label').textContent = card.label;
+  document.getElementById('recovery-reveal').classList.add('hidden');
+  document.getElementById('recovery-passphrase-value').value = '';
+  updateRecoveryModalState();
+  document.getElementById('modal-recovery').classList.remove('hidden');
+}
+
+function closeRecoveryModal() {
+  document.getElementById('modal-recovery').classList.add('hidden');
+  // Don't let the one-time passphrase linger in the DOM after close
+  document.getElementById('recovery-passphrase-value').value = '';
+}
+
+document.getElementById('btn-recovery').addEventListener('click', openRecoveryModal);
+document.getElementById('btn-recovery-close').addEventListener('click', closeRecoveryModal);
+document.getElementById('modal-recovery').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeRecoveryModal();
+});
+
+document.getElementById('btn-recovery-copy').addEventListener('click', async () => {
+  const value = document.getElementById('recovery-passphrase-value').value;
+  try { await navigator.clipboard.writeText(value); } catch {}
+  const btn = document.getElementById('btn-recovery-copy');
+  btn.textContent = t('btn.copied');
+  setTimeout(() => { btn.textContent = t('btn.copy'); }, 2000);
+});
+
+/** Best-effort sync refresh after a recovery change, so another device
+ *  pulling a stale snapshot doesn't keep the old `recovery` flag. */
+function pushSyncAfterRecoveryChange() {
+  (async () => {
+    const identity = await getSyncIdentity();
+    if (identity) {
+      pushSyncSnapshot().catch(err => reportError(err, 'app.sync-push-after-recovery'));
+    }
+  })();
+}
+
+document.getElementById('btn-recovery-generate').addEventListener('click', async () => {
+  const card = getCard(activeCardId);
+  if (!card) return;
+
+  // Replacing an existing passphrase invalidates the old one — confirm first
+  if (card.recovery && !(await openConfirmModal({
+    title:        t('dialog.confirm.generic.title'),
+    body:         t('dialog.recovery.replace.confirm', { label: card.label }),
+    confirmLabel: t('recovery.btn.regenerate'),
+  }))) return;
+
+  const btn = document.getElementById('btn-recovery-generate');
+  btn.disabled = true;
+  try {
+    const passphrase = generateRecoveryPassphrase();
+    const results = await setRecoveryData(card.relays, hexToBytes(card.nsec), activeCardId, passphrase);
+    const okCount  = results.filter(r => r.ok).length;
+    if (okCount === 0) throw new Error('No relay accepted the recovery event');
+
+    // Persist the flag so the editor can show state without a relay round-trip
+    const cards = getCards();
+    const idx   = cards.findIndex(c => c.id === activeCardId);
+    if (idx >= 0) { cards[idx].recovery = true; saveCards(cards); }
+
+    // Shown once — never persisted (see recovery.reveal.warning)
+    document.getElementById('recovery-passphrase-value').value = passphrase;
+    document.getElementById('recovery-reveal').classList.remove('hidden');
+    const qrContainer = document.getElementById('recovery-qr-container');
+    qrContainer.innerHTML = '';
+    renderQR(qrContainer, passphrase);
+
+    updateRecoveryModalState();
+    const allOk = results.every(r => r.ok);
+    setRecoveryStatus(
+      allOk
+        ? t('recovery.status.published')
+        : t('recovery.status.published.partial', { ok: okCount, n: results.length }),
+      !allOk
+    );
+    pushSyncAfterRecoveryChange();
+  } catch (err) {
+    reportError(err, 'app.recovery-generate');
+    setRecoveryStatus(t('recovery.error.publish'), true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-recovery-remove').addEventListener('click', async () => {
+  const card = getCard(activeCardId);
+  if (!card || !card.recovery) return;
+  if (!(await openConfirmModal({
+    title:        t('dialog.confirm.generic.title'),
+    body:         t('dialog.recovery.remove.confirm', { label: card.label }),
+    confirmLabel: t('recovery.btn.remove'),
+  }))) return;
+
+  const btn = document.getElementById('btn-recovery-remove');
+  btn.disabled = true;
+  try {
+    await removeRecoveryData(card.relays, hexToBytes(card.nsec), activeCardId);
+    const cards = getCards();
+    const idx   = cards.findIndex(c => c.id === activeCardId);
+    if (idx >= 0) { delete cards[idx].recovery; saveCards(cards); }
+    updateRecoveryModalState();
+    document.getElementById('recovery-reveal').classList.add('hidden');
+    document.getElementById('recovery-passphrase-value').value = '';
+    setRecoveryStatus(t('recovery.status.removed'), false);
+    pushSyncAfterRecoveryChange();
+  } catch (err) {
+    reportError(err, 'app.recovery-remove');
+    setRecoveryStatus(t('recovery.error.remove'), true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// --- Recover a card from a share link + passphrase (Advanced menu) --------
+
+// Same friction limiter as the sync join form: every attempt costs a 600k
+// PBKDF2 derivation plus relay reads. Offline brute force is what actually
+// matters and is defeated by passphrase entropy — see recovery.js.
+const RECOVER_RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000, lockoutMs: 15 * 60 * 1000 };
+
+function setRecoverStatus(msg, isError) {
+  const el = document.getElementById('recover-status');
+  el.textContent = msg;
+  el.className   = isError ? 'status-msg error' : 'status-msg';
+}
+
+document.getElementById('btn-adv-recover').addEventListener('click', () => {
+  document.getElementById('modal-advanced').classList.add('hidden');
+  setRecoverStatus('', false);
+  document.getElementById('recover-status').className = 'status-msg';
+  document.getElementById('modal-recover').classList.remove('hidden');
+});
+
+document.getElementById('btn-recover-cancel').addEventListener('click', () => {
+  document.getElementById('modal-recover').classList.add('hidden');
+});
+
+document.getElementById('modal-recover').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+});
+
+document.getElementById('btn-recover-confirm').addEventListener('click', async () => {
+  const linkInput = document.getElementById('recover-link-input');
+  const passInput  = document.getElementById('recover-passphrase-input');
+  const err        = (key) => setRecoverStatus(t(key), true);
+
+  const parsed = parsePastedShareLink(linkInput.value);
+  if (!parsed || !parsed.naddr || !parsed.key) return err('recover.error.link');
+
+  let decoded;
+  try { decoded = naddrDecode(parsed.naddr); }
+  catch { return err('recover.error.link'); }
+
+  const passphrase = passInput.value.trim();
+  if (!passphrase) return err('recover.error.weak');
+
+  const rl = checkRateLimit('recover', RECOVER_RATE_LIMIT);
+  if (!rl.allowed) {
+    return err('recover.error.locked');
+  }
+  // Only generated passphrases are accepted — same rationale as sync join
+  if (!isValidRecoveryPassphrase(passphrase)) {
+    recordRateLimitedAttempt('recover', RECOVER_RATE_LIMIT);
+    return err('recover.error.weak');
+  }
+
+  const btn = document.getElementById('btn-recover-confirm');
+  btn.disabled = true;
+  setRecoverStatus(t('recover.status.working'), false);
+  try {
+    const relays = [...new Set([
+      ...(decoded.relays || []).filter(isValidRelayUrl),
+      ...DEFAULT_RELAYS,
+    ])];
+
+    // Link locates the card (naddr), passphrase unlocks the signing key
+    const nsecBytes = await recoverCardSecret(relays, decoded.pubkey, decoded.identifier, passphrase);
+    const nsecHex   = bytesToHex(nsecBytes);
+
+    if (getCards().some(c => c.id === decoded.identifier && c.nsec === nsecHex)) {
+      clearRateLimit('recover');
+      setRecoverStatus(t('recover.status.alreadyOwned'), false);
+      return;
+    }
+
+    // The link's read key restores the local AES key; the card event refills
+    // the fields cache. If the card exists but the link's key can't decrypt
+    // it, the key was rotated after this link was shared — saving with the
+    // stale key would break everyone holding the newer link, so stop here.
+    let fields = null;
+    let event  = null;
+    try {
+      event = await fetchCard(relays, decoded.pubkey, decoded.identifier);
+    } catch { /* relay hiccup — card still recoverable */ }
+    if (event) {
+      try {
+        const aesKey = await fragmentToKey(parsed.key);
+        fields = parseVCard(await decryptVCard(event.content, aesKey));
+        fields.__relayTs = event.created_at ? event.created_at * 1000 : Date.now();
+      } catch {
+        return err('recover.error.keyRotated');
+      }
+    }
+
+    const cards   = getCards();
+    const idx     = cards.findIndex(c => c.id === decoded.identifier);
+    const existing = idx >= 0 ? cards[idx] : null;
+    const cardObj = {
+      ...existing,
+      id:       decoded.identifier,
+      label:    existing?.label || fields?.fn || t('recover.default.label'),
+      nsec:     nsecHex,
+      npub:     decoded.pubkey,
+      key:      parsed.key,
+      relays:   [...new Set([...(existing?.relays || []), ...relays])],
+      recovery: true,  // the blob we just decrypted is live on the relays
+    };
+    if (existing) cards[idx] = cardObj; else cards.push(cardObj);
+    saveCards(cards);
+    if (fields) localStorage.setItem(STORAGE_KEYS.fields(cardObj.id), JSON.stringify(fields));
+
+    clearRateLimit('recover');
+    linkInput.value = '';
+    passInput.value = '';
+    document.getElementById('modal-recover').classList.add('hidden');
+    alert(t('recover.status.done', { label: cardObj.label }));
+    go('/cards');
+  } catch (e) {
+    reportError(e, 'app.recover-card');
+    // Only real misses count toward the limiter — network errors don't
+    if (e?.code === 'no-recovery' || e?.code === 'bad-passphrase'
+        || e?.code === 'key-mismatch' || e?.code === 'bad-format') {
+      recordRateLimitedAttempt('recover', RECOVER_RATE_LIMIT);
+    }
+    if (e?.code === 'no-recovery')       err('recover.error.none');
+    else if (e?.code === 'bad-passphrase' || e?.code === 'key-mismatch') err('recover.error.passphrase');
+    else if (e?.code === 'bad-format')   err('recover.error.none');
+    else                                 err('recover.error.network');
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // ---------------------------------------------------------------------------

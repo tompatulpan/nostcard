@@ -63,6 +63,16 @@ const SYNC_D_TAG = 'nostr-vcard-sync';
 /** Custom addressable kind used for the ephemeral in-person pairing handshake */
 export const PAIR_KIND = 30403;
 
+/**
+ * Addressable kind for the per-card recovery blob: the card's signing key
+ * (nsec) encrypted under a passphrase-derived AES key. Same d-tag as the
+ * card event and signed by the same nsec, so a share link (whose naddr
+ * carries pubkey + d-tag) is enough to locate it and the recovery
+ * passphrase is enough to decrypt it. Chosen adjacent to CARD_KIND; see
+ * recovery.js for the content format.
+ */
+export const RECOVERY_KIND = 36351;
+
 /** Timeout for the first relay fetch attempt (ms) */
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -196,21 +206,21 @@ export async function publishCard(relays, nsec, cardId, encryptedBlob) {
  *   Returns the event content (encrypted blob) and timestamp, or null if not found.
  */
 export async function fetchCard(relays, npub, cardId, { fallbackRelays = DEFAULT_RELAYS } = {}) {
-  const event = await fetchCardOnce(relays, npub, cardId, FETCH_TIMEOUT_MS);
+  const event = await fetchCardOnce(relays, npub, cardId, FETCH_TIMEOUT_MS, CARD_KIND);
   if (event) return event;
 
   const retryRelays = [...relays];
   for (const relay of (fallbackRelays || [])) {
     if (!retryRelays.includes(relay) && isValidRelayUrl(relay)) retryRelays.push(relay);
   }
-  return fetchCardOnce(retryRelays, npub, cardId, FETCH_RETRY_TIMEOUT_MS);
+  return fetchCardOnce(retryRelays, npub, cardId, FETCH_RETRY_TIMEOUT_MS, CARD_KIND);
 }
 
 /** Single fetch attempt against the given relay list with an outer timeout. */
-async function fetchCardOnce(relays, npub, cardId, timeoutMs) {
+async function fetchCardOnce(relays, npub, cardId, timeoutMs, kind = CARD_KIND) {
   const event = await Promise.race([
     sharedPool.get(relays, {
-      kinds:   [CARD_KIND],
+      kinds:   [kind],
       authors: [npub],
       '#d':    [cardId],
     }),
@@ -223,12 +233,29 @@ async function fetchCardOnce(relays, npub, cardId, timeoutMs) {
   // forged event. The AES-GCM content tag already prevents tampered payloads
   // from decrypting, but signature verification also rejects events signed
   // by a different key before decryption is attempted.
-  if (!isVerifiedEvent(event)) {
-    console.warn('Card event signature verification failed - possible tampering');
+  if (!isAuthenticEvent(event, npub, kind, cardId)) {
+    console.warn('Card event verification failed - possible tampering');
     return null;
   }
 
   return { content: event.content, created_at: event.created_at, tags: event.tags || [] };
+}
+
+/**
+ * A valid signature alone only proves *someone* signed the event, so also
+ * require the expected author, kind and d-tag — a relay can ignore the filter.
+ * @param {object} event
+ * @param {string} npub    expected author (hex)
+ * @param {number} kind    expected kind
+ * @param {string} cardId  expected d-tag
+ * @returns {boolean}
+ */
+function isAuthenticEvent(event, npub, kind, cardId) {
+  return event?.pubkey === npub
+    && event.kind === kind
+    && Array.isArray(event.tags)
+    && event.tags.some(t => t[0] === 'd' && t[1] === cardId)
+    && isVerifiedEvent(event);
 }
 
 /**
@@ -254,9 +281,11 @@ function isVerifiedEvent(event) {
  * Deletion is best-effort — well-behaved relays will stop serving the event,
  * but not all relays honour deletion requests.
  *
- * The request covers both the current address and the old kind-30402 address:
- * cards published before the kind switch still have a live 30402 event on
- * the relays, and deleting a card must remove that too.
+ * The request covers the current address, the old kind-30402 address, and the
+ * recovery-event address (kind RECOVERY_KIND, same d-tag): cards published
+ * before the kind switch still have a live 30402 event on the relays, and a
+ * card with a recovery passphrase set has a live recovery event — deleting a
+ * card must remove all of them.
  *
  * @param {string[]}   relays  WebSocket relay URLs
  * @param {Uint8Array} nsec    Owner's private key (raw 32 bytes)
@@ -271,6 +300,7 @@ export async function deleteCard(relays, nsec, cardId) {
     tags:       [
       ['a', `${CARD_KIND}:${npub}:${cardId}`],
       ['a', `${LEGACY_CARD_KIND}:${npub}:${cardId}`],
+      ['a', `${RECOVERY_KIND}:${npub}:${cardId}`],
     ],
     content:    'deleted',
   };
@@ -439,6 +469,110 @@ export async function deleteSyncEvent(relays, syncNsec) {
   };
 
   const event = finalizeEvent(template, syncNsec);
+  await Promise.allSettled(relays.map(relay => sharedPool.publish([relay], event)));
+}
+
+// ---------------------------------------------------------------------------
+// Recovery event (addressable, kind 36351) — passphrase-encrypted copy of
+// the card's signing key, see recovery.js for the content format.
+// ---------------------------------------------------------------------------
+
+/**
+ * Publish (or replace) a card's recovery event to all given relays.
+ * Same replaceable-event semantics as publishCard: relays keep only the
+ * latest event per (pubkey, kind, d-tag), so re-publishing with the same
+ * d-tag replaces the previous recovery blob (e.g. after rotating the
+ * recovery passphrase).
+ *
+ * @param {string[]}   relays  WebSocket relay URLs
+ * @param {Uint8Array} nsec    Owner's private key (raw 32 bytes)
+ * @param {string}     cardId  Card identifier (d-tag — same as the card event)
+ * @param {string}     content JSON payload (see recovery.js)
+ * @returns {Promise<Array<{relay: string, ok: boolean}>>}
+ */
+export async function publishRecoveryEvent(relays, nsec, cardId, content) {
+  const event = finalizeEvent({
+    kind:       RECOVERY_KIND,
+    created_at: Math.floor(Date.now() / 1000),
+    tags:       [['d', cardId]],
+    content,
+  }, nsec);
+
+  const publishPromises = relays.map(async relay => {
+    try {
+      await sharedPool.publish([relay], event);
+      return { relay, ok: true };
+    } catch {
+      return { relay, ok: false };
+    }
+  });
+
+  const settled = await Promise.allSettled(publishPromises);
+  return settled.map(r =>
+    r.status === 'fulfilled' ? r.value : { relay: '?', ok: false }
+  );
+}
+
+/**
+ * Fetch every recovery event the relays serve for a card, newest first.
+ * Relays can hold different generations (a replace that only reached some
+ * relays, or a NIP-09 removal a relay ignored), so callers try them in order
+ * rather than trusting whichever relay answered first.
+ *
+ * @param {string[]} relays  WebSocket relay URLs (from the naddr hints)
+ * @param {string}   npub    Owner's public key (hex)
+ * @param {string}   cardId  Card identifier (d-tag)
+ * @returns {Promise<Array<{content: string, created_at: number}>>}
+ */
+export async function fetchRecoveryEvents(relays, npub, cardId, { fallbackRelays = DEFAULT_RELAYS } = {}) {
+  const query = async (list, maxWait) => {
+    let events;
+    try {
+      events = await sharedPool.querySync(list, {
+        kinds:   [RECOVERY_KIND],
+        authors: [npub],
+        '#d':    [cardId],
+      }, { maxWait });
+    } catch {
+      return [];
+    }
+    return events
+      .filter(ev => isAuthenticEvent(ev, npub, RECOVERY_KIND, cardId))
+      // The same event id arrives once per relay serving it — dedupe before
+      // returning, or a wrong passphrase pays one PBKDF2 derivation per copy.
+      .filter((ev, i, all) => all.findIndex(o => o.id === ev.id) === i)
+      .sort((a, b) => b.created_at - a.created_at)
+      .map(ev => ({ content: ev.content, created_at: ev.created_at }));
+  };
+
+  const found = await query(relays, FETCH_TIMEOUT_MS);
+  if (found.length) return found;
+
+  const retryRelays = [...relays];
+  for (const relay of (fallbackRelays || [])) {
+    if (!retryRelays.includes(relay) && isValidRelayUrl(relay)) retryRelays.push(relay);
+  }
+  return query(retryRelays, FETCH_RETRY_TIMEOUT_MS);
+}
+
+/**
+ * Publish a NIP-09 deletion request for a card's recovery event only — the
+ * card itself stays live. Used by "Remove recovery" in the editor.
+ * Deletion is best-effort; not all relays honour NIP-09.
+ *
+ * @param {string[]}   relays  WebSocket relay URLs
+ * @param {Uint8Array} nsec    Owner's private key (raw 32 bytes)
+ * @param {string}     cardId  Card identifier (d-tag)
+ * @returns {Promise<void>}
+ */
+export async function deleteRecoveryEvent(relays, nsec, cardId) {
+  const npub = getPublicKey(nsec);
+  const event = finalizeEvent({
+    kind:       5,
+    created_at: Math.floor(Date.now() / 1000),
+    tags:       [['a', `${RECOVERY_KIND}:${npub}:${cardId}`]],
+    content:    'deleted',
+  }, nsec);
   await Promise.allSettled(relays.map(relay => sharedPool.publish([relay], event)));
 }
 

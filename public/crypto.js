@@ -175,6 +175,70 @@ export async function importSyncKey(rawKeyBytes) {
 }
 
 // ---------------------------------------------------------------------------
+// Recovery key derivation (passphrase + per-card salt → AES key)
+// ---------------------------------------------------------------------------
+
+/** Fixed KDF label for card recovery blobs.
+ *  Protocol constant — do not rename: it is part of the KDF input, renaming
+ *  breaks decryption of recovery events already published to relays. */
+const RECOVERY_KDF_LABEL = 'nostr-vcard-recovery-v1';
+
+/**
+ * PBKDF2 iterations for NEW recovery blobs. Deliberately independent of
+ * SYNC_PBKDF2_ITERATIONS: sync is a deterministic identity (both ends must
+ * forever derive the same bytes), while recovery blobs carry their own KDF
+ * parameters inside the payload — so this default can be raised later
+ * without breaking existing blobs, and bumping the sync constant must not
+ * break recovery either.
+ */
+const RECOVERY_PBKDF2_ITERATIONS = 600_000;
+
+/**
+ * The KDF descriptor written into every recovery blob (see recovery.js).
+ * Readers take the parameters from the blob, not from these constants.
+ */
+export const RECOVERY_KDF_PARAMS = { name: 'PBKDF2-SHA256', iterations: RECOVERY_PBKDF2_ITERATIONS };
+
+/**
+ * Derive the AES-256-GCM key that protects a card's recovery blob: the card's
+ * signing key (nsec) encrypted so the owner can regain ownership after losing
+ * the browser. Same KDF shape as sync (PBKDF2-HMAC-SHA256), plus a per-card
+ * random salt (stored in the clear next to the ciphertext) so two cards
+ * protected by the same passphrase never share derived key material.
+ *
+ * Iterations default to the current writer settings but are read from the
+ * blob on the recovery side — future blobs may use stronger parameters
+ * without invalidating older ones.
+ *
+ * @param {string}     passphrase
+ * @param {Uint8Array} saltBytes   per-card random salt
+ * @param {{ iterations?: number }} [opts] iterations of the blob being decrypted
+ * @returns {Promise<CryptoKey>}
+ */
+export async function deriveRecoveryKey(passphrase, saltBytes, { iterations = RECOVERY_PBKDF2_ITERATIONS } = {}) {
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(passphrase),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+
+  const salt = new Uint8Array([
+    ...new TextEncoder().encode(RECOVERY_KDF_LABEL),
+    ...saltBytes,
+  ]);
+
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    baseKey,
+    256
+  );
+
+  return importSyncKey(new Uint8Array(bits));
+}
+
+// ---------------------------------------------------------------------------
 // Pairing identity derivation (code → signing key + encryption key)
 // ---------------------------------------------------------------------------
 
